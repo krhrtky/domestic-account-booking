@@ -11,6 +11,10 @@ export type ParseResult =
   | { success: true; data: ParsedTransaction[] }
   | { success: false; errors: string[] }
 
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
+
+const DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
 const detectDateColumn = (headers: string[]): number => {
   const datePatterns = ['date', '日付', '利用日', 'Date']
   return headers.findIndex((h) =>
@@ -32,25 +36,33 @@ const detectAmountColumn = (headers: string[]): number => {
   )
 }
 
-const normalizeDate = (dateStr: string): string => {
+const normalizeDate = (dateStr: string): string | null => {
   const formats = [
-    /^(\d{4})-(\d{2})-(\d{2})$/,
-    /^(\d{4})\/(\d{2})\/(\d{2})$/,
-    /^(\d{2})\/(\d{2})\/(\d{4})$/,
+    { regex: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, order: ['y', 'm', 'd'] },
+    { regex: /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/, order: ['y', 'm', 'd'] },
+    { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ['m', 'd', 'y'] },
   ]
 
-  for (const format of formats) {
-    const match = dateStr.match(format)
+  for (const { regex, order } of formats) {
+    const match = dateStr.match(regex)
     if (match) {
-      if (format === formats[2]) {
-        const [, mm, dd, yyyy] = match
-        return `${yyyy}-${mm}-${dd}`
+      const parts: Record<string, string> = {}
+      order.forEach((key, idx) => {
+        parts[key] = match[idx + 1]
+      })
+
+      const year = parts['y']
+      const month = parts['m'].padStart(2, '0')
+      const day = parts['d'].padStart(2, '0')
+      const normalized = `${year}-${month}-${day}`
+
+      if (DATE_REGEX.test(normalized)) {
+        return normalized
       }
-      return `${match[1]}-${match[2]}-${match[3]}`
     }
   }
 
-  return dateStr
+  return null
 }
 
 const parseAmount = (amountStr: string): number => {
@@ -65,6 +77,11 @@ export const parseCSV = async (
 ): Promise<ParseResult> => {
   if (!csvContent || csvContent.trim().length === 0) {
     return { success: false, errors: ['CSV file is empty'] }
+  }
+
+  const byteSize = new TextEncoder().encode(csvContent).length
+  if (byteSize > MAX_FILE_SIZE_BYTES) {
+    return { success: false, errors: ['File size exceeds 5MB limit'] }
   }
 
   return new Promise((resolve) => {
@@ -115,6 +132,10 @@ export const parseCSV = async (
             }
 
             const date = normalizeDate(dateStr)
+            if (!date) {
+              return
+            }
+
             const amount = parseAmount(amountStr)
 
             transactions.push({

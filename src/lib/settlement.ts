@@ -1,10 +1,33 @@
 import type { Transaction, Group, Settlement } from './types'
 
+const MONTH_FORMAT_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/
+
+const validateRatio = (ratioA: number, ratioB: number): void => {
+  if (ratioA < 0 || ratioA > 100) {
+    throw new Error('ratio_a must be between 0 and 100')
+  }
+  if (ratioB < 0 || ratioB > 100) {
+    throw new Error('ratio_b must be between 0 and 100')
+  }
+  if (ratioA + ratioB !== 100) {
+    throw new Error('ratio_a + ratio_b must equal 100')
+  }
+}
+
+const validateMonthFormat = (month: string): void => {
+  if (!MONTH_FORMAT_REGEX.test(month)) {
+    throw new Error('Invalid month format. Expected YYYY-MM (e.g., 2025-01)')
+  }
+}
+
 export const calculateSettlement = (
   transactions: Transaction[],
   group: Group,
   targetMonth: string
 ): Settlement => {
+  validateRatio(group.ratio_a, group.ratio_b)
+  validateMonthFormat(targetMonth)
+
   const householdTransactions = transactions.filter(
     (t) => t.expense_type === 'Household' && t.date.startsWith(targetMonth)
   )
@@ -24,7 +47,7 @@ export const calculateSettlement = (
   const totalHousehold = paidByA + paidByB
 
   const ratioA = group.ratio_a / 100
-  const balanceA = paidByA - totalHousehold * ratioA
+  const balanceA = Math.round(paidByA - totalHousehold * ratioA)
 
   return {
     month: targetMonth,

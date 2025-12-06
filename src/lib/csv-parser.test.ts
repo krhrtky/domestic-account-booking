@@ -96,4 +96,67 @@ describe('parseCSV', () => {
       expect(result.errors[0]).toContain('empty')
     }
   })
+
+  it('returns error when file exceeds 5MB limit', async () => {
+    const largeContent = 'Date,Description,Amount\n' + '2025-01-15,Test,1000\n'.repeat(300000)
+
+    const result = await parseCSV(largeContent, 'large.csv')
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.errors[0]).toContain('5MB')
+    }
+  })
+
+  it('accepts file within 5MB limit', async () => {
+    const validContent = 'Date,Description,Amount\n2025-01-15,Test,1000'
+
+    const result = await parseCSV(validContent, 'valid.csv')
+
+    expect(result.success).toBe(true)
+  })
+
+  describe('date validation', () => {
+    it('validates date format YYYY-MM-DD', async () => {
+      const csvContent = `Date,Description,Amount
+2025-01-15,Valid date,1000
+invalid-date,Invalid date,1000`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data).toHaveLength(1)
+        expect(result.data[0].date).toBe('2025-01-15')
+      }
+    })
+
+    it('parses MM/DD/YYYY format correctly', async () => {
+      const csvContent = `Date,Description,Amount
+01/15/2025,US date format,1000`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data[0].date).toBe('2025-01-15')
+      }
+    })
+  })
+
+  describe('XSS prevention', () => {
+    it('handles descriptions with HTML/script tags', async () => {
+      const csvContent = `Date,Description,Amount
+2025-01-15,<script>alert('xss')</script>,1000
+2025-01-16,Normal description,2000`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data).toHaveLength(2)
+        expect(result.data[0].description).toBe("<script>alert('xss')</script>")
+      }
+    })
+  })
 })

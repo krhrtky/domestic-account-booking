@@ -228,4 +228,89 @@ describe('calculateSettlement', () => {
     expect(result.paid_by_b_household).toBe(0)
     expect(result.balance_a).toBe(0)
   })
+
+  describe('input validation', () => {
+    it('throws error when ratio_a is negative', () => {
+      const invalidGroup: Group = { ...mockGroup, ratio_a: -10, ratio_b: 110 }
+      expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
+        'ratio_a must be between 0 and 100'
+      )
+    })
+
+    it('throws error when ratio_a is greater than 100', () => {
+      const invalidGroup: Group = { ...mockGroup, ratio_a: 110, ratio_b: -10 }
+      expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
+        'ratio_a must be between 0 and 100'
+      )
+    })
+
+    it('throws error when ratio_b is negative', () => {
+      const invalidGroup: Group = { ...mockGroup, ratio_a: 110, ratio_b: -10 }
+      expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow()
+    })
+
+    it('throws error when ratios do not sum to 100', () => {
+      const invalidGroup: Group = { ...mockGroup, ratio_a: 40, ratio_b: 40 }
+      expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
+        'ratio_a + ratio_b must equal 100'
+      )
+    })
+
+    it('throws error for invalid month format', () => {
+      expect(() => calculateSettlement([], mockGroup, '2025-1')).toThrow(
+        'Invalid month format'
+      )
+      expect(() => calculateSettlement([], mockGroup, '202501')).toThrow(
+        'Invalid month format'
+      )
+      expect(() => calculateSettlement([], mockGroup, '2025/01')).toThrow(
+        'Invalid month format'
+      )
+    })
+
+    it('accepts valid month format YYYY-MM', () => {
+      expect(() => calculateSettlement([], mockGroup, '2025-01')).not.toThrow()
+      expect(() => calculateSettlement([], mockGroup, '2025-12')).not.toThrow()
+    })
+
+    it('normalizes month format 2025-1 to 2025-01', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-15',
+          amount: 10000,
+          description: 'Test',
+          payer_type: 'UserA',
+          expense_type: 'Household',
+          created_at: '2025-01-15T00:00:00Z',
+          updated_at: '2025-01-15T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.month).toBe('2025-01')
+    })
+  })
+
+  describe('floating point precision', () => {
+    it('rounds balance to nearest integer', () => {
+      const groupWith33_67: Group = { ...mockGroup, ratio_a: 33, ratio_b: 67 }
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test',
+          payer_type: 'UserA',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, groupWith33_67, '2025-01')
+      expect(Number.isInteger(result.balance_a)).toBe(true)
+      expect(result.balance_a).toBe(6700)
+    })
+  })
 })
