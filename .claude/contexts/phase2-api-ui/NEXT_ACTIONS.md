@@ -1,7 +1,8 @@
 # 次のアクション - Phase 2: API & UI 開発
 
-**作成日:** 2025-12-07
+**更新日:** 2025-12-07
 **前フェーズ:** Core Logic (Phase 1) - APPROVED
+**現在フェーズ:** Epic 1 - CONDITIONAL (P0修正完了、P1残存)
 
 ---
 
@@ -9,11 +10,12 @@
 
 ### コミット履歴
 ```
+24a3880 docs: add Phase 2 action plan for API & UI development
 0b35c97 fix: add P0/P1 validation and security improvements
 ab337b7 feat: initial project setup with core settlement logic
 ```
 
-### 実装済みファイル
+### 実装済みファイル (Phase 1)
 | ファイル | 内容 |
 |---------|------|
 | src/lib/types.ts | PayerType, ExpenseType, Transaction, Group, Settlement 型定義 |
@@ -21,86 +23,165 @@ ab337b7 feat: initial project setup with core settlement logic
 | src/lib/csv-parser.ts | CSVパーサー (5MB制限、日付バリデーション、日英対応) |
 | src/lib/*.test.ts | 26テスト 100% pass |
 
-### QGA承認済み項目
-- ratio範囲バリデーション (0-100, 合計100)
-- ファイルサイズ制限 (5MB)
-- Math.round() 浮動小数点対策
-- 日付バリデーション強化
-- MM/DD/YYYY対応
-- XSSペイロードテスト
-
 ---
 
-## 次のフェーズ (Phase 2)
+## Epic 1: User & Group Management (現在)
 
-### 優先順位
-
-#### Epic 1: User & Group Management
-1. [ ] Supabase セットアップ (`.env.local` 設定)
-2. [ ] 認証フロー実装 (Supabase Auth)
-3. [ ] users テーブル作成
-4. [ ] groups テーブル作成
-5. [ ] パートナー招待機能
-
-#### Epic 2: CSV Data Ingestion
-1. [ ] ファイルアップロードUI (react-dropzone)
-2. [ ] Payer Type 選択UI
-3. [ ] transactions テーブル作成
-4. [ ] Server Action: CSV保存
-
-#### Epic 3: Transaction Classification
-1. [ ] Transaction 一覧ページ
-2. [ ] 月別フィルタ
-3. [ ] Household/Personal 切り替え
-4. [ ] 削除機能
-
-#### Epic 4: Settlement Dashboard
-1. [ ] 月別精算サマリー表示
-2. [ ] 「誰が誰にいくら」表示
-3. [ ] 内訳表示 (total, paid_by_a, paid_by_b, balance)
-
----
-
-## 技術スタック参照
-
-SPEC.md Section 3.1:
-```sql
--- Database Schema
-CREATE TABLE users (id UUID, name TEXT, email TEXT, group_id UUID)
-CREATE TABLE groups (id UUID, name TEXT, ratio_a INT, ratio_b INT, user_a_id UUID, user_b_id UUID)
-CREATE TABLE transactions (id UUID, group_id UUID, date DATE, amount INT, description TEXT, payer_type TEXT, expense_type TEXT)
+### コミット履歴 (Epic 1)
+```
+03ae761 fix(epic-1): add /invite/* middleware exception and P0 validation tests
+d5e9e3e feat(epic-1): add user & group management with P0 security fixes
 ```
 
-SPEC.md Section 3.2: API Routes (Next.js Server Actions)
-- POST /api/groups - グループ作成
-- POST /api/transactions/upload - CSV一括登録
-- PATCH /api/transactions/[id] - expense_type更新
-- DELETE /api/transactions/[id] - 削除
-- GET /api/settlements/[month] - 精算計算結果
+### 実装済みファイル (Epic 1)
+| ファイル | 内容 |
+|---------|------|
+| app/actions/auth.ts | signUp, logIn, logOut Server Actions (Zod validation) |
+| app/actions/group.ts | createGroup, invitePartner, acceptInvitation, updateRatio, getCurrentGroup |
+| app/actions/__tests__/validation.test.ts | 20テスト (P0検証含む) |
+| src/lib/supabase/client.ts | ブラウザ用Supabaseクライアント |
+| src/lib/supabase/server.ts | サーバー用Supabaseクライアント |
+| src/middleware.ts | 認証ルート保護 (/invite/* 例外対応済み) |
+| src/components/auth/* | SignUpForm, LoginForm |
+| src/components/group/* | GroupSettings, InvitePartner, CreateGroupForm |
+| app/(auth)/* | signup, login ページ |
+| app/dashboard/page.tsx | ダッシュボード |
+| app/settings/page.tsx | 設定ページ |
+| app/invite/[token]/page.tsx | 招待承認ページ |
+| supabase/migrations/* | DBスキーマ、RLSポリシー |
+| docs/EPIC-1-USER-GROUP-MANAGEMENT.md | 仕様書 |
+
+### QGA結果: CONDITIONAL
+
+#### 修正済み P0 (5件)
+| 項目 | 修正内容 | コミット |
+|-----|---------|---------|
+| P0-1 | invitePartner入力バリデーション追加 | d5e9e3e |
+| P0-2 | invitation insertエラーハンドリング追加 | d5e9e3e |
+| P0-3 | logIn入力バリデーション追加 | d5e9e3e |
+| P0-4 | RLSポリシー修正 (auth.users → users) | d5e9e3e |
+| P0-NEW | middleware /invite/* ルート例外追加 | 03ae761 |
+
+#### 残存 P1 課題 (4件) - Phase 2で対応可
+1. **P1-2: alert(JSON.stringify)** - toast通知システムに置換 (Phase 2)
+2. **P1-4: getCurrentGroup N+1クエリ** - Supabase joinで最適化
+3. **P1-テスト**: Server Actions統合テスト追加 (60%カバレッジ目標)
+4. **P1-UX**: ローディング状態・エラー表示改善
+
+---
+
+## テストカバレッジ
+
+```
+Test Files  3 passed (3)
+     Tests  46 passed (46)
+
+- src/lib/settlement.test.ts: 15 tests
+- src/lib/csv-parser.test.ts: 11 tests
+- app/actions/__tests__/validation.test.ts: 20 tests (NEW)
+```
+
+---
+
+## 次のアクション
+
+### 1. Epic 1 APPROVE取得 (推奨)
+P1課題はPhase 2に繰り延べ可能。QGAにAPPROVE判定を依頼。
+
+### 2. Epic 2 開始 (Epic 1承認後)
+```bash
+/claude-code-multi-agent Epic 2: CSV Data Ingestion UI を実装。
+- transactions テーブル作成
+- CSV アップロード Server Action
+- CSVプレビュー・確認UI
+- バルク insert with validation
+```
+
+### 3. P1課題対応 (任意)
+```bash
+# N+1クエリ最適化
+/claude-code-multi-agent app/actions/group.ts の getCurrentGroup を Supabase join で最適化
+
+# toast通知追加
+/claude-code-multi-agent alert() を sonner/react-hot-toast に置換
+```
+
+---
+
+## 技術スタック
+
+- Next.js 15 (App Router)
+- TypeScript strict
+- Tailwind CSS
+- Supabase Auth + PostgreSQL + RLS
+- Zod validation
+- Vitest (46 tests passing)
+
+---
+
+## 環境設定
+
+```bash
+# .env.local 必須設定
+NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
 ---
 
 ## 開発コマンド
 
 ```bash
-npm run dev       # 開発サーバー起動
-npm test          # テスト実行 (26/26 pass)
-npm run lint      # リント
-npm run typecheck # 型チェック
+npm run dev       # 開発サーバー
+npm test          # テスト (46/46 pass)
+npx vitest run    # テスト1回実行
+npm run type-check # 型チェック
+npm run build     # ビルド
 ```
 
 ---
 
-## 注意事項
+## ファイル構造 (Epic 1完了後)
 
-1. **Supabase設定**: `.env.local.example` を参照して `.env.local` を作成
-2. **RLS ポリシー**: SPEC.md Section 5.2 に従ってRow Level Security設定
-3. **パフォーマンス目標**: 50,000件で500ms以内 (SPEC.md Section 5.1)
+```
+src/
+├── lib/
+│   ├── types.ts          # 型定義
+│   ├── settlement.ts     # 精算ロジック
+│   ├── csv-parser.ts     # CSVパーサー
+│   └── supabase/
+│       ├── client.ts     # ブラウザクライアント
+│       └── server.ts     # サーバークライアント
+├── components/
+│   ├── auth/
+│   │   ├── SignUpForm.tsx
+│   │   └── LoginForm.tsx
+│   └── group/
+│       ├── GroupSettings.tsx
+│       ├── InvitePartner.tsx
+│       └── CreateGroupForm.tsx
+└── middleware.ts         # ルート保護
 
----
+app/
+├── (auth)/
+│   ├── signup/page.tsx
+│   └── login/page.tsx
+├── dashboard/page.tsx
+├── settings/page.tsx
+├── invite/[token]/page.tsx
+└── actions/
+    ├── auth.ts
+    ├── group.ts
+    └── __tests__/
+        └── validation.test.ts
 
-## 残存リスク (低優先度 - Phase 3で対応)
+supabase/
+└── migrations/
+    ├── 001_initial_schema.sql
+    └── 002_rls_policies.sql
 
-1. SPEC.md Test Case 1の記述ミス修正
-2. 無効日付行のwarnings配列追加
-3. パフォーマンスベンチマーク実施
+docs/
+└── EPIC-1-USER-GROUP-MANAGEMENT.md
+```
