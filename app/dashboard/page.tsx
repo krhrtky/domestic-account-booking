@@ -15,6 +15,12 @@ export default async function DashboardPage() {
           </p>
           <div className="space-y-4">
             <Link
+              href="/dashboard/transactions"
+              className="block w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 text-center"
+            >
+              Transactions
+            </Link>
+            <Link
               href="/settings"
               className="block w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 text-center"
             >

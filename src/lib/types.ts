@@ -4,6 +4,7 @@ export type ExpenseType = 'Household' | 'Personal';
 export interface Transaction {
   id: string;
   group_id: string;
+  user_id: string;
   date: string;
   amount: number;
   description: string;
