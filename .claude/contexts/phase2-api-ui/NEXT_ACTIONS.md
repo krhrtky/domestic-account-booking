@@ -188,9 +188,36 @@ eaa6a0f chore: 依存関係更新
 
 ---
 
+## P1-Pagination: トランザクションページネーション (完了)
+
+### コミット
+```
+7c1d34c feat(p1): implement offset-based pagination for transactions
+```
+
+### 実装済みファイル
+| ファイル | 内容 |
+|---------|------|
+| app/actions/transactions.ts | OFFSET+COUNTクエリ、サーバーサイドクランプ |
+| app/dashboard/transactions/page.tsx | URLクエリパラム状態管理 |
+| src/components/transactions/TransactionList.tsx | ページネーション統合 |
+| src/components/transactions/PaginationControls.tsx | ページナビゲーションUI (新規) |
+| e2e/demo/07-pagination.spec.ts | E2Eテスト更新 |
+
+### 機能概要
+- ページサイズ選択: 10, 25, 50
+- URLクエリパラム: `?page=2&size=25&month=2025-01`
+- ページナビゲーション: Previous/Next + ページ番号 (ellipsis対応)
+- "Showing X-Y of Z transactions" 表示
+- フィルター変更時はページ1にリセット
+- 無効なページ番号はサーバーサイドでクランプ
+- アクセシビリティ: ARIA labels, keyboard navigation
+
+---
+
 ## 次のアクション
 
-### Phase 5完了
+### Phase 5 + P1-Pagination 完了
 Supabase依存を完全に排除し、NextAuth + pg直接接続に移行完了。
 
 ### Phase 6候補 (ポストMVP)
@@ -203,7 +230,7 @@ Supabase依存を完全に排除し、NextAuth + pg直接接続に移行完了�
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
 2. ~~**P1-4: getCurrentGroup N+1クエリ**~~ - ✅ COMPLETED (NextAuth移行時にSQL JOINで最適化済み)
 3. **P1-UX**: ローディング状態・エラー表示改善
-4. **P1-Pagination**: トランザクション一覧のページネーション
+4. ~~**P1-Pagination**: トランザクション一覧のページネーション~~ - ✅ COMPLETED (7c1d34c)
 
 ---
 
