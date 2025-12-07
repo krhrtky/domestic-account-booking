@@ -1,43 +1,38 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { withAuth } from 'next-auth/middleware'
+import { NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next()
+export default withAuth(
+  function middleware(req) {
+    const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
+                       req.nextUrl.pathname.startsWith('/signup')
+    const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: any) {
-          response.cookies.set({ name, value: '', ...options })
-        }
-      }
+    if (req.nextauth.token && isAuthPage) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
-  )
 
-  const { data: { user } } = await supabase.auth.getUser()
+    return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ req, token }) => {
+        const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
+                          req.nextUrl.pathname.startsWith('/signup')
+        const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
+        const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth')
 
-  const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
-                     request.nextUrl.pathname.startsWith('/signup')
-  const isInvitePage = request.nextUrl.pathname.startsWith('/invite/')
+        if (isAuthPage || isInvitePage || isApiAuth) {
+          return true
+        }
 
-  if (!user && !isAuthPage && !isInvitePage) {
-    return NextResponse.redirect(new URL('/login', request.url))
+        return !!token
+      }
+    },
+    pages: {
+      signIn: '/login',
+    }
   }
-
-  if (user && isAuthPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  return response
-}
+)
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)']
