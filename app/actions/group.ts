@@ -51,7 +51,8 @@ export async function createGroup(data: {
     .single()
 
   if (groupError) {
-    return { error: 'Failed to create group' }
+    console.error('Group creation error:', groupError)
+    return { error: `Failed to create group: ${groupError.message}` }
   }
 
   const { error: updateError } = await supabase

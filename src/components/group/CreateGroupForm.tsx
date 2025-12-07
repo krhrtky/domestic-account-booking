@@ -20,7 +20,10 @@ export function CreateGroupForm() {
       ratio_b: 100 - ratioA
     })
     if (result.error) {
-      toast.error(result.error)
+      const errorMessage = typeof result.error === 'string'
+        ? result.error
+        : JSON.stringify(result.error)
+      toast.error(errorMessage)
     } else {
       toast.success('Group created successfully')
       router.refresh()
