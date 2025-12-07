@@ -1,19 +1,16 @@
-import { createClient } from '@supabase/supabase-js'
+import { Pool } from 'pg'
+import bcrypt from 'bcryptjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const databaseUrl = process.env.DATABASE_URL
 
-if (!supabaseUrl || !supabaseServiceKey) {
+if (!databaseUrl) {
   throw new Error(
-    'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for E2E tests'
+    'Missing required environment variable: DATABASE_URL is required for E2E tests'
   )
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
+const pool = new Pool({
+  connectionString: databaseUrl,
 })
 
 export interface TestUser {
@@ -24,44 +21,187 @@ export interface TestUser {
 }
 
 export const createTestUser = async (user: TestUser) => {
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email: user.email,
-    password: user.password,
-    user_metadata: { name: user.name },
-    email_confirm: true,
-  })
+  const client = await pool.connect()
 
-  if (error) throw error
+  try {
+    await client.query('BEGIN')
 
-  const { error: profileError } = await supabaseAdmin
-    .from('users')
-    .insert({
-      id: data.user.id,
-      name: user.name,
-      email: user.email,
-    })
+    const passwordHash = await bcrypt.hash(user.password, 12)
 
-  if (profileError) throw profileError
+    const authResult = await client.query<{ id: string }>(
+      'INSERT INTO auth.users (email, password_hash) VALUES ($1, $2) RETURNING id',
+      [user.email.toLowerCase(), passwordHash]
+    )
 
-  return { ...user, id: data.user.id }
+    const userId = authResult.rows[0].id
+
+    await client.query(
+      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)',
+      [userId, user.name, user.email.toLowerCase()]
+    )
+
+    await client.query('COMMIT')
+
+    return { ...user, id: userId }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export const deleteTestUser = async (userId: string) => {
-  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
-  if (error) throw error
+  await pool.query('DELETE FROM auth.users WHERE id = $1', [userId])
 }
 
 export const cleanupTestData = async (userId: string) => {
-  await supabaseAdmin.from('transactions').delete().eq('user_id', userId)
-  await supabaseAdmin.from('invitations').delete().eq('inviter_id', userId)
-  await supabaseAdmin.from('groups').delete().eq('user_a_id', userId)
-  await supabaseAdmin.from('groups').delete().eq('user_b_id', userId)
-  await supabaseAdmin.from('users').delete().eq('id', userId)
-  await deleteTestUser(userId)
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    await client.query('DELETE FROM transactions WHERE user_id = $1', [userId])
+    await client.query('DELETE FROM invitations WHERE inviter_id = $1', [userId])
+    await client.query('DELETE FROM groups WHERE user_a_id = $1', [userId])
+    await client.query('DELETE FROM groups WHERE user_b_id = $1', [userId])
+    await client.query('DELETE FROM users WHERE id = $1', [userId])
+    await client.query('DELETE FROM auth.users WHERE id = $1', [userId])
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export const generateTestEmail = () => {
   const timestamp = Date.now()
   const random = Math.random().toString(36).substring(7)
   return `test-${timestamp}-${random}@example.com`
+}
+
+export const getUserByEmail = async (email: string) => {
+  const result = await pool.query<{ id: string; group_id: string | null }>(
+    'SELECT id, group_id FROM users WHERE email = $1',
+    [email.toLowerCase()]
+  )
+  return result.rows[0] || null
+}
+
+export const getAuthUserByEmail = async (email: string) => {
+  const result = await pool.query<{ id: string; email: string }>(
+    'SELECT id, email FROM auth.users WHERE email = $1',
+    [email.toLowerCase()]
+  )
+  return result.rows[0] || null
+}
+
+export const getGroupById = async (groupId: string) => {
+  const result = await pool.query<{
+    id: string
+    user_a_id: string
+    user_b_id: string | null
+    ratio_a: number
+    ratio_b: number
+  }>('SELECT * FROM groups WHERE id = $1', [groupId])
+  return result.rows[0] || null
+}
+
+export const getTransactionsByGroupId = async (groupId: string) => {
+  const result = await pool.query<{
+    id: string
+    user_id: string
+    group_id: string
+    date: Date
+    description: string
+    amount: number
+    expense_type: string
+  }>('SELECT * FROM transactions WHERE group_id = $1 ORDER BY date DESC', [groupId])
+  return result.rows
+}
+
+export const insertTransaction = async (transaction: {
+  userId: string
+  groupId: string
+  date: string
+  description: string
+  amount: number
+  expenseType: string
+}) => {
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, expense_type)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [
+      transaction.userId,
+      transaction.groupId,
+      transaction.date,
+      transaction.description,
+      transaction.amount,
+      transaction.expenseType,
+    ]
+  )
+  return result.rows[0]
+}
+
+export const insertTransactions = async (
+  transactions: Array<{
+    userId: string
+    groupId: string
+    date: string
+    description: string
+    amount: number
+    expenseType: string
+  }>
+) => {
+  if (transactions.length === 0) return []
+
+  const values: unknown[] = []
+  const placeholders: string[] = []
+
+  transactions.forEach((t, i) => {
+    const offset = i * 6
+    placeholders.push(
+      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+    )
+    values.push(t.userId, t.groupId, t.date, t.description, t.amount, t.expenseType)
+  })
+
+  const result = await pool.query<{ id: string }>(
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, expense_type)
+     VALUES ${placeholders.join(', ')} RETURNING id`,
+    values
+  )
+  return result.rows
+}
+
+export const getTransactionById = async (transactionId: string) => {
+  const result = await pool.query<{
+    id: string
+    user_id: string
+    group_id: string
+    date: Date
+    description: string
+    amount: number
+    expense_type: string
+  }>('SELECT * FROM transactions WHERE id = $1', [transactionId])
+  return result.rows[0] || null
+}
+
+export const deleteTransactionsByGroupId = async (groupId: string) => {
+  await pool.query('DELETE FROM transactions WHERE group_id = $1', [groupId])
+}
+
+export const updateGroupRatio = async (
+  groupId: string,
+  ratioA: number,
+  ratioB: number
+) => {
+  await pool.query('UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3', [
+    ratioA,
+    ratioB,
+    groupId,
+  ])
 }

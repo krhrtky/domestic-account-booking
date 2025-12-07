@@ -1,5 +1,10 @@
 import { Page } from '@playwright/test'
-import { supabaseAdmin, TestUser, createTestUser } from './test-helpers'
+import { TestUser, createTestUser } from './test-helpers'
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 export interface DemoGroup {
   id: string
@@ -39,14 +44,13 @@ export const createGroup = async (
 }
 
 export const getGroupId = async (userId: string): Promise<string | null> => {
-  const { data, error } = await supabaseAdmin
-    .from('users')
-    .select('group_id')
-    .eq('id', userId)
-    .single()
+  const result = await pool.query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [userId]
+  )
 
-  if (error || !data) return null
-  return data.group_id
+  if (result.rows.length === 0) return null
+  return result.rows[0].group_id
 }
 
 export const insertTransaction = async (
@@ -54,17 +58,19 @@ export const insertTransaction = async (
   userId: string,
   transaction: DemoTransaction
 ): Promise<void> => {
-  const { error } = await supabaseAdmin.from('transactions').insert({
-    group_id: groupId,
-    user_id: userId,
-    date: transaction.date,
-    amount: transaction.amount,
-    description: transaction.description,
-    payer_type: transaction.payer_type,
-    expense_type: transaction.expense_type,
-  })
-
-  if (error) throw error
+  await pool.query(
+    `INSERT INTO transactions (group_id, user_id, date, amount, description, payer_type, expense_type)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      groupId,
+      userId,
+      transaction.date,
+      transaction.amount,
+      transaction.description,
+      transaction.payer_type,
+      transaction.expense_type,
+    ]
+  )
 }
 
 export const insertTransactions = async (
@@ -72,18 +78,26 @@ export const insertTransactions = async (
   userId: string,
   transactions: DemoTransaction[]
 ): Promise<void> => {
-  const records = transactions.map((t) => ({
-    group_id: groupId,
-    user_id: userId,
-    date: t.date,
-    amount: t.amount,
-    description: t.description,
-    payer_type: t.payer_type,
-    expense_type: t.expense_type,
-  }))
+  const client = await pool.connect()
 
-  const { error } = await supabaseAdmin.from('transactions').insert(records)
-  if (error) throw error
+  try {
+    await client.query('BEGIN')
+
+    for (const t of transactions) {
+      await client.query(
+        `INSERT INTO transactions (group_id, user_id, date, amount, description, payer_type, expense_type)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [groupId, userId, t.date, t.amount, t.description, t.payer_type, t.expense_type]
+      )
+    }
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }
 
 export const getInvitationUrl = async (page: Page): Promise<string> => {
@@ -98,16 +112,14 @@ export const updateGroupRatio = async (
   ratioA: number,
   ratioB: number
 ): Promise<void> => {
-  const { error } = await supabaseAdmin
-    .from('groups')
-    .update({ ratio_a: ratioA, ratio_b: ratioB })
-    .eq('id', groupId)
-
-  if (error) throw error
+  await pool.query(
+    'UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3',
+    [ratioA, ratioB, groupId]
+  )
 }
 
 export const deleteAllTransactions = async (groupId: string): Promise<void> => {
-  await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+  await pool.query('DELETE FROM transactions WHERE group_id = $1', [groupId])
 }
 
 export const createDemoUsers = async (): Promise<{
