@@ -10,9 +10,11 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
+    "test:e2e": "node --env-file=.env.local node_modules/.bin/playwright test",
+    "test:e2e:ui": "node --env-file=.env.local node_modules/.bin/playwright test --ui",
+    "test:e2e:debug": "node --env-file=.env.local node_modules/.bin/playwright test --debug",
+    "test:e2e:demo": "node --env-file=.env.local node_modules/.bin/playwright test e2e/demo",
+    "test:e2e:demo:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/demo --ui",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
