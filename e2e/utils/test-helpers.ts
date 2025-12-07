@@ -32,6 +32,17 @@ export const createTestUser = async (user: TestUser) => {
   })
 
   if (error) throw error
+
+  const { error: profileError } = await supabaseAdmin
+    .from('users')
+    .insert({
+      id: data.user.id,
+      name: user.name,
+      email: user.email,
+    })
+
+  if (profileError) throw profileError
+
   return { ...user, id: data.user.id }
 }
 
@@ -42,9 +53,10 @@ export const deleteTestUser = async (userId: string) => {
 
 export const cleanupTestData = async (userId: string) => {
   await supabaseAdmin.from('transactions').delete().eq('user_id', userId)
+  await supabaseAdmin.from('invitations').delete().eq('inviter_id', userId)
   await supabaseAdmin.from('groups').delete().eq('user_a_id', userId)
   await supabaseAdmin.from('groups').delete().eq('user_b_id', userId)
-  await supabaseAdmin.from('invitations').delete().eq('inviter_id', userId)
+  await supabaseAdmin.from('users').delete().eq('id', userId)
   await deleteTestUser(userId)
 }
 
