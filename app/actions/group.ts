@@ -1,7 +1,8 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import { query, getClient } from '@/lib/db'
+import { requireAuth } from '@/lib/session'
 
 const CreateGroupSchema = z.object({
   name: z.string().min(1).max(100).default('Household'),
@@ -17,54 +18,54 @@ export async function createGroup(data: {
   ratio_a?: number
   ratio_b?: number
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   const parsed = CreateGroupSchema.safeParse(data)
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
+  const existingUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (existingUser?.group_id) {
+  if (existingUserResult.rows.length === 0) {
+    return { error: 'User not found' }
+  }
+
+  if (existingUserResult.rows[0].group_id) {
     return { error: 'User already belongs to a group' }
   }
 
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .insert({
-      name: parsed.data.name,
-      ratio_a: parsed.data.ratio_a,
-      ratio_b: parsed.data.ratio_b,
-      user_a_id: user.id
-    })
-    .select()
-    .single()
+  const client = await getClient()
 
-  if (groupError) {
-    console.error('Group creation error:', groupError)
-    return { error: `Failed to create group: ${groupError.message}` }
+  try {
+    await client.query('BEGIN')
+
+    const groupResult = await client.query<{ id: string }>(
+      `INSERT INTO groups (name, ratio_a, ratio_b, user_a_id)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [parsed.data.name, parsed.data.ratio_a, parsed.data.ratio_b, user.id]
+    )
+
+    const groupId = groupResult.rows[0].id
+
+    await client.query(
+      'UPDATE users SET group_id = $1 WHERE id = $2',
+      [groupId, user.id]
+    )
+
+    await client.query('COMMIT')
+
+    return { success: true, group_id: groupId }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('Group creation error:', error)
+    return { error: 'Failed to create group' }
+  } finally {
+    client.release()
   }
-
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ group_id: group.id })
-    .eq('id', user.id)
-
-  if (updateError) {
-    return { error: 'Failed to link user to group' }
-  }
-
-  return { success: true, group_id: group.id }
 }
 
 const InviteSchema = z.object({
@@ -78,74 +79,72 @@ export async function invitePartner(email: string) {
   }
   const normalizedEmail = parsed.data.email.toLowerCase()
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requireAuth()
 
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
-  const { data: group } = await supabase
-    .from('groups')
-    .select('user_a_id, user_b_id')
-    .eq('id', currentUser.group_id)
-    .single()
+  const groupId = currentUserResult.rows[0].group_id
 
-  if (group?.user_b_id) {
+  const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
+    'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
+    [groupId]
+  )
+
+  if (groupResult.rows.length === 0) {
+    return { error: 'Group not found' }
+  }
+
+  const group = groupResult.rows[0]
+
+  if (group.user_b_id) {
     return { error: 'Group already has two members' }
   }
 
-  if (group?.user_a_id !== user.id) {
+  if (group.user_a_id !== user.id) {
     return { error: 'Only group creator can invite partners' }
   }
 
   const inviteToken = crypto.randomUUID()
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${inviteToken}`
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  const { error: insertError } = await supabase
-    .from('invitations')
-    .insert({
-      id: inviteToken,
-      group_id: currentUser.group_id,
-      inviter_id: user.id,
-      invitee_email: normalizedEmail,
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    })
+  try {
+    await query(
+      `INSERT INTO invitations (id, group_id, inviter_id, invitee_email, expires_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [inviteToken, groupId, user.id, normalizedEmail, expiresAt]
+    )
 
-  if (insertError) {
+    return { success: true, invite_url: inviteUrl }
+  } catch (error) {
     return { error: 'Failed to create invitation' }
   }
-
-  return { success: true, invite_url: inviteUrl }
 }
 
 export async function acceptInvitation(token: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requireAuth()
 
-  if (!user) {
-    return { error: 'Please sign up or log in first' }
-  }
+  const inviteResult = await query<{
+    group_id: string
+    used_at: string | null
+    expires_at: string
+  }>(
+    'SELECT group_id, used_at, expires_at FROM invitations WHERE id = $1',
+    [token]
+  )
 
-  const { data: invite, error: inviteError } = await supabase
-    .from('invitations')
-    .select('*, groups(*)')
-    .eq('id', token)
-    .single()
-
-  if (inviteError || !invite) {
+  if (inviteResult.rows.length === 0) {
     return { error: 'Invalid or expired invitation' }
   }
+
+  const invite = inviteResult.rows[0]
 
   if (invite.used_at) {
     return { error: 'Invitation already used' }
@@ -155,30 +154,35 @@ export async function acceptInvitation(token: string) {
     return { error: 'Invitation expired' }
   }
 
-  const { error: updateUserError } = await supabase
-    .from('users')
-    .update({ group_id: invite.group_id })
-    .eq('id', user.id)
+  const client = await getClient()
 
-  if (updateUserError) {
-    return { error: 'Failed to join group' }
+  try {
+    await client.query('BEGIN')
+
+    await client.query(
+      'UPDATE users SET group_id = $1 WHERE id = $2',
+      [invite.group_id, user.id]
+    )
+
+    await client.query(
+      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
+      [user.id, invite.group_id]
+    )
+
+    await client.query(
+      'UPDATE invitations SET used_at = $1 WHERE id = $2',
+      [new Date().toISOString(), token]
+    )
+
+    await client.query('COMMIT')
+
+    return { success: true }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    return { error: 'Failed to accept invitation' }
+  } finally {
+    client.release()
   }
-
-  const { error: updateGroupError } = await supabase
-    .from('groups')
-    .update({ user_b_id: user.id })
-    .eq('id', invite.group_id)
-
-  if (updateGroupError) {
-    return { error: 'Failed to update group' }
-  }
-
-  await supabase
-    .from('invitations')
-    .update({ used_at: new Date().toISOString() })
-    .eq('id', token)
-
-  return { success: true }
 }
 
 const RatioSchema = z.object({
@@ -190,90 +194,91 @@ const RatioSchema = z.object({
 )
 
 export async function updateRatio(ratioA: number, ratioB: number) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   const parsed = RatioSchema.safeParse({ ratio_a: ratioA, ratio_b: ratioB })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
-  const { error } = await supabase
-    .from('groups')
-    .update({
-      ratio_a: parsed.data.ratio_a,
-      ratio_b: parsed.data.ratio_b
-    })
-    .eq('id', currentUser.group_id)
+  try {
+    await query(
+      'UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3',
+      [parsed.data.ratio_a, parsed.data.ratio_b, currentUserResult.rows[0].group_id]
+    )
 
-  if (error) {
+    return { success: true }
+  } catch (error) {
     return { error: 'Failed to update ratio' }
   }
-
-  return { success: true }
 }
 
 export async function getCurrentGroup() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requireAuth()
 
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const result = await query<{
+    group_id: string | null
+    group_name: string
+    ratio_a: number
+    ratio_b: number
+    user_a_id: string
+    user_a_name: string
+    user_a_email: string
+    user_b_id: string | null
+    user_b_name: string | null
+    user_b_email: string | null
+  }>(
+    `SELECT
+      u.group_id,
+      g.name as group_name,
+      g.ratio_a,
+      g.ratio_b,
+      ua.id as user_a_id,
+      ua.name as user_a_name,
+      ua.email as user_a_email,
+      ub.id as user_b_id,
+      ub.name as user_b_name,
+      ub.email as user_b_email
+    FROM users u
+    INNER JOIN groups g ON u.group_id = g.id
+    INNER JOIN users ua ON g.user_a_id = ua.id
+    LEFT JOIN users ub ON g.user_b_id = ub.id
+    WHERE u.id = $1`,
+    [user.id]
+  )
 
-  const { data, error } = await supabase
-    .from('users')
-    .select(`
-      group_id,
-      groups!inner (
-        id,
-        name,
-        ratio_a,
-        ratio_b,
-        user_a:users!groups_user_a_id_fkey!inner (id, name, email),
-        user_b:users!groups_user_b_id_fkey (id, name, email)
-      )
-    `)
-    .eq('id', user.id)
-    .single()
-
-  if (error || !data?.groups) {
+  if (result.rows.length === 0) {
     return { error: 'No group found' }
   }
 
-  const group = Array.isArray(data.groups) ? data.groups[0] : data.groups
-  if (!group) {
-    return { error: 'No group found' }
-  }
-
-  const userA = Array.isArray(group.user_a) ? group.user_a[0] : group.user_a
-  const userB = group.user_b
-    ? (Array.isArray(group.user_b) ? group.user_b[0] : group.user_b)
-    : null
+  const row = result.rows[0]
 
   return {
     success: true,
     group: {
-      id: group.id,
-      name: group.name,
-      ratio_a: group.ratio_a,
-      ratio_b: group.ratio_b,
-      user_a: userA,
-      user_b: userB
+      id: row.group_id!,
+      name: row.group_name,
+      ratio_a: row.ratio_a,
+      ratio_b: row.ratio_b,
+      user_a: {
+        id: row.user_a_id,
+        name: row.user_a_name,
+        email: row.user_a_email
+      },
+      user_b: row.user_b_id ? {
+        id: row.user_b_id,
+        name: row.user_b_name!,
+        email: row.user_b_email!
+      } : null
     }
   }
 }

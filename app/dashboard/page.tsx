@@ -1,10 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import SettlementDashboard from '@/components/settlement/SettlementDashboard'
+import { getCurrentUser } from '@/lib/session'
+import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
+
+  if (!user) {
+    redirect('/login')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -15,7 +19,7 @@ export default async function DashboardPage() {
 
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-gray-600 mb-4">
-            Welcome, {user?.user_metadata?.name || user?.email}!
+            Welcome, {user.name || user.email}!
           </p>
           <div className="space-y-4">
             <Link

@@ -1,9 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { parseCSV } from '@/lib/csv-parser'
 import { z } from 'zod'
 import { ExpenseType, PayerType } from '@/lib/types'
+import { query } from '@/lib/db'
+import { requireAuth } from '@/lib/session'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -29,55 +30,58 @@ export async function uploadCSV(
   fileName: string,
   payerType: PayerType
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
+
+  const groupId = currentUserResult.rows[0].group_id
 
   const parseResult = await parseCSV(csvContent, fileName)
   if (!parseResult.success) {
     return { error: parseResult.errors.join(', ') }
   }
 
-  const transactions = parseResult.data.map(t => ({
-    group_id: currentUser.group_id,
-    user_id: user.id,
-    date: t.date,
-    amount: t.amount,
-    description: t.description,
-    payer_type: payerType,
-    expense_type: 'Household' as ExpenseType,
-    source_file_name: t.source_file_name,
-    uploaded_by: user.id
-  }))
+  const values = parseResult.data.map((t, index) => {
+    const offset = index * 8
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`
+  }).join(', ')
 
-  const { data, error } = await supabase
-    .from('transactions')
-    .insert(transactions)
-    .select()
+  const params = parseResult.data.flatMap(t => [
+    groupId,
+    user.id,
+    t.date,
+    t.amount,
+    t.description,
+    payerType,
+    'Household' as ExpenseType,
+    t.source_file_name
+  ])
 
-  if (error) {
+  try {
+    const result = await query(
+      `INSERT INTO transactions
+        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name)
+       VALUES ${values}
+       RETURNING id`,
+      params
+    )
+
+    return { success: true, count: result.rows.length }
+  } catch (error) {
     return { error: 'Failed to save transactions' }
   }
-
-  return { success: true, count: data.length }
 }
 
 export async function getTransactions(filters?: {
@@ -87,12 +91,7 @@ export async function getTransactions(filters?: {
   cursor?: string
   limit?: number
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   if (filters) {
     const parsed = GetTransactionsSchema.safeParse(filters)
@@ -101,25 +100,21 @@ export async function getTransactions(filters?: {
     }
   }
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
+  const groupId = currentUserResult.rows[0].group_id
   const pageLimit = filters?.limit ?? 50
 
-  let query = supabase
-    .from('transactions')
-    .select('*')
-    .eq('group_id', currentUser.group_id)
-    .order('date', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(pageLimit)
+  const conditions: string[] = ['group_id = $1']
+  const params: any[] = [groupId]
+  let paramIndex = 2
 
   if (filters?.cursor) {
     const cursorParts = filters.cursor.split('|')
@@ -135,7 +130,9 @@ export async function getTransactions(filters?: {
       return { error: 'Invalid cursor ID format' }
     }
 
-    query = query.or(`date.lt.${cursorDate},and(date.eq.${cursorDate},id.lt.${cursorId})`)
+    conditions.push(`(date < $${paramIndex} OR (date = $${paramIndex} AND id < $${paramIndex + 1}))`)
+    params.push(cursorDate, cursorId)
+    paramIndex += 2
   }
 
   if (filters?.month) {
@@ -147,35 +144,53 @@ export async function getTransactions(filters?: {
     const nextYear = parseInt(month) === 12
       ? String(parseInt(year) + 1)
       : year
-    query = query
-      .gte('date', year + '-' + month + '-01')
-      .lt('date', nextYear + '-' + nextMonth + '-01')
+
+    conditions.push(`date >= $${paramIndex}`)
+    params.push(`${year}-${month}-01`)
+    paramIndex++
+
+    conditions.push(`date < $${paramIndex}`)
+    params.push(`${nextYear}-${nextMonth}-01`)
+    paramIndex++
   }
 
   if (filters?.expenseType) {
-    query = query.eq('expense_type', filters.expenseType)
+    conditions.push(`expense_type = $${paramIndex}`)
+    params.push(filters.expenseType)
+    paramIndex++
   }
 
   if (filters?.payerType) {
-    query = query.eq('payer_type', filters.payerType)
+    conditions.push(`payer_type = $${paramIndex}`)
+    params.push(filters.payerType)
+    paramIndex++
   }
 
-  const { data, error } = await query
+  const whereClause = conditions.join(' AND ')
 
-  if (error) {
+  try {
+    const result = await query(
+      `SELECT * FROM transactions
+       WHERE ${whereClause}
+       ORDER BY date DESC, id DESC
+       LIMIT $${paramIndex}`,
+      [...params, pageLimit]
+    )
+
+    const data = result.rows
+    const hasMore = data.length === pageLimit
+    const nextCursor = hasMore && data.length > 0
+      ? `${data[data.length - 1].date}|${data[data.length - 1].id}`
+      : null
+
+    return {
+      success: true,
+      transactions: data,
+      nextCursor,
+      hasMore
+    }
+  } catch (error) {
     return { error: 'Failed to fetch transactions' }
-  }
-
-  const hasMore = data.length === pageLimit
-  const nextCursor = hasMore && data.length > 0
-    ? `${data[data.length - 1].date}|${data[data.length - 1].id}`
-    : null
-
-  return {
-    success: true,
-    transactions: data,
-    nextCursor,
-    hasMore
   }
 }
 
@@ -183,70 +198,56 @@ export async function updateTransactionExpenseType(
   transactionId: string,
   expenseType: ExpenseType
 ) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   const parsed = UpdateExpenseTypeSchema.safeParse({ transactionId, expenseType })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
-  const { error } = await supabase
-    .from('transactions')
-    .update({ expense_type: expenseType })
-    .eq('id', transactionId)
-    .eq('group_id', currentUser.group_id)
+  try {
+    await query(
+      'UPDATE transactions SET expense_type = $1 WHERE id = $2 AND group_id = $3',
+      [expenseType, transactionId, currentUserResult.rows[0].group_id]
+    )
 
-  if (error) {
+    return { success: true }
+  } catch (error) {
     return { error: 'Failed to update transaction' }
   }
-
-  return { success: true }
 }
 
 export async function deleteTransaction(transactionId: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await requireAuth()
 
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const currentUserResult = await query<{ group_id: string | null }>(
+    'SELECT group_id FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
-  const { error } = await supabase
-    .from('transactions')
-    .delete()
-    .eq('id', transactionId)
-    .eq('group_id', currentUser.group_id)
+  try {
+    await query(
+      'DELETE FROM transactions WHERE id = $1 AND group_id = $2',
+      [transactionId, currentUserResult.rows[0].group_id]
+    )
 
-  if (error) {
+    return { success: true }
+  } catch (error) {
     return { error: 'Failed to delete transaction' }
   }
-
-  return { success: true }
 }
 
 const GetSettlementDataSchema = z.object({
@@ -254,37 +255,34 @@ const GetSettlementDataSchema = z.object({
 })
 
 export async function getSettlementData(targetMonth: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { error: 'Unauthorized' }
-  }
+  const user = await requireAuth()
 
   const parsed = GetSettlementDataSchema.safeParse({ targetMonth })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors.targetMonth?.[0] || 'Invalid month format' }
   }
 
-  const { data: currentUser } = await supabase
-    .from('users')
-    .select('group_id, name')
-    .eq('id', user.id)
-    .single()
+  const currentUserResult = await query<{ group_id: string | null; name: string }>(
+    'SELECT group_id, name FROM users WHERE id = $1',
+    [user.id]
+  )
 
-  if (!currentUser?.group_id) {
+  if (!currentUserResult.rows[0]?.group_id) {
     return { error: 'User is not in a group' }
   }
 
-  const { data: group } = await supabase
-    .from('groups')
-    .select('*')
-    .eq('id', currentUser.group_id)
-    .single()
+  const groupId = currentUserResult.rows[0].group_id
 
-  if (!group) {
+  const groupResult = await query(
+    'SELECT * FROM groups WHERE id = $1',
+    [groupId]
+  )
+
+  if (groupResult.rows.length === 0) {
     return { error: 'Group not found' }
   }
+
+  const group = groupResult.rows[0]
 
   const year = targetMonth.substring(0, 4)
   const month = targetMonth.substring(5, 7)
@@ -295,24 +293,23 @@ export async function getSettlementData(targetMonth: string) {
     ? String(parseInt(year) + 1)
     : year
 
-  const { data: transactions } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('group_id', currentUser.group_id)
-    .gte('date', `${year}-${month}-01`)
-    .lt('date', `${nextYear}-${nextMonth}-01`)
+  const transactionsResult = await query(
+    `SELECT * FROM transactions
+     WHERE group_id = $1
+       AND date >= $2
+       AND date < $3`,
+    [groupId, `${year}-${month}-01`, `${nextYear}-${nextMonth}-01`]
+  )
 
-  if (!transactions) {
-    return { error: 'Failed to fetch transactions' }
-  }
+  const transactions = transactionsResult.rows
 
-  const { data: users } = await supabase
-    .from('users')
-    .select('id, name')
-    .eq('group_id', currentUser.group_id)
+  const usersResult = await query<{ id: string; name: string }>(
+    'SELECT id, name FROM users WHERE group_id = $1',
+    [groupId]
+  )
 
-  const userAData = users?.find(u => u.id === group.user_a_id)
-  const userBData = users?.find(u => u.id === group.user_b_id)
+  const userAData = usersResult.rows.find(u => u.id === group.user_a_id)
+  const userBData = usersResult.rows.find(u => u.id === group.user_b_id)
 
   const { calculateSettlement } = await import('@/lib/settlement')
   const settlement = calculateSettlement(transactions, group, targetMonth)

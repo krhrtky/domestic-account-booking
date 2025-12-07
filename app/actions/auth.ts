@@ -1,10 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limiter'
 import { getClientIP } from '@/lib/get-client-ip'
 import { headers } from 'next/headers'
+import bcrypt from 'bcryptjs'
+import { query, getClient } from '@/lib/db'
 
 const SignUpSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -29,6 +30,7 @@ export async function signUp(formData: FormData) {
   }
 
   const { name, email, password } = parsed.data
+  const normalizedEmail = email.toLowerCase()
 
   const headersList = await headers()
   const clientIP = getClientIP(headersList)
@@ -43,33 +45,44 @@ export async function signUp(formData: FormData) {
     }
   }
 
-  const supabase = await createClient()
+  const client = await getClient()
 
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { name }
+  try {
+    await client.query('BEGIN')
+
+    const existingUser = await client.query(
+      'SELECT id FROM auth.users WHERE email = $1',
+      [normalizedEmail]
+    )
+
+    if (existingUser.rows.length > 0) {
+      await client.query('ROLLBACK')
+      return { error: 'Email already registered' }
     }
-  })
 
-  if (authError) {
-    return { error: authError.message }
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    const authResult = await client.query<{ id: string }>(
+      'INSERT INTO auth.users (email, password_hash) VALUES ($1, $2) RETURNING id',
+      [normalizedEmail, passwordHash]
+    )
+
+    const userId = authResult.rows[0].id
+
+    await client.query(
+      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)',
+      [userId, name, normalizedEmail]
+    )
+
+    await client.query('COMMIT')
+
+    return { success: true }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    return { error: 'Failed to create user account' }
+  } finally {
+    client.release()
   }
-
-  const { error: profileError } = await supabase
-    .from('users')
-    .insert({
-      id: authData.user!.id,
-      name,
-      email
-    })
-
-  if (profileError) {
-    return { error: 'Failed to create user profile' }
-  }
-
-  return { success: true }
 }
 
 export async function logIn(formData: FormData) {
@@ -83,8 +96,9 @@ export async function logIn(formData: FormData) {
   }
 
   const { email, password } = parsed.data
+  const normalizedEmail = email.toLowerCase()
 
-  const rateLimitResult = checkRateLimit(email, {
+  const rateLimitResult = checkRateLimit(normalizedEmail, {
     maxAttempts: 5,
     windowMs: 15 * 60 * 1000
   }, 'login')
@@ -95,22 +109,26 @@ export async function logIn(formData: FormData) {
     }
   }
 
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password
-  })
+  const result = await query<{ id: string; password_hash: string }>(
+    'SELECT id, password_hash FROM auth.users WHERE email = $1',
+    [normalizedEmail]
+  )
 
-  if (error) {
+  if (result.rows.length === 0) {
     return { error: 'Invalid email or password' }
   }
 
-  resetRateLimit(email, 'login')
-  return { success: true }
+  const user = result.rows[0]
+  const isValid = await bcrypt.compare(password, user.password_hash)
+
+  if (!isValid) {
+    return { error: 'Invalid email or password' }
+  }
+
+  resetRateLimit(normalizedEmail, 'login')
+  return { success: true, userId: user.id }
 }
 
 export async function logOut() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
   return { success: true }
 }
