@@ -1,3 +1,63 @@
+# Session Summary - 2025-12-08
+
+## Supabase → NextAuth + pg Migration
+
+### 完了したタスク
+
+| フェーズ | 内容 | 結果 | コミット |
+|---------|------|------|---------|
+| Database Layer | pg Pool + migration | COMPLETED | 77fadda |
+| Auth System | NextAuth + bcrypt | COMPLETED | b218903 |
+| Server Actions | Direct SQL queries | COMPLETED | d67be0f |
+| Auth UI | NextAuth signIn | COMPLETED | 1e49c1f |
+| E2E Helpers | pg-based helpers | COMPLETED | 09614bd |
+| E2E Tests | Remove supabaseAdmin | COMPLETED | c0981c2 |
+| Cleanup | Remove Supabase files | COMPLETED | c023705 |
+| Config | Dependencies update | COMPLETED | eaa6a0f |
+| Docs | Implementation notes | COMPLETED | 8128dac |
+
+---
+
+### 実装詳細
+
+#### 新規ファイル
+- `src/lib/db.ts` - PostgreSQL connection pool
+- `src/lib/auth.ts` - NextAuth configuration
+- `src/lib/session.ts` - Session helpers
+- `app/api/auth/[...nextauth]/route.ts` - NextAuth API route
+- `src/types/next-auth.d.ts` - TypeScript declarations
+- `supabase/migrations/004_nextauth_schema.sql` - Auth schema migration
+
+#### 削除ファイル
+- `src/lib/supabase/client.ts`
+- `src/lib/supabase/server.ts`
+
+#### 主な変更点
+1. 認証: Supabase Auth → NextAuth.js (Credentials provider + bcrypt)
+2. データベース: Supabase client → Direct pg Pool queries
+3. ミドルウェア: Supabase SSR → NextAuth middleware
+4. セッション: Supabase getUser → NextAuth getServerSession
+
+---
+
+### 検証状況
+- TypeScript: `npm run type-check` ✅ PASS
+- supabaseAdmin参照: 0件 ✅
+- E2E helpers: pg Pool使用に移行 ✅
+
+---
+
+### 次のステップ
+1. マイグレーション実行: `psql $DATABASE_URL -f supabase/migrations/004_nextauth_schema.sql`
+2. 環境変数設定:
+   - `DATABASE_URL`
+   - `NEXTAUTH_SECRET`
+   - `NEXTAUTH_URL`
+3. 依存関係インストール: `npm install`
+4. E2Eテスト実行: `npm run test:e2e`
+
+---
+
 # Session Summary - 2025-12-07
 
 ## 今回のセッションで完了したタスク
