@@ -1,8 +1,8 @@
-# 次のアクション - Phase 2: API & UI 開発
+# 次のアクション - Phase 3: E2E Testing
 
 **更新日:** 2025-12-07
-**前フェーズ:** Core Logic (Phase 1) - APPROVED
-**現在フェーズ:** Epic 3 - APPROVED ✓
+**前フェーズ:** MVP (Epic 1-3) - APPROVED
+**現在フェーズ:** Phase 3 E2E Tests - APPROVED ✓
 
 ---
 
@@ -14,6 +14,7 @@
 | Epic 1: User & Group Management | APPROVED | d5e9e3e, 03ae761, 7d544ac |
 | Epic 2: CSV Data Ingestion UI | APPROVED | 5d64265 |
 | Epic 3: Settlement Dashboard | APPROVED | b7ada9a |
+| Phase 3: E2E Tests | APPROVED | 1321c14 |
 
 ---
 
@@ -70,23 +71,65 @@ Test Files  5 passed (5)
 
 ---
 
+## Phase 3: E2E Tests (完了)
+
+### コミット履歴
+```
+1321c14 feat(e2e): add Playwright E2E test infrastructure
+```
+
+### 実装済みファイル
+| ファイル | 内容 |
+|---------|------|
+| playwright.config.ts | Playwright設定 (Chromium, sequential) |
+| e2e/utils/test-helpers.ts | Supabase Admin API ヘルパー |
+| e2e/auth/login.spec.ts | ログインテスト (4ケース) |
+| e2e/auth/signup.spec.ts | サインアップテスト (4ケース) |
+| e2e/settlement/dashboard.spec.ts | ダッシュボードテスト (5ケース) |
+| .github/workflows/e2e.yml | CI/CD ワークフロー |
+
+### QGA結果: APPROVED (P0修正後)
+
+#### 修正済み P0 (3件)
+| 項目 | 修正内容 |
+|-----|---------|
+| P0 #1 | cleanupTestData: group_members → groups with user_a_id/user_b_id |
+| P0 #2 | 環境変数バリデーション追加 (早期エラー) |
+| P0 #3 | fullyParallel: false (race condition防止) |
+
+#### 修正済み P1 (2件)
+| 項目 | 修正内容 |
+|-----|---------|
+| P1 #4 | dialog assertion: waitForEvent promise pattern |
+| P1 #6 | URL assertion: regex → exact '/login' |
+
+### E2Eテストカバレッジ
+```
+Test Suites: 3 (auth/login, auth/signup, settlement/dashboard)
+Test Cases: 13 total
+- Login flow: 4 tests
+- Signup flow: 4 tests
+- Dashboard: 5 tests
+```
+
+---
+
 ## 次のアクション
 
-### MVP完了確認
-Epic 1〜3が全てAPPROVED。PRD記載のMVP機能は実装完了。
+### MVP + E2E完了
+Epic 1〜3 + E2Eテストが全てAPPROVED。
 
-### Phase 3候補 (ポストMVP)
-1. **E2Eテスト**: Playwright/Cypressによる統合テスト
-2. **パフォーマンス最適化**: N+1クエリ解消、キャッシング
-3. **UX改善**: Toast通知、ページネーション、ローディングスケルトン
-4. **セキュリティ強化**: Rate limiting、CSRF対策
+### Phase 4候補 (ポストMVP)
+1. **パフォーマンス最適化**: N+1クエリ解消、キャッシング
+2. **UX改善**: Toast通知、ページネーション、ローディングスケルトン
+3. **セキュリティ強化**: Rate limiting、CSRF対策
+4. **Multi-browser E2E**: Firefox/Safari対応
 
 ### 残存 P1 課題 (任意)
 1. **P1-2: alert(JSON.stringify)** - toast通知システムに置換
 2. **P1-4: getCurrentGroup N+1クエリ** - Supabase joinで最適化
-3. **P1-テスト**: Server Actions統合テスト追加
-4. **P1-UX**: ローディング状態・エラー表示改善
-5. **P1-Pagination**: トランザクション一覧のページネーション
+3. **P1-UX**: ローディング状態・エラー表示改善
+4. **P1-Pagination**: トランザクション一覧のページネーション
 
 ---
 
@@ -98,6 +141,7 @@ Epic 1〜3が全てAPPROVED。PRD記載のMVP機能は実装完了。
 - Supabase Auth + PostgreSQL + RLS
 - Zod validation
 - Vitest (67 tests passing)
+- Playwright E2E (13 tests)
 
 ---
 
@@ -116,16 +160,17 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ## 開発コマンド
 
 ```bash
-npm run dev       # 開発サーバー
-npm test          # テスト (67/67 pass)
-npx vitest run    # テスト1回実行
-npm run type-check # 型チェック
-npm run build     # ビルド
+npm run dev         # 開発サーバー
+npm test            # 単体テスト (67/67 pass)
+npm run test:e2e    # E2Eテスト (Playwright)
+npm run test:e2e:ui # E2E UIモード (デバッグ用)
+npm run type-check  # 型チェック
+npm run build       # ビルド
 ```
 
 ---
 
-## ファイル構造 (Epic 3完了後)
+## ファイル構造 (Phase 3完了後)
 
 ```
 src/
@@ -182,4 +227,16 @@ supabase/
     ├── 001_initial_schema.sql
     ├── 002_rls_policies.sql
     └── 003_transactions_table.sql
+
+e2e/                              # NEW (Phase 3)
+├── auth/
+│   ├── login.spec.ts
+│   └── signup.spec.ts
+├── settlement/
+│   └── dashboard.spec.ts
+└── utils/
+    └── test-helpers.ts
+
+.github/workflows/
+└── e2e.yml                       # E2E CI/CD
 ```
