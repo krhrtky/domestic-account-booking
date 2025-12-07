@@ -15,7 +15,9 @@ const UpdateExpenseTypeSchema = z.object({
 const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
-  payerType: z.enum(['UserA', 'UserB', 'Common']).optional()
+  payerType: z.enum(['UserA', 'UserB', 'Common']).optional(),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional()
 })
 
 describe('Transaction validation schemas', () => {
@@ -124,6 +126,52 @@ describe('Transaction validation schemas', () => {
     it('should accept valid month format', () => {
       const valid = {
         month: '2024-12'
+      }
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
+    })
+
+    it('should validate cursor parameter', () => {
+      const valid = {
+        cursor: '2024-01-15|uuid-here'
+      }
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
+    })
+
+    it('should validate limit within range', () => {
+      const valid = {
+        limit: 50
+      }
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
+    })
+
+    it('should reject limit below minimum', () => {
+      const invalid = {
+        limit: 0
+      }
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
+    })
+
+    it('should reject limit above maximum', () => {
+      const invalid = {
+        limit: 101
+      }
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
+    })
+
+    it('should reject non-integer limit', () => {
+      const invalid = {
+        limit: 50.5
+      }
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
+    })
+
+    it('should validate all pagination parameters together', () => {
+      const valid = {
+        month: '2024-01',
+        expenseType: 'Household' as const,
+        payerType: 'UserA' as const,
+        cursor: '2024-01-15|123e4567-e89b-12d3-a456-426614174000',
+        limit: 50
       }
       expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getTransactions } from '@/app/actions/transactions'
 import { Transaction, ExpenseType, PayerType } from '@/lib/types'
 import TransactionList from '@/components/transactions/TransactionList'
@@ -10,16 +10,22 @@ import Link from 'next/link'
 export default function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
   const [filters, setFilters] = useState<{
     month?: string
     expenseType?: ExpenseType
     payerType?: PayerType
   }>({})
 
-  const loadTransactions = async () => {
+  const loadTransactions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
+    setTransactions([])
+    setNextCursor(null)
+    setHasMore(false)
 
     const result = await getTransactions(filters)
 
@@ -27,14 +33,38 @@ export default function TransactionsPage() {
       setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
     } else if (result.transactions) {
       setTransactions(result.transactions)
+      setNextCursor(result.nextCursor || null)
+      setHasMore(result.hasMore || false)
     }
 
     setIsLoading(false)
+  }, [filters])
+
+  const loadMore = async () => {
+    if (!hasMore || isLoadingMore || !nextCursor) return
+
+    setIsLoadingMore(true)
+    setError(null)
+
+    const result = await getTransactions({
+      ...filters,
+      cursor: nextCursor
+    })
+
+    if (result.error) {
+      setError(typeof result.error === 'string' ? result.error : 'Failed to load more transactions')
+    } else if (result.transactions) {
+      setTransactions(prev => [...prev, ...result.transactions])
+      setNextCursor(result.nextCursor || null)
+      setHasMore(result.hasMore || false)
+    }
+
+    setIsLoadingMore(false)
   }
 
   useEffect(() => {
     loadTransactions()
-  }, [filters])
+  }, [loadTransactions])
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -68,9 +98,12 @@ export default function TransactionsPage() {
               Loading...
             </div>
           ) : (
-            <TransactionList 
+            <TransactionList
               transactions={transactions}
               onUpdate={loadTransactions}
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMore}
             />
           )}
         </div>

@@ -19,7 +19,9 @@ const UpdateExpenseTypeSchema = z.object({
 const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
-  payerType: z.enum(['UserA', 'UserB', 'Common']).optional()
+  payerType: z.enum(['UserA', 'UserB', 'Common']).optional(),
+  cursor: z.string().optional(),
+  limit: z.number().int().min(1).max(100).optional()
 })
 
 export async function uploadCSV(
@@ -82,6 +84,8 @@ export async function getTransactions(filters?: {
   month?: string
   expenseType?: ExpenseType
   payerType?: PayerType
+  cursor?: string
+  limit?: number
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -107,20 +111,41 @@ export async function getTransactions(filters?: {
     return { error: 'User is not in a group' }
   }
 
+  const pageLimit = filters?.limit ?? 50
+
   let query = supabase
     .from('transactions')
     .select('*')
     .eq('group_id', currentUser.group_id)
     .order('date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(pageLimit)
+
+  if (filters?.cursor) {
+    const cursorParts = filters.cursor.split('|')
+    if (cursorParts.length !== 2) {
+      return { error: 'Invalid cursor format' }
+    }
+    const [cursorDate, cursorId] = cursorParts
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cursorDate)) {
+      return { error: 'Invalid cursor date format' }
+    }
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursorId)) {
+      return { error: 'Invalid cursor ID format' }
+    }
+
+    query = query.or(`date.lt.${cursorDate},and(date.eq.${cursorDate},id.lt.${cursorId})`)
+  }
 
   if (filters?.month) {
     const year = filters.month.substring(0, 4)
     const month = filters.month.substring(5, 7)
-    const nextMonth = parseInt(month) === 12 
-      ? '01' 
+    const nextMonth = parseInt(month) === 12
+      ? '01'
       : String(parseInt(month) + 1).padStart(2, '0')
-    const nextYear = parseInt(month) === 12 
-      ? String(parseInt(year) + 1) 
+    const nextYear = parseInt(month) === 12
+      ? String(parseInt(year) + 1)
       : year
     query = query
       .gte('date', year + '-' + month + '-01')
@@ -141,7 +166,17 @@ export async function getTransactions(filters?: {
     return { error: 'Failed to fetch transactions' }
   }
 
-  return { success: true, transactions: data }
+  const hasMore = data.length === pageLimit
+  const nextCursor = hasMore && data.length > 0
+    ? `${data[data.length - 1].date}|${data[data.length - 1].id}`
+    : null
+
+  return {
+    success: true,
+    transactions: data,
+    nextCursor,
+    hasMore
+  }
 }
 
 export async function updateTransactionExpenseType(
