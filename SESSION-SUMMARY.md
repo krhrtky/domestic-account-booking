@@ -8,6 +8,8 @@
 | P1: Toast Notifications | alert() → toast置換        | APPROVED | b9991c2 |
 | P1-4: N+1 Query         | getCurrentGroup クエリ最適化 | APPROVED | 6ac21cb |
 | P1-Pagination           | トランザクション無限スクロール | APPROVED | 5f90c0a |
+| Security: Rate Limiting | ログイン/サインアップ試行制限 | COMPLETED | f4eb572 |
+| Multi-browser E2E       | Firefox/WebKit対応         | COMPLETED | f4eb572 |
 
 ---
 
@@ -90,6 +92,7 @@
 ## コミット履歴 (今回のセッション)
 
 ```
+f4eb572 feat(security): add rate limiting and multi-browser E2E support
 5f90c0a feat(p1): add cursor-based pagination for transaction list
 6ac21cb perf(p1-4): optimize getCurrentGroup with single JOIN query
 9604f4c docs: update NEXT_ACTIONS.md with P1 Toast APPROVED status
@@ -100,15 +103,46 @@ b9991c2 feat(p1): replace alert() with toast notifications
 
 ---
 
+## Security: Rate Limiting 詳細
+
+### SDA仕様策定
+- Token bucket algorithm設計
+- Login: 5 attempts / 15 minutes (per email)
+- Signup: 3 attempts / 15 minutes (per IP)
+
+### DA実装
+- `src/lib/rate-limiter.ts`: Lazy cleanup方式のrate limiter
+- `src/lib/get-client-ip.ts`: IP抽出（rightmost public IP）
+- `app/actions/auth.ts`: rate limit check追加
+
+### QGA指摘修正
+- P0-1: Memory leak fix (setInterval → lazy cleanup)
+- P0-2: IP spoofing fix (rightmost IP + validation)
+- P0-4: Private IP rejection (RFC 1918 addresses)
+- P1-1: Reset rate limit on successful login
+
+### 新規テスト
+- `src/lib/rate-limiter.test.ts` (10 tests)
+- `src/lib/get-client-ip.test.ts` (14 tests)
+- `src/lib/rate-limiter-auth.test.ts` (9 tests)
+
+---
+
+## Multi-browser E2E 詳細
+
+### DA実装
+- `playwright.config.ts`: Firefox, WebKit追加
+- ブラウザインストール済み: Chromium, Firefox, WebKit
+
+---
+
 ## 次のアクション候補
 
-1. **Multi-browser E2E: Firefox/Safari対応**
-   - 現状: Chromiumのみ
-   - playwright.config.tsでブラウザ追加
+1. **E2E実行検証**
+   - 環境変数設定後、3ブラウザでテスト実行確認
 
-2. **セキュリティ強化: Rate limiting, CSRF対策**
-   - ログイン試行回数制限
-   - CSRF トークン実装
+2. **CSRF対策**
+   - CSRFトークン実装
 
 ---
 
@@ -160,5 +194,7 @@ src/
 1. 作業記録完了 ✅
 2. P1-4 N+1クエリ最適化完了 ✅
 3. P1-Pagination完了 ✅
-4. 次のタスク候補: Multi-browser E2E, セキュリティ強化
-5. テスト基盤整備済み (73 unit tests, E2E ready)
+4. Rate Limiting実装完了 ✅
+5. Multi-browser E2E設定完了 ✅
+6. テスト基盤整備済み (106 unit tests, E2E ready)
+7. 次のタスク候補: E2E実行検証, CSRF対策
