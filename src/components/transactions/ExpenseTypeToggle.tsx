@@ -45,6 +45,7 @@ export default function ExpenseTypeToggle({
         onClick={handleToggle}
         disabled={isUpdating}
         className={'px-3 py-1 rounded text-sm font-medium ' + bgClass + ' hover:opacity-80 disabled:opacity-50'}
+        data-testid="expense-type-toggle"
       >
         {isUpdating ? '...' : currentType}
       </button>

@@ -38,6 +38,7 @@ export default function TransactionFilters({
           Expense Type
         </label>
         <select
+          name="expenseType"
           value={expenseType || ''}
           onChange={(e) => onFilterChange({ month, expenseType: e.target.value as ExpenseType || undefined, payerType })}
           className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -53,6 +54,7 @@ export default function TransactionFilters({
           Payer
         </label>
         <select
+          name="payerType"
           value={payerType || ''}
           onChange={(e) => onFilterChange({ month, expenseType, payerType: e.target.value as PayerType || undefined })}
           className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
