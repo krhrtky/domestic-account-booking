@@ -1,8 +1,8 @@
-# 次のアクション - Phase 3: E2E Testing
+# 次のアクション - Phase 4: UX Improvements
 
 **更新日:** 2025-12-07
-**前フェーズ:** MVP (Epic 1-3) - APPROVED
-**現在フェーズ:** Phase 3 E2E Tests - APPROVED ✓
+**前フェーズ:** E2E Tests (Phase 3) - APPROVED
+**現在フェーズ:** P1 Toast Notifications - APPROVED ✓
 
 ---
 
@@ -15,6 +15,7 @@
 | Epic 2: CSV Data Ingestion UI | APPROVED | 5d64265 |
 | Epic 3: Settlement Dashboard | APPROVED | b7ada9a |
 | Phase 3: E2E Tests | APPROVED | 1321c14 |
+| P1: Toast Notifications | APPROVED | b9991c2 |
 
 ---
 
@@ -114,19 +115,53 @@ Test Cases: 13 total
 
 ---
 
+## P1: Toast Notifications (完了)
+
+### コミット履歴
+```
+b9991c2 feat(p1): replace alert() with toast notifications
+```
+
+### 実装済みファイル
+| ファイル | 内容 |
+|---------|------|
+| src/lib/hooks/useToast.ts | toast wrapper (success/error/info) |
+| src/components/ui/Toaster.tsx | styled Toaster component |
+| app/layout.tsx | Toaster統合 |
+| src/components/auth/LoginForm.tsx | alert → toast |
+| src/components/auth/SignUpForm.tsx | alert → toast |
+| src/components/group/*.tsx | alert → toast (3 files) |
+
+### QGA結果: APPROVED (P0修正後)
+
+#### 修正済み P0 (2件)
+| 項目 | 修正内容 |
+|-----|---------|
+| P0-1 | error toast duration: 4000ms → 5000ms |
+| P0-2 | success toasts追加 (Login, SignUp, CreateGroup) |
+
+### 機能概要
+- react-hot-toast ライブラリ採用 (3.5kB gzipped)
+- エラートースト: 5秒表示 (赤アイコン)
+- 成功トースト: 4秒表示 (緑アイコン)
+- 位置: top-right
+- 5コンポーネントから alert() 削除
+
+---
+
 ## 次のアクション
 
-### MVP + E2E完了
-Epic 1〜3 + E2Eテストが全てAPPROVED。
+### MVP + E2E + P1完了
+Epic 1〜3 + E2Eテスト + Toast通知が全てAPPROVED。
 
 ### Phase 4候補 (ポストMVP)
 1. **パフォーマンス最適化**: N+1クエリ解消、キャッシング
-2. **UX改善**: Toast通知、ページネーション、ローディングスケルトン
+2. **UX改善**: ページネーション、ローディングスケルトン
 3. **セキュリティ強化**: Rate limiting、CSRF対策
 4. **Multi-browser E2E**: Firefox/Safari対応
 
 ### 残存 P1 課題 (任意)
-1. **P1-2: alert(JSON.stringify)** - toast通知システムに置換
+1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
 2. **P1-4: getCurrentGroup N+1クエリ** - Supabase joinで最適化
 3. **P1-UX**: ローディング状態・エラー表示改善
 4. **P1-Pagination**: トランザクション一覧のページネーション
@@ -142,6 +177,7 @@ Epic 1〜3 + E2Eテストが全てAPPROVED。
 - Zod validation
 - Vitest (67 tests passing)
 - Playwright E2E (13 tests)
+- react-hot-toast (UX)
 
 ---
 
