@@ -1,6 +1,13 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
-import { loginUser, insertTransaction } from '../utils/demo-helpers'
+import {
+  createTestUser,
+  cleanupTestData,
+  TestUser,
+  getUserByEmail,
+  insertTransaction as insertTransactionDb,
+  getTransactionById,
+} from '../utils/test-helpers'
+import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 5: Transaction Classification', () => {
   let userA: TestUser
@@ -29,29 +36,18 @@ test.describe('Scenario 5: Transaction Classification', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
-    groupId = userData!.group_id
-
-    const { data: insertedData } = await supabaseAdmin
-      .from('transactions')
-      .insert({
-        group_id: groupId,
-        user_id: userA.id!,
-        date: '2025-12-07',
-        amount: 12000,
-        description: 'Clothing Store',
-        payer_type: 'UserA',
-        expense_type: 'Household',
-      })
-      .select()
-      .single()
-
-    transactionId = insertedData!.id
+    const inserted = await insertTransactionDb({
+      userId: userA.id!,
+      groupId: groupId,
+      date: '2025-12-07',
+      description: 'Clothing Store',
+      amount: 12000,
+      expenseType: 'Household',
+    })
+    transactionId = inserted.id
 
     await page.goto('/dashboard/transactions')
     await page.waitForTimeout(1000)
@@ -65,12 +61,7 @@ test.describe('Scenario 5: Transaction Classification', () => {
 
     await expect(toggleButton).toContainText('Personal')
 
-    const { data: updatedTransaction } = await supabaseAdmin
-      .from('transactions')
-      .select('expense_type')
-      .eq('id', transactionId)
-      .single()
-
+    const updatedTransaction = await getTransactionById(transactionId)
     expect(updatedTransaction?.expense_type).toBe('Personal')
 
     await toggleButton.click()

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../utils/test-helpers'
 import { loginUser, insertTransaction } from '../utils/demo-helpers'
 
 test.describe('Scenario 3: Manual Transaction Entry', () => {
@@ -28,13 +28,8 @@ test.describe('Scenario 3: Manual Transaction Entry', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
-
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await insertTransaction(groupId, userA.id!, {
       date: '2025-12-01',

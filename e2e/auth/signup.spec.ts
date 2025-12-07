@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { generateTestEmail, cleanupTestData, supabaseAdmin } from '../utils/test-helpers'
+import { generateTestEmail, cleanupTestData, getAuthUserByEmail } from '../utils/test-helpers'
 
 test.describe('Sign Up Flow', () => {
   let testEmail: string
@@ -29,10 +29,9 @@ test.describe('Sign Up Flow', () => {
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
     await expect(page.getByText('Welcome')).toBeVisible()
 
-    const { data } = await supabaseAdmin.auth.admin.listUsers()
-    const user = data.users.find(u => u.email === testEmail)
-    expect(user).toBeDefined()
-    userId = user!.id
+    const authUser = await getAuthUserByEmail(testEmail)
+    expect(authUser).toBeDefined()
+    userId = authUser!.id
   })
 
   test('should show error for invalid email', async ({ page }) => {

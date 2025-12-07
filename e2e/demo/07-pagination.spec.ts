@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import {
+  createTestUser,
+  cleanupTestData,
+  TestUser,
+  getUserByEmail,
+  getTransactionsByGroupId,
+} from '../utils/test-helpers'
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 import { paginationTransactions } from '../fixtures/demo-data'
 
@@ -29,13 +35,8 @@ test.describe('Scenario 7: Transaction Pagination', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
-
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await insertTransactions(groupId, userA.id!, paginationTransactions(75))
 
@@ -55,11 +56,7 @@ test.describe('Scenario 7: Transaction Pagination', () => {
     const updatedCount = await transactionRows.count()
     expect(updatedCount).toBeGreaterThan(initialCount)
 
-    const { data: allTransactions } = await supabaseAdmin
-      .from('transactions')
-      .select('*')
-      .eq('group_id', groupId)
-
+    const allTransactions = await getTransactionsByGroupId(groupId)
     expect(allTransactions).toHaveLength(75)
   })
 })

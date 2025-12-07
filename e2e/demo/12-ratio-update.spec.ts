@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById } from '../utils/test-helpers'
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 12: Ratio Update Impact', () => {
@@ -28,13 +28,8 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
-
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-01', amount: 60000, description: 'Rent', payer_type: 'UserA', expense_type: 'Household' },
@@ -58,12 +53,7 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: updatedGroup } = await supabaseAdmin
-      .from('groups')
-      .select('*')
-      .eq('id', groupId)
-      .single()
-
+    const updatedGroup = await getGroupById(groupId)
     expect(updatedGroup?.ratio_a).toBe(70)
     expect(updatedGroup?.ratio_b).toBe(30)
 

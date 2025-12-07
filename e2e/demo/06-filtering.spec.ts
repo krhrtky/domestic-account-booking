@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../utils/test-helpers'
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 6: Transaction Filtering', () => {
@@ -28,13 +28,8 @@ test.describe('Scenario 6: Transaction Filtering', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
-
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-01', amount: 5000, description: 'Dec UserA Household', payer_type: 'UserA', expense_type: 'Household' },

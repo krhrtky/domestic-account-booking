@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import {
+  createTestUser,
+  cleanupTestData,
+  TestUser,
+  getUserByEmail,
+  deleteTransactionsByGroupId,
+} from '../utils/test-helpers'
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
@@ -36,14 +42,9 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
   test('should handle exactly equal contributions', async ({ page }) => {
     await loginUser(page, userA)
-    
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
 
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-01', amount: 50000, description: 'UserA Payment', payer_type: 'UserA', expense_type: 'Household' },
@@ -63,7 +64,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle single transaction', async ({ page }) => {
     await loginUser(page, userA)
 
-    await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+    await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-01', amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
@@ -81,7 +82,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very large amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+    await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-26', amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
@@ -97,7 +98,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very small amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+    await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-25', amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
@@ -113,7 +114,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle special characters in description', async ({ page }) => {
     await loginUser(page, userA)
 
-    await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+    await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2025-12-01', amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
@@ -128,7 +129,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle future dates', async ({ page }) => {
     await loginUser(page, userA)
 
-    await supabaseAdmin.from('transactions').delete().eq('group_id', groupId)
+    await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
       { date: '2099-12-31', amount: 10000, description: 'Future Transaction', payer_type: 'UserA', expense_type: 'Household' },

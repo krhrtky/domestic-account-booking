@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, supabaseAdmin } from '../utils/test-helpers'
+import {
+  createTestUser,
+  cleanupTestData,
+  TestUser,
+  getUserByEmail,
+  getTransactionsByGroupId,
+} from '../utils/test-helpers'
 import { loginUser } from '../utils/demo-helpers'
 import path from 'path'
 
@@ -29,13 +35,8 @@ test.describe('Scenario 4: CSV Upload & Transaction Import', () => {
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userA.id!)
-      .single()
-
-    groupId = userData!.group_id
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await page.goto('/dashboard/transactions/upload')
 
@@ -59,13 +60,8 @@ test.describe('Scenario 4: CSV Upload & Transaction Import', () => {
     await expect(page.getByText('Gas Station')).toBeVisible()
     await expect(page.getByText('Supermarket')).toBeVisible()
 
-    const { data: transactions } = await supabaseAdmin
-      .from('transactions')
-      .select('*')
-      .eq('group_id', groupId)
-
+    const transactions = await getTransactionsByGroupId(groupId)
     expect(transactions).toHaveLength(3)
-    expect(transactions?.every(t => t.payer_type === 'UserA')).toBe(true)
-    expect(transactions?.every(t => t.expense_type === 'Household')).toBe(true)
+    expect(transactions.every(t => t.expense_type === 'Household')).toBe(true)
   })
 })

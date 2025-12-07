@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
-import { generateTestEmail, cleanupTestData, supabaseAdmin } from '../utils/test-helpers'
+import {
+  generateTestEmail,
+  cleanupTestData,
+  getAuthUserByEmail,
+  getUserByEmail,
+  getGroupById,
+} from '../utils/test-helpers'
 
 test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
   let testEmail: string
@@ -31,10 +37,9 @@ test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
 
     await expect(page.getByText('Welcome')).toBeVisible()
 
-    const { data } = await supabaseAdmin.auth.admin.listUsers()
-    const user = data.users.find(u => u.email === testEmail)
-    expect(user).toBeDefined()
-    userId = user!.id
+    const authUser = await getAuthUserByEmail(testEmail)
+    expect(authUser).toBeDefined()
+    userId = authUser!.id
 
     await page.goto('/settings')
 
@@ -42,33 +47,21 @@ test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
     await expect(groupNameInput).toBeVisible()
 
     await groupNameInput.fill('Test Household')
-    
+
     const ratioInput = page.locator('input[name="ratioA"]')
     await ratioInput.fill('60')
 
     await page.click('button[type="submit"]')
     await page.waitForTimeout(1000)
 
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('group_id')
-      .eq('id', userId)
-      .single()
-
-    expect(userError).toBeNull()
+    const userData = await getUserByEmail(testEmail)
     expect(userData?.group_id).toBeTruthy()
 
-    const { data: groupData, error: groupError } = await supabaseAdmin
-      .from('groups')
-      .select('*')
-      .eq('id', userData!.group_id)
-      .single()
-
-    expect(groupError).toBeNull()
+    const groupData = await getGroupById(userData!.group_id!)
     expect(groupData?.user_a_id).toBe(userId)
     expect(groupData?.user_b_id).toBeNull()
     expect(groupData?.ratio_a).toBe(60)
     expect(groupData?.ratio_b).toBe(40)
-    expect(groupData?.ratio_a + groupData?.ratio_b).toBe(100)
+    expect(groupData!.ratio_a + groupData!.ratio_b).toBe(100)
   })
 })
