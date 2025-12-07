@@ -4,7 +4,7 @@ CREATE TABLE users (
   id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
   name TEXT NOT NULL CHECK (length(name) > 0 AND length(name) <= 100),
   email TEXT UNIQUE NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$'),
-  group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
+  group_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -14,13 +14,17 @@ CREATE TABLE groups (
   name TEXT NOT NULL DEFAULT 'Household' CHECK (length(name) > 0 AND length(name) <= 100),
   ratio_a INTEGER NOT NULL DEFAULT 50 CHECK (ratio_a > 0 AND ratio_a < 100),
   ratio_b INTEGER NOT NULL DEFAULT 50 CHECK (ratio_b > 0 AND ratio_b < 100),
-  user_a_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_b_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_a_id UUID NOT NULL,
+  user_b_id UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT ratio_sum CHECK (ratio_a + ratio_b = 100),
   CONSTRAINT unique_user_pair CHECK (user_a_id != user_b_id)
 );
+
+ALTER TABLE users ADD CONSTRAINT fk_users_group FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE SET NULL;
+ALTER TABLE groups ADD CONSTRAINT fk_groups_user_a FOREIGN KEY (user_a_id) REFERENCES users(id) ON DELETE CASCADE;
+ALTER TABLE groups ADD CONSTRAINT fk_groups_user_b FOREIGN KEY (user_b_id) REFERENCES users(id) ON DELETE SET NULL;
 
 CREATE TABLE invitations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
