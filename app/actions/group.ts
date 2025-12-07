@@ -234,48 +234,35 @@ export async function getCurrentGroup() {
     return { error: 'Unauthorized' }
   }
 
-  const { data: currentUser } = await supabase
+  const { data, error } = await supabase
     .from('users')
-    .select('group_id')
+    .select(`
+      group_id,
+      groups!inner (
+        id,
+        name,
+        ratio_a,
+        ratio_b,
+        user_a:users!groups_user_a_id_fkey!inner (id, name, email),
+        user_b:users!groups_user_b_id_fkey (id, name, email)
+      )
+    `)
     .eq('id', user.id)
     .single()
 
-  if (!currentUser?.group_id) {
+  if (error || !data?.groups) {
     return { error: 'No group found' }
   }
 
-  const { data: group, error } = await supabase
-    .from('groups')
-    .select(`
-      id,
-      name,
-      ratio_a,
-      ratio_b,
-      user_a_id,
-      user_b_id
-    `)
-    .eq('id', currentUser.group_id)
-    .single()
-
-  if (error || !group) {
+  const group = Array.isArray(data.groups) ? data.groups[0] : data.groups
+  if (!group) {
     return { error: 'No group found' }
   }
 
-  const { data: userA } = await supabase
-    .from('users')
-    .select('id, name, email')
-    .eq('id', group.user_a_id)
-    .single()
-
-  let userB = null
-  if (group.user_b_id) {
-    const { data } = await supabase
-      .from('users')
-      .select('id, name, email')
-      .eq('id', group.user_b_id)
-      .single()
-    userB = data
-  }
+  const userA = Array.isArray(group.user_a) ? group.user_a[0] : group.user_a
+  const userB = group.user_b
+    ? (Array.isArray(group.user_b) ? group.user_b[0] : group.user_b)
+    : null
 
   return {
     success: true,
