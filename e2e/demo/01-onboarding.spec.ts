@@ -1,0 +1,74 @@
+import { test, expect } from '@playwright/test'
+import { generateTestEmail, cleanupTestData, supabaseAdmin } from '../utils/test-helpers'
+
+test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
+  let testEmail: string
+  let userId: string
+
+  test.beforeEach(() => {
+    testEmail = generateTestEmail()
+  })
+
+  test.afterEach(async () => {
+    if (userId) {
+      await cleanupTestData(userId)
+    }
+  })
+
+  test('should complete full onboarding flow from signup to group creation', async ({ page }) => {
+    await page.goto('/')
+    await expect(page).toHaveURL('/login')
+
+    await page.click('a[href="/signup"]')
+    await expect(page).toHaveURL('/signup')
+
+    await page.fill('input[name="name"]', 'Demo User A')
+    await page.fill('input[name="email"]', testEmail)
+    await page.fill('input[name="password"]', 'TestPassword123!')
+
+    await page.click('button[type="submit"]')
+    await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
+
+    await expect(page.getByText('Welcome')).toBeVisible()
+
+    const { data } = await supabaseAdmin.auth.admin.listUsers()
+    const user = data.users.find(u => u.email === testEmail)
+    expect(user).toBeDefined()
+    userId = user!.id
+
+    await page.goto('/settings')
+
+    const groupNameInput = page.locator('input[name="groupName"]')
+    await expect(groupNameInput).toBeVisible()
+
+    await groupNameInput.fill('Test Household')
+    
+    const ratioInput = page.locator('input[name="ratioA"]')
+    await ratioInput.fill('60')
+
+    await page.click('button[type="submit"]')
+    await page.waitForTimeout(1000)
+
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('group_id')
+      .eq('id', userId)
+      .single()
+
+    expect(userError).toBeNull()
+    expect(userData?.group_id).toBeTruthy()
+
+    const { data: groupData, error: groupError } = await supabaseAdmin
+      .from('groups')
+      .select('*')
+      .eq('id', userData!.group_id)
+      .single()
+
+    expect(groupError).toBeNull()
+    expect(groupData?.user_a_id).toBe(userId)
+    expect(groupData?.user_b_id).toBeNull()
+    expect(groupData?.ratio_a).toBe(60)
+    expect(groupData?.ratio_b).toBe(40)
+    expect(groupData?.ratio_a + groupData?.ratio_b).toBe(100)
+  })
+})
