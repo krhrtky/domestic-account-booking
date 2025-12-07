@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import SettlementDashboard from '@/components/settlement/SettlementDashboard'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -7,8 +8,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Dashboard</h1>
+      <div className="max-w-4xl mx-auto space-y-8">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+
+        <SettlementDashboard />
+
         <div className="bg-white p-6 rounded-lg shadow">
           <p className="text-gray-600 mb-4">
             Welcome, {user?.user_metadata?.name || user?.email}!

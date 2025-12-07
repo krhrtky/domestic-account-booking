@@ -213,3 +213,79 @@ export async function deleteTransaction(transactionId: string) {
 
   return { success: true }
 }
+
+const GetSettlementDataSchema = z.object({
+  targetMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month format. Expected YYYY-MM')
+})
+
+export async function getSettlementData(targetMonth: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Unauthorized' }
+  }
+
+  const parsed = GetSettlementDataSchema.safeParse({ targetMonth })
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors.targetMonth?.[0] || 'Invalid month format' }
+  }
+
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('group_id, name')
+    .eq('id', user.id)
+    .single()
+
+  if (!currentUser?.group_id) {
+    return { error: 'User is not in a group' }
+  }
+
+  const { data: group } = await supabase
+    .from('groups')
+    .select('*')
+    .eq('id', currentUser.group_id)
+    .single()
+
+  if (!group) {
+    return { error: 'Group not found' }
+  }
+
+  const year = targetMonth.substring(0, 4)
+  const month = targetMonth.substring(5, 7)
+  const nextMonth = parseInt(month) === 12
+    ? '01'
+    : String(parseInt(month) + 1).padStart(2, '0')
+  const nextYear = parseInt(month) === 12
+    ? String(parseInt(year) + 1)
+    : year
+
+  const { data: transactions } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('group_id', currentUser.group_id)
+    .gte('date', `${year}-${month}-01`)
+    .lt('date', `${nextYear}-${nextMonth}-01`)
+
+  if (!transactions) {
+    return { error: 'Failed to fetch transactions' }
+  }
+
+  const { data: users } = await supabase
+    .from('users')
+    .select('id, name')
+    .eq('group_id', currentUser.group_id)
+
+  const userAData = users?.find(u => u.id === group.user_a_id)
+  const userBData = users?.find(u => u.id === group.user_b_id)
+
+  const { calculateSettlement } = await import('@/lib/settlement')
+  const settlement = calculateSettlement(transactions, group, targetMonth)
+
+  return {
+    success: true,
+    settlement,
+    userAName: userAData?.name || 'User A',
+    userBName: userBData?.name || null
+  }
+}
