@@ -2,7 +2,7 @@
 
 **更新日:** 2025-12-07
 **前フェーズ:** Core Logic (Phase 1) - APPROVED
-**現在フェーズ:** Epic 2 - APPROVED ✓
+**現在フェーズ:** Epic 3 - APPROVED ✓
 
 ---
 
@@ -13,65 +13,73 @@
 | Phase 1: Core Logic | APPROVED | 0b35c97, ab337b7 |
 | Epic 1: User & Group Management | APPROVED | d5e9e3e, 03ae761, 7d544ac |
 | Epic 2: CSV Data Ingestion UI | APPROVED | 5d64265 |
+| Epic 3: Settlement Dashboard | APPROVED | b7ada9a |
 
 ---
 
-## Epic 2: CSV Data Ingestion UI (完了)
+## Epic 3: Settlement Dashboard (完了)
 
-### コミット履歴 (Epic 2)
+### コミット履歴 (Epic 3)
 ```
-5d64265 feat(epic-2): add CSV data ingestion UI with transactions management
+b7ada9a feat(epic-3): add settlement dashboard with monthly calculation display
 ```
 
-### 実装済みファイル (Epic 2)
+### 実装済みファイル (Epic 3)
 | ファイル | 内容 |
 |---------|------|
-| supabase/migrations/003_transactions_table.sql | transactionsテーブル、RLSポリシー |
-| app/actions/transactions.ts | uploadCSV, getTransactions, updateTransactionExpenseType, deleteTransaction |
-| app/actions/__tests__/transactions.test.ts | 13テスト (validation schemas) |
-| src/components/transactions/CSVUploadForm.tsx | CSVアップロードフォーム (5MB制限、成功メッセージ) |
-| src/components/transactions/TransactionList.tsx | トランザクション一覧 |
-| src/components/transactions/TransactionRow.tsx | トランザクション行 |
-| src/components/transactions/ExpenseTypeToggle.tsx | Household/Personal切り替え (エラーハンドリング付き) |
-| src/components/transactions/TransactionFilters.tsx | フィルター (月/expense_type/payer_type) |
-| src/components/transactions/TransactionPreview.tsx | CSVプレビュー |
-| app/dashboard/transactions/page.tsx | トランザクション一覧ページ |
-| app/dashboard/transactions/upload/page.tsx | CSVアップロードページ |
+| app/actions/transactions.ts | getSettlementData追加 (月フィルタリング付き) |
+| app/actions/__tests__/settlement.test.ts | 8テスト (Zod validation) |
+| src/components/settlement/MonthSelector.tsx | 月選択ドロップダウン (ARIA対応) |
+| src/components/settlement/SettlementSummary.tsx | 精算サマリー表示 |
+| src/components/settlement/SettlementDashboard.tsx | ダッシュボードコンテナ |
+| app/dashboard/page.tsx | SettlementDashboard統合 |
 
-### QGA結果: APPROVED
+### QGA結果: APPROVED (P0修正後)
 
-#### 修正済み P0 (3件)
+#### 修正済み P0 (2件)
 | 項目 | 修正内容 |
 |-----|---------|
-| P0-1 | クライアントサイドファイルサイズ検証 (5MB) |
-| P0-2 | アップロード成功メッセージ (X transactions imported) |
-| P0-3 | ExpenseTypeToggle エラーハンドリング・リカバリー |
+| P0-2 | サーバーサイド月フィルタリング追加 (パフォーマンス改善) |
+| P1-1 | MonthSelector アクセシビリティ改善 (ARIA labels) |
+
+### 機能概要
+- 過去12ヶ月の月セレクター (デフォルト: 当月)
+- 精算結果表示:
+  - 総家計支出 (total_household)
+  - User A/B 立替額
+  - 共通口座支出
+  - 負担割合
+  - 最終精算額 (支払い方向付き)
+- ローディング/エラー状態
+- モバイルレスポンシブ
 
 ---
 
 ## テストカバレッジ
 
 ```
-Test Files  4 passed (4)
-     Tests  59 passed (59)
+Test Files  5 passed (5)
+     Tests  67 passed (67)
 
 - src/lib/settlement.test.ts: 15 tests
 - src/lib/csv-parser.test.ts: 11 tests
 - app/actions/__tests__/validation.test.ts: 20 tests
-- app/actions/__tests__/transactions.test.ts: 13 tests (NEW)
+- app/actions/__tests__/transactions.test.ts: 13 tests
+- app/actions/__tests__/settlement.test.ts: 8 tests (NEW)
 ```
 
 ---
 
 ## 次のアクション
 
-### Epic 3: 精算ダッシュボード (Settlement Dashboard)
-```bash
-/claude-code-multi-agent Epic 3: Settlement Dashboard を実装。
-- 指定月の精算結果計算・表示
-- calculateSettlement ロジック連携
-- ダッシュボードUI
-```
+### MVP完了確認
+Epic 1〜3が全てAPPROVED。PRD記載のMVP機能は実装完了。
+
+### Phase 3候補 (ポストMVP)
+1. **E2Eテスト**: Playwright/Cypressによる統合テスト
+2. **パフォーマンス最適化**: N+1クエリ解消、キャッシング
+3. **UX改善**: Toast通知、ページネーション、ローディングスケルトン
+4. **セキュリティ強化**: Rate limiting、CSRF対策
 
 ### 残存 P1 課題 (任意)
 1. **P1-2: alert(JSON.stringify)** - toast通知システムに置換
@@ -89,7 +97,7 @@ Test Files  4 passed (4)
 - Tailwind CSS
 - Supabase Auth + PostgreSQL + RLS
 - Zod validation
-- Vitest (59 tests passing)
+- Vitest (67 tests passing)
 
 ---
 
@@ -109,7 +117,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ```bash
 npm run dev       # 開発サーバー
-npm test          # テスト (59/59 pass)
+npm test          # テスト (67/67 pass)
 npx vitest run    # テスト1回実行
 npm run type-check # 型チェック
 npm run build     # ビルド
@@ -117,12 +125,12 @@ npm run build     # ビルド
 
 ---
 
-## ファイル構造 (Epic 2完了後)
+## ファイル構造 (Epic 3完了後)
 
 ```
 src/
 ├── lib/
-│   ├── types.ts          # 型定義 (user_id追加)
+│   ├── types.ts          # 型定義
 │   ├── settlement.ts     # 精算ロジック
 │   ├── csv-parser.ts     # CSVパーサー
 │   └── supabase/
@@ -136,13 +144,17 @@ src/
 │   │   ├── GroupSettings.tsx
 │   │   ├── InvitePartner.tsx
 │   │   └── CreateGroupForm.tsx
-│   └── transactions/
-│       ├── CSVUploadForm.tsx
-│       ├── TransactionList.tsx
-│       ├── TransactionRow.tsx
-│       ├── ExpenseTypeToggle.tsx
-│       ├── TransactionFilters.tsx
-│       └── TransactionPreview.tsx
+│   ├── transactions/
+│   │   ├── CSVUploadForm.tsx
+│   │   ├── TransactionList.tsx
+│   │   ├── TransactionRow.tsx
+│   │   ├── ExpenseTypeToggle.tsx
+│   │   ├── TransactionFilters.tsx
+│   │   └── TransactionPreview.tsx
+│   └── settlement/          # NEW
+│       ├── MonthSelector.tsx
+│       ├── SettlementSummary.tsx
+│       └── SettlementDashboard.tsx
 └── middleware.ts         # ルート保護
 
 app/
@@ -150,7 +162,7 @@ app/
 │   ├── signup/page.tsx
 │   └── login/page.tsx
 ├── dashboard/
-│   ├── page.tsx
+│   ├── page.tsx          # SettlementDashboard統合
 │   └── transactions/
 │       ├── page.tsx
 │       └── upload/page.tsx
@@ -159,10 +171,11 @@ app/
 └── actions/
     ├── auth.ts
     ├── group.ts
-    ├── transactions.ts
+    ├── transactions.ts   # getSettlementData追加
     └── __tests__/
         ├── validation.test.ts
-        └── transactions.test.ts
+        ├── transactions.test.ts
+        └── settlement.test.ts  # NEW
 
 supabase/
 └── migrations/
