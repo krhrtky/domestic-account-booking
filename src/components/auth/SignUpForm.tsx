@@ -3,6 +3,7 @@
 import { useFormStatus } from 'react-dom'
 import { signUp } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/hooks/useToast'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -23,8 +24,9 @@ export function SignUpForm() {
   async function handleSubmit(formData: FormData) {
     const result = await signUp(formData)
     if (result.error) {
-      alert(JSON.stringify(result.error))
+      toast.error(result.error)
     } else {
+      toast.success('Account created successfully')
       router.push('/dashboard')
     }
   }

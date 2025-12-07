@@ -2,6 +2,7 @@
 
 import { updateRatio } from '@/app/actions/group'
 import { useState } from 'react'
+import { toast } from '@/lib/hooks/useToast'
 
 export function GroupSettings({ group }: { group: any }) {
   const [ratioA, setRatioA] = useState(group.ratio_a)
@@ -12,9 +13,9 @@ export function GroupSettings({ group }: { group: any }) {
     setSaving(true)
     const result = await updateRatio(ratioA, ratioB)
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     } else {
-      alert('Ratio updated successfully')
+      toast.success('Ratio updated successfully')
     }
     setSaving(false)
   }

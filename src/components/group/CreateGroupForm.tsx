@@ -3,6 +3,7 @@
 import { createGroup } from '@/app/actions/group'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from '@/lib/hooks/useToast'
 
 export function CreateGroupForm() {
   const router = useRouter()
@@ -18,8 +19,9 @@ export function CreateGroupForm() {
       ratio_b: 100 - ratioA
     })
     if (result.error) {
-      alert(JSON.stringify(result.error))
+      toast.error(result.error)
     } else {
+      toast.success('Group created successfully')
       router.refresh()
     }
     setLoading(false)

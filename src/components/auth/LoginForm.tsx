@@ -3,6 +3,7 @@
 import { useFormStatus } from 'react-dom'
 import { logIn } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
+import { toast } from '@/lib/hooks/useToast'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -23,8 +24,9 @@ export function LoginForm() {
   async function handleSubmit(formData: FormData) {
     const result = await logIn(formData)
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     } else {
+      toast.success('Login successful')
       router.push('/dashboard')
     }
   }

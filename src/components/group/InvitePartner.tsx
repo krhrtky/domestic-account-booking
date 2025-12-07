@@ -2,6 +2,7 @@
 
 import { invitePartner } from '@/app/actions/group'
 import { useState } from 'react'
+import { toast } from '@/lib/hooks/useToast'
 
 export function InvitePartner() {
   const [email, setEmail] = useState('')
@@ -12,7 +13,7 @@ export function InvitePartner() {
     setLoading(true)
     const result = await invitePartner(email)
     if (result.error) {
-      alert(result.error)
+      toast.error(result.error)
     } else if (result.invite_url) {
       setInviteUrl(result.invite_url)
     }
