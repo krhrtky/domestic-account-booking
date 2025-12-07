@@ -21,8 +21,8 @@ const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
   payerType: z.enum(['UserA', 'UserB', 'Common']).optional(),
-  cursor: z.string().optional(),
-  limit: z.number().int().min(1).max(100).optional()
+  page: z.number().int().min(1).optional(),
+  pageSize: z.number().int().min(10).max(50).optional()
 })
 
 export async function uploadCSV(
@@ -88,8 +88,8 @@ export async function getTransactions(filters?: {
   month?: string
   expenseType?: ExpenseType
   payerType?: PayerType
-  cursor?: string
-  limit?: number
+  page?: number
+  pageSize?: number
 }) {
   const user = await requireAuth()
 
@@ -110,39 +110,22 @@ export async function getTransactions(filters?: {
   }
 
   const groupId = currentUserResult.rows[0].group_id
-  const pageLimit = filters?.limit ?? 50
+  const page = filters?.page ?? 1
+  const pageSize = filters?.pageSize ?? 25
 
   const conditions: string[] = ['group_id = $1']
-  const params: any[] = [groupId]
+  const params: (string | number)[] = [groupId]
   let paramIndex = 2
-
-  if (filters?.cursor) {
-    const cursorParts = filters.cursor.split('|')
-    if (cursorParts.length !== 2) {
-      return { error: 'Invalid cursor format' }
-    }
-    const [cursorDate, cursorId] = cursorParts
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cursorDate)) {
-      return { error: 'Invalid cursor date format' }
-    }
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cursorId)) {
-      return { error: 'Invalid cursor ID format' }
-    }
-
-    conditions.push(`(date < $${paramIndex} OR (date = $${paramIndex} AND id < $${paramIndex + 1}))`)
-    params.push(cursorDate, cursorId)
-    paramIndex += 2
-  }
 
   if (filters?.month) {
     const year = filters.month.substring(0, 4)
     const month = filters.month.substring(5, 7)
-    const nextMonth = parseInt(month) === 12
+    const monthNum = parseInt(month, 10)
+    const nextMonth = monthNum === 12
       ? '01'
-      : String(parseInt(month) + 1).padStart(2, '0')
-    const nextYear = parseInt(month) === 12
-      ? String(parseInt(year) + 1)
+      : String(monthNum + 1).padStart(2, '0')
+    const nextYear = monthNum === 12
+      ? String(parseInt(year, 10) + 1)
       : year
 
     conditions.push(`date >= $${paramIndex}`)
@@ -169,25 +152,36 @@ export async function getTransactions(filters?: {
   const whereClause = conditions.join(' AND ')
 
   try {
+    const countResult = await query(
+      `SELECT COUNT(*) as total FROM transactions WHERE ${whereClause}`,
+      params
+    )
+
+    const totalCount = parseInt(countResult.rows[0].total, 10)
+    if (isNaN(totalCount)) {
+      return { error: 'Invalid count result' }
+    }
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+    const safePage = Math.min(page, totalPages)
+    const offset = (safePage - 1) * pageSize
+
     const result = await query(
       `SELECT * FROM transactions
        WHERE ${whereClause}
        ORDER BY date DESC, id DESC
-       LIMIT $${paramIndex}`,
-      [...params, pageLimit]
+       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+      [...params, pageSize, offset]
     )
-
-    const data = result.rows
-    const hasMore = data.length === pageLimit
-    const nextCursor = hasMore && data.length > 0
-      ? `${data[data.length - 1].date}|${data[data.length - 1].id}`
-      : null
 
     return {
       success: true,
-      transactions: data,
-      nextCursor,
-      hasMore
+      transactions: result.rows,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: safePage,
+        pageSize
+      }
     }
   } catch (error) {
     return { error: 'Failed to fetch transactions' }
@@ -286,11 +280,12 @@ export async function getSettlementData(targetMonth: string) {
 
   const year = targetMonth.substring(0, 4)
   const month = targetMonth.substring(5, 7)
-  const nextMonth = parseInt(month) === 12
+  const monthNum = parseInt(month, 10)
+  const nextMonth = monthNum === 12
     ? '01'
-    : String(parseInt(month) + 1).padStart(2, '0')
-  const nextYear = parseInt(month) === 12
-    ? String(parseInt(year) + 1)
+    : String(monthNum + 1).padStart(2, '0')
+  const nextYear = monthNum === 12
+    ? String(parseInt(year, 10) + 1)
     : year
 
   const transactionsResult = await query(

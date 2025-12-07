@@ -201,7 +201,7 @@ Supabase依存を完全に排除し、NextAuth + pg直接接続に移行完了�
 
 ### 残存 P1 課題 (任意)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
-2. **P1-4: getCurrentGroup N+1クエリ** - SQL JOINで最適化
+2. ~~**P1-4: getCurrentGroup N+1クエリ**~~ - ✅ COMPLETED (NextAuth移行時にSQL JOINで最適化済み)
 3. **P1-UX**: ローディング状態・エラー表示改善
 4. **P1-Pagination**: トランザクション一覧のページネーション
 

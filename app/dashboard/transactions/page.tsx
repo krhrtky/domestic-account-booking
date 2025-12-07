@@ -1,65 +1,112 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getTransactions } from '@/app/actions/transactions'
 import { Transaction, ExpenseType, PayerType } from '@/lib/types'
 import TransactionList from '@/components/transactions/TransactionList'
 import TransactionFilters from '@/components/transactions/TransactionFilters'
 import Link from 'next/link'
 
+interface Pagination {
+  totalCount: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
 export default function TransactionsPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [filters, setFilters] = useState<{
-    month?: string
-    expenseType?: ExpenseType
-    payerType?: PayerType
-  }>({})
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const pageSize = [10, 25, 50].includes(parseInt(searchParams.get('size') || '25', 10))
+    ? parseInt(searchParams.get('size') || '25', 10)
+    : 25
+  const month = searchParams.get('month') || undefined
+  const expenseType = (searchParams.get('expenseType') as ExpenseType) || undefined
+  const payerType = (searchParams.get('payerType') as PayerType) || undefined
+
+  const updateURL = useCallback((params: Record<string, string | undefined>) => {
+    const newParams = new URLSearchParams()
+
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) newParams.set(key, value)
+    })
+
+    router.push(`${pathname}?${newParams.toString()}`)
+  }, [router, pathname])
 
   const loadTransactions = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    setTransactions([])
-    setNextCursor(null)
-    setHasMore(false)
-
-    const result = await getTransactions(filters)
-
-    if (result.error) {
-      setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
-    } else if (result.transactions) {
-      setTransactions(result.transactions)
-      setNextCursor(result.nextCursor || null)
-      setHasMore(result.hasMore || false)
-    }
-
-    setIsLoading(false)
-  }, [filters])
-
-  const loadMore = async () => {
-    if (!hasMore || isLoadingMore || !nextCursor) return
-
-    setIsLoadingMore(true)
-    setError(null)
 
     const result = await getTransactions({
-      ...filters,
-      cursor: nextCursor
+      month,
+      expenseType,
+      payerType,
+      page,
+      pageSize
     })
 
     if (result.error) {
-      setError(typeof result.error === 'string' ? result.error : 'Failed to load more transactions')
-    } else if (result.transactions) {
-      setTransactions(prev => [...prev, ...result.transactions])
-      setNextCursor(result.nextCursor || null)
-      setHasMore(result.hasMore || false)
+      setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
+    } else if (result.transactions && result.pagination) {
+      setTransactions(result.transactions)
+      setPagination(result.pagination)
+
+      if (result.pagination.currentPage !== page) {
+        updateURL({
+          month,
+          expenseType,
+          payerType,
+          page: result.pagination.currentPage.toString(),
+          size: pageSize.toString()
+        })
+      }
     }
 
-    setIsLoadingMore(false)
+    setIsLoading(false)
+  }, [month, expenseType, payerType, page, pageSize, updateURL])
+
+  const handleFilterChange = (newFilters: {
+    month?: string
+    expenseType?: ExpenseType
+    payerType?: PayerType
+  }) => {
+    updateURL({
+      month: newFilters.month,
+      expenseType: newFilters.expenseType,
+      payerType: newFilters.payerType,
+      page: '1',
+      size: pageSize.toString()
+    })
+  }
+
+  const handlePageChange = (newPage: number) => {
+    updateURL({
+      month,
+      expenseType,
+      payerType,
+      page: newPage.toString(),
+      size: pageSize.toString()
+    })
+  }
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    updateURL({
+      month,
+      expenseType,
+      payerType,
+      page: '1',
+      size: newPageSize.toString()
+    })
   }
 
   useEffect(() => {
@@ -81,10 +128,10 @@ export default function TransactionsPage() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <TransactionFilters
-            month={filters.month}
-            expenseType={filters.expenseType}
-            payerType={filters.payerType}
-            onFilterChange={setFilters}
+            month={month}
+            expenseType={expenseType}
+            payerType={payerType}
+            onFilterChange={handleFilterChange}
           />
 
           {error && (
@@ -101,9 +148,9 @@ export default function TransactionsPage() {
             <TransactionList
               transactions={transactions}
               onUpdate={loadTransactions}
-              hasMore={hasMore}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={loadMore}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
             />
           )}
         </div>

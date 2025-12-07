@@ -45,16 +45,32 @@ test.describe('Scenario 7: Transaction Pagination', () => {
 
     const transactionRows = page.locator('[data-testid^="transaction-row-"]')
     const initialCount = await transactionRows.count()
-    expect(initialCount).toBeLessThanOrEqual(50)
+    expect(initialCount).toBe(25)
 
-    const loadMoreButton = page.locator('button:has-text("Load More")')
-    await expect(loadMoreButton).toBeVisible()
+    const showingText = page.locator('text=/Showing 1-25 of 75 transactions/')
+    await expect(showingText).toBeVisible()
 
-    await loadMoreButton.click()
+    const nextButton = page.locator('button[aria-label="Next page"]')
+    await expect(nextButton).toBeEnabled()
+
+    await nextButton.click()
     await page.waitForTimeout(1000)
 
-    const updatedCount = await transactionRows.count()
-    expect(updatedCount).toBeGreaterThan(initialCount)
+    const page2Rows = await transactionRows.count()
+    expect(page2Rows).toBe(25)
+
+    const showingPage2 = page.locator('text=/Showing 26-50 of 75 transactions/')
+    await expect(showingPage2).toBeVisible()
+
+    const page3Button = page.locator('button[aria-label="Page 3"]')
+    await page3Button.click()
+    await page.waitForTimeout(1000)
+
+    const page3Rows = await transactionRows.count()
+    expect(page3Rows).toBe(25)
+
+    const showingPage3 = page.locator('text=/Showing 51-75 of 75 transactions/')
+    await expect(showingPage3).toBeVisible()
 
     const allTransactions = await getTransactionsByGroupId(groupId)
     expect(allTransactions).toHaveLength(75)

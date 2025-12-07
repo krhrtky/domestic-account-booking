@@ -1,61 +1,31 @@
 'use client'
 
-import { useRef, useEffect, useCallback } from 'react'
 import { Transaction } from '@/lib/types'
 import TransactionRow from './TransactionRow'
+import PaginationControls from './PaginationControls'
+
+interface Pagination {
+  totalCount: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
 
 interface TransactionListProps {
   transactions: Transaction[]
   onUpdate: () => void
-  hasMore: boolean
-  isLoadingMore: boolean
-  onLoadMore: () => void
+  pagination: Pagination | null
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
 }
 
 export default function TransactionList({
   transactions,
   onUpdate,
-  hasMore,
-  isLoadingMore,
-  onLoadMore
+  pagination,
+  onPageChange,
+  onPageSizeChange
 }: TransactionListProps) {
-  const observerRef = useRef<IntersectionObserver | null>(null)
-  const loadMoreRef = useRef<HTMLDivElement>(null)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-  const debouncedLoadMore = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      onLoadMore()
-    }, 200)
-  }, [onLoadMore])
-
-  useEffect(() => {
-    if (!loadMoreRef.current || !hasMore || isLoadingMore) return
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
-          debouncedLoadMore()
-        }
-      },
-      { threshold: 0.1 }
-    )
-
-    observerRef.current.observe(loadMoreRef.current)
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect()
-      }
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current)
-      }
-    }
-  }, [hasMore, isLoadingMore, debouncedLoadMore])
-
   if (transactions.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
@@ -102,43 +72,12 @@ export default function TransactionList({
         </table>
       </div>
 
-      {hasMore && (
-        <div ref={loadMoreRef} className="mt-6 text-center">
-          {isLoadingMore ? (
-            <div className="inline-flex items-center text-gray-500">
-              <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              Loading more...
-            </div>
-          ) : (
-            <button
-              onClick={onLoadMore}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-6 rounded-lg transition-colors"
-            >
-              Load More
-            </button>
-          )}
-        </div>
-      )}
-
-      {!hasMore && transactions.length > 0 && (
-        <div className="mt-6 text-center text-gray-500 text-sm">
-          No more transactions to load
-        </div>
+      {pagination && pagination.totalCount > 0 && (
+        <PaginationControls
+          pagination={pagination}
+          onPageChange={onPageChange}
+          onPageSizeChange={onPageSizeChange}
+        />
       )}
     </div>
   )
