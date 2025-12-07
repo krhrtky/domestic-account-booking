@@ -32,6 +32,7 @@ export function InvitePartner() {
         <div className="flex gap-2">
           <input
             type="email"
+            name="partnerEmail"
             placeholder="partner@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}

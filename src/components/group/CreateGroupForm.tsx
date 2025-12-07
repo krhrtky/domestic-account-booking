@@ -11,7 +11,8 @@ export function CreateGroupForm() {
   const [ratioA, setRatioA] = useState(50)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit() {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
     setLoading(true)
     const result = await createGroup({
       name,
@@ -30,11 +31,12 @@ export function CreateGroupForm() {
   return (
     <div className="mt-8 bg-white p-6 rounded-lg shadow">
       <h2 className="text-lg font-semibold mb-4">Create Household Group</h2>
-      <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-2">Group Name</label>
           <input
             type="text"
+            name="groupName"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -44,6 +46,7 @@ export function CreateGroupForm() {
           <label className="block text-sm font-medium mb-2">Your Income Ratio</label>
           <input
             type="range"
+            name="ratioA"
             min="1"
             max="99"
             value={ratioA}
@@ -53,13 +56,13 @@ export function CreateGroupForm() {
           <p className="text-center font-bold">{ratioA}% : {100 - ratioA}%</p>
         </div>
         <button
-          onClick={handleSubmit}
+          type="submit"
           disabled={loading}
           className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
           {loading ? 'Creating...' : 'Create Group'}
         </button>
-      </div>
+      </form>
     </div>
   )
 }

@@ -41,6 +41,7 @@ export function GroupSettings({ group }: { group: any }) {
             <label className="text-sm">{group.user_a.name}</label>
             <input
               type="range"
+              name="ratioA"
               min="1"
               max="99"
               value={ratioA}
