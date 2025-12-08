@@ -40,11 +40,8 @@ jobs:
       - name: Create test session
         id: auth
         run: |
-          AUTH_COOKIE=$(node scripts/lighthouse-auth.js)
+          AUTH_COOKIE=$(node --env-file=.env.local scripts/lighthouse-auth.js)
           echo "cookie=$AUTH_COOKIE" >> $GITHUB_OUTPUT
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
 
       - name: Update Lighthouse config with auth cookie
         run: |
