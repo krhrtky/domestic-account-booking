@@ -6,6 +6,8 @@ import { getTransactions } from '@/app/actions/transactions'
 import { Transaction, ExpenseType, PayerType } from '@/lib/types'
 import TransactionList from '@/components/transactions/TransactionList'
 import TransactionFilters from '@/components/transactions/TransactionFilters'
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
+import ErrorAlert from '@/components/ui/ErrorAlert'
 import Link from 'next/link'
 
 interface Pagination {
@@ -135,15 +137,19 @@ export default function TransactionsPage() {
           />
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-              {error}
-            </div>
+            <ErrorAlert
+              variant="card"
+              message={error}
+              retry={loadTransactions}
+            />
           )}
 
           {isLoading ? (
-            <div className="text-center py-12 text-gray-500">
-              Loading...
-            </div>
+            <table className="w-full">
+              <tbody>
+                <LoadingSkeleton variant="table-row" count={10} />
+              </tbody>
+            </table>
           ) : (
             <TransactionList
               transactions={transactions}

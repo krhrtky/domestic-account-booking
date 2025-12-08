@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { getSettlementData } from '@/app/actions/transactions'
 import MonthSelector from './MonthSelector'
 import SettlementSummary from './SettlementSummary'
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton'
+import ErrorAlert from '@/components/ui/ErrorAlert'
 import type { Settlement } from '@/lib/types'
 
 const getCurrentMonth = () => {
@@ -55,6 +57,11 @@ export default function SettlementDashboard() {
     fetchSettlement()
   }, [selectedMonth])
 
+  const handleRetry = () => {
+    setIsLoading(true)
+    setError(null)
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -66,21 +73,14 @@ export default function SettlementDashboard() {
         />
       </div>
 
-      {isLoading && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingSkeleton variant="card" />}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
-          <p className="font-medium">Error</p>
-          <p className="text-sm">{error}</p>
-        </div>
+        <ErrorAlert
+          variant="card"
+          message={error}
+          retry={handleRetry}
+        />
       )}
 
       {!isLoading && !error && settlement && (
