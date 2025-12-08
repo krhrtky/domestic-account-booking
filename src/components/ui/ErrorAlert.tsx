@@ -21,6 +21,7 @@ export default function ErrorAlert({
       {retry && (
         <button
           onClick={retry}
+          aria-label="Retry loading"
           className="mt-2 text-sm underline hover:no-underline"
         >
           Try again

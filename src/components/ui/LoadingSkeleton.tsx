@@ -8,7 +8,7 @@ export default function LoadingSkeleton({ variant, count = 1 }: LoadingSkeletonP
 
   if (variant === 'card') {
     return (
-      <div className="bg-white p-6 rounded-lg shadow" role="status" aria-busy="true">
+      <div className="bg-white p-6 rounded-lg shadow" role="status" aria-busy="true" aria-label="Loading content">
         <div className="animate-pulse space-y-4">
           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -22,7 +22,7 @@ export default function LoadingSkeleton({ variant, count = 1 }: LoadingSkeletonP
     return (
       <>
         {skeletons.map((_, index) => (
-          <tr key={index} className="border-b" role="status" aria-busy="true">
+          <tr key={index} className="border-b" role="status" aria-busy="true" aria-label="Loading row">
             <td className="px-4 py-3">
               <div className="animate-pulse h-4 bg-gray-200 rounded w-24"></div>
             </td>
@@ -43,7 +43,7 @@ export default function LoadingSkeleton({ variant, count = 1 }: LoadingSkeletonP
 
   if (variant === 'dashboard-stats') {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4" role="status" aria-busy="true">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4" role="status" aria-busy="true" aria-label="Loading dashboard">
         {skeletons.map((_, index) => (
           <div key={index} className="bg-white p-4 rounded-lg shadow">
             <div className="animate-pulse space-y-3">

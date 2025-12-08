@@ -15,6 +15,7 @@ export default function LoadingButton({
   return (
     <button
       disabled={isLoading}
+      aria-busy={isLoading}
       className={`${className} disabled:opacity-50`}
       {...props}
     >
