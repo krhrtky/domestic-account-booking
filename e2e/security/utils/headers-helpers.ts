@@ -1,4 +1,4 @@
-import { Response } from '@playwright/test'
+import { Response, APIResponse } from '@playwright/test'
 
 export type SecurityHeader = {
   name: string
@@ -12,7 +12,7 @@ export const SECURITY_HEADERS: SecurityHeader[] = [
   { name: 'referrer-policy', expectedValue: 'strict-origin-when-cross-origin' },
 ]
 
-export const verifySecurityHeaders = (response: Response | null): void => {
+export const verifySecurityHeaders = (response: Response | APIResponse | null): void => {
   if (!response) {
     throw new Error('No response received')
   }
@@ -54,7 +54,7 @@ export const verifySecurityHeaders = (response: Response | null): void => {
   }
 }
 
-export const formatHeaders = (response: Response | null): string => {
+export const formatHeaders = (response: Response | APIResponse | null): string => {
   if (!response) {
     return 'No response'
   }
