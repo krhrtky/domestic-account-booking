@@ -215,21 +215,59 @@ eaa6a0f chore: 依存関係更新
 
 ---
 
+## P1-UX: ローディング・エラー表示改善 (完了)
+
+### コミット履歴 (5件)
+```
+b13ea85 feat(p1-ux): add reusable UI components
+f579fa5 feat(p1-ux): add client-side validation to auth forms
+7122286 feat(p1-ux): improve loading and error states in dashboard pages
+53ab292 feat(p1-ux): add error boundaries for dashboard routes
+b930348 fix(p1-ux): improve accessibility attributes
+```
+
+### 新規ファイル
+| ファイル | 内容 |
+|---------|------|
+| src/components/ui/LoadingSkeleton.tsx | ローディングスケルトン (card/table-row/dashboard-stats) |
+| src/components/ui/ErrorAlert.tsx | エラー表示 (inline/card + retry) |
+| src/components/ui/FormField.tsx | フォームフィールド (aria-invalid/describedby) |
+| src/components/ui/LoadingButton.tsx | ローディングボタン (aria-busy) |
+| app/dashboard/error.tsx | ダッシュボードエラーバウンダリ |
+| app/dashboard/transactions/error.tsx | トランザクションエラーバウンダリ |
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| src/components/auth/LoginForm.tsx | FormField/LoadingButton統合、クライアントバリデーション |
+| src/components/auth/SignUpForm.tsx | FormField/LoadingButton統合、クライアントバリデーション |
+| src/components/settlement/SettlementDashboard.tsx | LoadingSkeleton/ErrorAlert統合 |
+| app/dashboard/transactions/page.tsx | LoadingSkeleton/ErrorAlert統合 |
+
+### 機能概要
+- **ローディングスケルトン**: animate-pulse、role="status"、aria-busy、aria-label
+- **エラー表示**: role="alert"、retry機能、赤50/200/700カラー
+- **フォームバリデーション**: クライアントサイド即時検証、aria-invalid、エラーメッセージ
+- **ボタン状態**: aria-busy、disabled、loadingText変更
+- **エラーバウンダリ**: route単位のクラッシュ回復
+
+---
+
 ## 次のアクション
 
-### Phase 5 + P1-Pagination 完了
-Supabase依存を完全に排除し、NextAuth + pg直接接続に移行完了。
+### P1-UX完了
+ローディングスケルトン、エラー表示、フォームバリデーションを全面改善。
 
 ### Phase 6候補 (ポストMVP)
-1. **パフォーマンス最適化**: N+1クエリ解消、キャッシング
-2. **UX改善**: ページネーション、ローディングスケルトン
-3. **セキュリティ強化**: CSRF対策強化
-4. **Multi-browser E2E**: Firefox/Safari対応
+1. **パフォーマンス最適化**: キャッシング戦略
+2. **セキュリティ強化**: CSRF対策強化
+3. **Multi-browser E2E**: Firefox/Safari対応
+4. **アクセシビリティ**: axe-core自動テスト導入
 
-### 残存 P1 課題 (任意)
+### 残存 P1 課題 (全完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
 2. ~~**P1-4: getCurrentGroup N+1クエリ**~~ - ✅ COMPLETED (NextAuth移行時にSQL JOINで最適化済み)
-3. **P1-UX**: ローディング状態・エラー表示改善
+3. ~~**P1-UX**: ローディング状態・エラー表示改善~~ - ✅ COMPLETED (b930348)
 4. ~~**P1-Pagination**: トランザクション一覧のページネーション~~ - ✅ COMPLETED (7c1d34c)
 
 ---
