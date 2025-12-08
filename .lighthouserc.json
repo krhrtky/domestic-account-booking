@@ -1,0 +1,27 @@
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 3,
+      "url": [
+        "http://localhost:3000/login",
+        "http://localhost:3000/dashboard",
+        "http://localhost:3000/dashboard/transactions"
+      ],
+      "settings": {
+        "preset": "desktop",
+        "extraHeaders": "{\"Cookie\": \"__LIGHTHOUSE_AUTH_COOKIE__\"}"
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", {"minScore": 0.8}],
+        "largest-contentful-paint": ["error", {"maxNumericValue": 2500}],
+        "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
+        "total-blocking-time": ["error", {"maxNumericValue": 300}]
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

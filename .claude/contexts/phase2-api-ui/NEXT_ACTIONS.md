@@ -27,6 +27,7 @@
 | Phase 11: A11y Improvements | APPROVED | 89cb39a |
 | Phase 12: API Endpoint Tests | APPROVED | 61bcb25 |
 | Phase 13: Time-based Caching | APPROVED | d82faad |
+| Phase 14: Lighthouse CI | APPROVED | (pending) |
 
 ---
 
@@ -507,16 +508,48 @@ d82faad feat(perf): add time-based caching with unstable_cache (Phase 13)
 
 ---
 
+## Phase 14: Lighthouse CI Integration (完了)
+
+### コミット
+```
+(pending) feat(perf): add Lighthouse CI for automated performance testing
+```
+
+### 実装内容
+- `.lighthouserc.json`: Lighthouse CI設定
+  - パフォーマンスバジェット: LCP < 2.5s, CLS < 0.1, TBT < 300ms, Score >= 80
+  - 3 URL targets: /login, /dashboard, /dashboard/transactions
+  - 3 runs with median calculation
+  - Desktop preset
+- `scripts/lighthouse-auth.js`: セッショントークン生成スクリプト
+- `scripts/run-lighthouse.sh`: ローカルテスト用スクリプト
+- `.github/workflows/lighthouse.yml`: CI ワークフロー
+- `docs/LIGHTHOUSE.md`: ドキュメント
+
+### 新規スクリプト
+```bash
+npm run lighthouse        # フルテスト (ローカル)
+npm run lighthouse:collect  # メトリクス収集
+npm run lighthouse:assert   # バジェット検証
+```
+
+### 検証結果
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+- npm run build: ✅ SUCCESS
+
+---
+
 ## 次のアクション
 
-### Phase 13 完了
-unstable_cacheによる時間ベースキャッシング実装完了。
+### Phase 14 完了
+Lighthouse CIによるパフォーマンス自動テスト実装完了。
 
-### Phase 14候補 (ポストMVP)
-1. **Performance testing**: Lighthouse CI統合
-2. **i18n**: 多言語対応準備
-3. **E2E test stabilization**: 保護ページテストの認証問題修正
-4. **Error monitoring**: Sentry/LogRocket統合
+### Phase 15候補 (ポストMVP)
+1. **i18n**: 多言語対応準備
+2. **E2E test stabilization**: 保護ページテストの認証問題修正
+3. **Error monitoring**: Sentry/LogRocket統合
+4. **ESLint setup**: Next.js 15 + ESLint v9 互換設定
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
@@ -537,6 +570,7 @@ unstable_cacheによる時間ベースキャッシング実装完了。
 - Vitest (106 tests passing)
 - Playwright E2E (14+ tests)
 - @axe-core/playwright (a11y自動テスト)
+- @lhci/cli (Lighthouse CI)
 - react-hot-toast (UX)
 - bcrypt (パスワードハッシュ)
 - Rate limiting (認証保護)
@@ -569,6 +603,7 @@ npm run test:e2e:a11y    # アクセシビリティテスト
 npm run test:e2e:a11y:ui # a11yテスト UIモード
 npm run test:e2e:security    # セキュリティヘッダーテスト
 npm run test:e2e:security:ui # securityテスト UIモード
+npm run lighthouse       # Lighthouse パフォーマンステスト (ローカル)
 npm run type-check   # 型チェック
 npm run build        # ビルド
 ```
