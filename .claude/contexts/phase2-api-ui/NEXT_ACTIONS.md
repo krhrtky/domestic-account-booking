@@ -308,16 +308,46 @@ b930348 fix(p1-ux): improve accessibility attributes
 
 ---
 
+## Phase 8: セキュリティヘッダー検証テスト (完了)
+
+### コミット
+```
+c24ce70 fix(db): use encrypted_password column name in auth queries
+f2f9d58 feat(security): add security headers verification E2E tests
+```
+
+### 新規ファイル
+| ファイル | 内容 |
+|---------|------|
+| e2e/security/utils/headers-helpers.ts | ヘッダー検証ユーティリティ |
+| e2e/security/headers.spec.ts | 公開/保護ページのヘッダーテスト |
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| package.json | test:e2e:security scripts追加 |
+| .github/workflows/e2e.yml | セキュリティテストstep追加 |
+| app/actions/auth.ts | encrypted_passwordカラム名修正 |
+| e2e/utils/test-helpers.ts | encrypted_passwordカラム名修正 |
+
+### 検証対象ヘッダー
+- X-Frame-Options: DENY
+- Content-Security-Policy: frame-ancestors 'none'
+- X-Content-Type-Options: nosniff
+- Referrer-Policy: strict-origin-when-cross-origin
+
+---
+
 ## 次のアクション
 
-### Phase 7 a11y完了
-axe-core自動テスト導入。5ページのWCAG 2.1 Level AA検証を自動化。
+### Phase 8 完了
+セキュリティヘッダー検証テスト実装。公開ページ/保護ページの4ヘッダーを自動検証。
 
-### Phase 8候補 (ポストMVP)
+### Phase 9候補 (ポストMVP)
 1. **パフォーマンス最適化**: キャッシング戦略
 2. **Multi-browser E2E**: Firefox/Safari対応
-3. **セキュリティテスト**: 自動化ヘッダー検証テスト
-4. **a11y違反修正**: axe-coreで検出された問題の修正
+3. **a11y違反修正**: axe-coreで検出された問題の修正
+4. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
@@ -365,6 +395,8 @@ npm run test:e2e     # E2Eテスト (Playwright)
 npm run test:e2e:ui  # E2E UIモード (デバッグ用)
 npm run test:e2e:a11y    # アクセシビリティテスト
 npm run test:e2e:a11y:ui # a11yテスト UIモード
+npm run test:e2e:security    # セキュリティヘッダーテスト
+npm run test:e2e:security:ui # securityテスト UIモード
 npm run type-check   # 型チェック
 npm run build        # ビルド
 ```
@@ -438,13 +470,17 @@ supabase/
     └── 004_nextauth_schema.sql  # NextAuth用スキーマ (NEW)
 
 e2e/
-├── accessibility/        # Phase 7: axe-core a11yテスト (NEW)
+├── accessibility/        # Phase 7: axe-core a11yテスト
 │   ├── auth.a11y.spec.ts
 │   ├── dashboard.a11y.spec.ts
 │   ├── transactions.a11y.spec.ts
 │   ├── settings.a11y.spec.ts
 │   └── utils/
 │       └── a11y-helpers.ts
+├── security/             # Phase 8: セキュリティヘッダーテスト (NEW)
+│   ├── headers.spec.ts
+│   └── utils/
+│       └── headers-helpers.ts
 ├── auth/
 │   ├── login.spec.ts
 │   └── signup.spec.ts
