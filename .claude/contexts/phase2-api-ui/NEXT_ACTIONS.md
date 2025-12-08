@@ -25,6 +25,7 @@
 | Phase 9: Caching | APPROVED | 8621d8e |
 | Phase 10: Multi-browser E2E | APPROVED | 17e0d94 |
 | Phase 11: A11y Improvements | APPROVED | 89cb39a |
+| Phase 12: API Endpoint Tests | APPROVED | 61bcb25 |
 
 ---
 
@@ -459,16 +460,36 @@ Total: 150 tests in 23 files (50 tests × 3 browsers)
 
 ---
 
+## Phase 12: API Endpoint Security Header Tests (完了)
+
+### コミット
+```
+61bcb25 feat(security): add API endpoint security header tests (Phase 12)
+```
+
+### 実装内容
+- e2e/security/api-headers.spec.ts: NextAuth APIエンドポイントのセキュリティヘッダー検証
+- e2e/security/utils/headers-helpers.ts: Response | APIResponse型対応
+- テスト対象: /api/auth/{providers,csrf,session}
+- 4セキュリティヘッダー × 3ブラウザ = 12テスト
+
+### 検証結果
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+- API Headers tests: ✅ 12/12 PASS (4.5s)
+
+---
+
 ## 次のアクション
 
-### Phase 11 完了
-WCAG 2.1 Level AAアクセシビリティ改善、Next.js 15 Suspenseビルド修正完了。
+### Phase 12 完了
+API Endpointセキュリティヘッダーテスト追加完了。
 
-### Phase 12候補 (ポストMVP)
-1. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
-2. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
-3. **Performance testing**: Lighthouse CI統合
-4. **i18n**: 多言語対応準備
+### Phase 13候補 (ポストMVP)
+1. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
+2. **Performance testing**: Lighthouse CI統合
+3. **i18n**: 多言語対応準備
+4. **E2E test stabilization**: 保護ページテストの認証問題修正
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
