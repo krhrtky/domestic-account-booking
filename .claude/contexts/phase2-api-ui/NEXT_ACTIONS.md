@@ -28,6 +28,7 @@
 | Phase 12: API Endpoint Tests | APPROVED | 61bcb25 |
 | Phase 13: Time-based Caching | APPROVED | d82faad |
 | Phase 14: Lighthouse CI | APPROVED | 0709ee3 |
+| Phase 15: ESLint v9 Setup | APPROVED | 8673ae9 |
 
 ---
 
@@ -540,16 +541,34 @@ npm run lighthouse:assert   # バジェット検証
 
 ---
 
+## Phase 15: ESLint v9 Flat Config Setup (完了)
+
+### コミット
+```
+8673ae9 feat(lint): add ESLint v9 flat config for Next.js 15 (Phase 15)
+```
+
+### 実装内容
+- `eslint.config.mjs`: ESLint v9 flat config (Next.js core-web-vitals)
+- `package.json`: lint/lint:fix スクリプト更新
+- `.github/workflows/e2e.yml`: lint jobをCI追加
+
+### 検証結果
+- npm run lint: ✅ PASS (0 errors, 1 warning)
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+
+---
+
 ## 次のアクション
 
-### Phase 14 完了
-Lighthouse CIによるパフォーマンス自動テスト実装完了。
+### Phase 15 完了
+ESLint v9 flat configによるリント設定完了。
 
-### Phase 15候補 (ポストMVP)
+### Phase 16候補 (ポストMVP)
 1. **i18n**: 多言語対応準備
 2. **E2E test stabilization**: 保護ページテストの認証問題修正
 3. **Error monitoring**: Sentry/LogRocket統合
-4. **ESLint setup**: Next.js 15 + ESLint v9 互換設定
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
