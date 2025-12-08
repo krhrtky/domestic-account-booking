@@ -23,7 +23,8 @@
 | Phase 7: A11y Auto Testing | APPROVED | 7ac06c6 |
 | Phase 8: Security Headers Tests | APPROVED | f2f9d58 |
 | Phase 9: Caching | APPROVED | 8621d8e |
-| Phase 10: Multi-browser E2E | APPROVED | (pending commit) |
+| Phase 10: Multi-browser E2E | APPROVED | 17e0d94 |
+| Phase 11: A11y Improvements | APPROVED | 89cb39a |
 
 ---
 
@@ -423,16 +424,51 @@ Total: 150 tests in 23 files (50 tests × 3 browsers)
 
 ---
 
+## Phase 11: Accessibility Improvements (完了)
+
+### コミット
+```
+89cb39a feat(a11y): improve accessibility with ARIA attributes and Suspense fix
+```
+
+### 実装内容
+- TransactionList: sr-only table caption追加
+- TransactionRow: delete buttonにcontextual aria-label追加
+- ExpenseTypeToggle: aria-label + aria-pressed追加
+- globals.css: sr-only utility class追加
+- transactions/page.tsx: useSearchParamsをSuspenseでラップ (Next.js 15 build fix)
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| src/components/transactions/TransactionList.tsx | sr-only caption追加 |
+| src/components/transactions/TransactionRow.tsx | aria-label追加 |
+| src/components/transactions/ExpenseTypeToggle.tsx | aria-label + aria-pressed追加 |
+| app/globals.css | sr-only CSS utility追加 |
+| app/dashboard/transactions/page.tsx | Suspense boundary追加 (P0 fix) |
+
+### WCAG 2.1 Level AA対応
+- 1.3.1 Info and Relationships: table caption
+- 2.4.6 Headings and Labels: contextual button labels
+- 4.1.2 Name, Role, Value: aria-pressed toggle state
+
+### 検証結果
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+- npm run build: ✅ SUCCESS
+
+---
+
 ## 次のアクション
 
-### Phase 10 完了
-3ブラウザ対応E2Eテスト、CI matrix統合完了。
+### Phase 11 完了
+WCAG 2.1 Level AAアクセシビリティ改善、Next.js 15 Suspenseビルド修正完了。
 
-### Phase 11候補 (ポストMVP)
-1. **a11y違反修正**: axe-coreで検出された問題の修正
-2. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
-3. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
-4. **Performance testing**: Lighthouse CI統合
+### Phase 12候補 (ポストMVP)
+1. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
+2. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
+3. **Performance testing**: Lighthouse CI統合
+4. **i18n**: 多言語対応準備
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
