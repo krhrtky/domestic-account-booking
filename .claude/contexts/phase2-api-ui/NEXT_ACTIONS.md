@@ -29,6 +29,33 @@
 | Phase 13: Time-based Caching | APPROVED | d82faad |
 | Phase 14: Lighthouse CI | APPROVED | 0709ee3 |
 | Phase 15: ESLint v9 Setup | APPROVED | 8673ae9 |
+| Phase 16: CI + GitHub Push | APPROVED | 450e5dc |
+
+---
+
+## Phase 16: GitHub Actions CI + Private Repository Push (完了)
+
+### コミット
+```
+450e5dc ci: add integrated CI workflow for lint, unit test, and build
+```
+
+### 実装内容
+- `.github/workflows/ci.yml`: 統合CIワークフロー新規作成
+  - lint job: ESLint + TypeScript type check
+  - unit-test job: Vitest 106テスト実行
+  - build job: Next.js production build検証
+- Private repository作成: https://github.com/krhrtky/domestic-account-booking
+- master branch push完了
+
+### 既存CIワークフロー
+- `.github/workflows/e2e.yml`: E2E + アクセシビリティ + セキュリティテスト (3ブラウザ matrix)
+- `.github/workflows/lighthouse.yml`: パフォーマンステスト
+
+### GitHub Actions 動作確認
+- CI workflow: 実行開始確認
+- E2E Tests workflow: 実行開始確認
+- Lighthouse CI workflow: 実行開始確認
 
 ---
 
@@ -562,10 +589,10 @@ npm run lighthouse:assert   # バジェット検証
 
 ## 次のアクション
 
-### Phase 15 完了
-ESLint v9 flat configによるリント設定完了。
+### Phase 16 完了
+GitHub Actions CI + Private Repository Push完了。
 
-### Phase 16候補 (ポストMVP)
+### Phase 17候補 (ポストMVP)
 1. **i18n**: 多言語対応準備
 2. **E2E test stabilization**: 保護ページテストの認証問題修正
 3. **Error monitoring**: Sentry/LogRocket統合
@@ -719,5 +746,7 @@ e2e/
     └── test-helpers.ts   # pg helpers (Supabase削除)
 
 .github/workflows/
-└── e2e.yml
+├── ci.yml               # Phase 16: 統合CI (lint/test/build)
+├── e2e.yml             # E2E + a11y + security tests
+└── lighthouse.yml      # パフォーマンステスト
 ```
