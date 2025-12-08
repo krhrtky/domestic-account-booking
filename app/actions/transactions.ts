@@ -6,8 +6,8 @@ import { ExpenseType, PayerType } from '@/lib/types'
 import { query } from '@/lib/db'
 import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
-import { revalidateTag } from 'next/cache'
-import { CACHE_TAGS } from '@/lib/cache'
+import { revalidateTag, unstable_cache } from 'next/cache'
+import { CACHE_TAGS, CACHE_DURATIONS } from '@/lib/cache'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -91,7 +91,11 @@ export async function getTransactions(filters?: {
   payerType?: PayerType
   page?: number
   pageSize?: number
-}) {
+}): Promise<
+  | { error: { payerType?: string[]; month?: string[]; expenseType?: string[]; page?: string[]; pageSize?: string[] } }
+  | { error: string }
+  | { success: true; transactions: any[]; pagination: { totalCount: number; totalPages: number; currentPage: number; pageSize: number } }
+> {
   const user = await requireAuth()
 
   if (filters) {
@@ -106,82 +110,95 @@ export async function getTransactions(filters?: {
   if (!groupId) {
     return { error: 'User is not in a group' }
   }
+
+  const month = filters?.month ?? ''
+  const expenseType = filters?.expenseType ?? ''
+  const payerType = filters?.payerType ?? ''
   const page = filters?.page ?? 1
   const pageSize = filters?.pageSize ?? 25
 
-  const conditions: string[] = ['group_id = $1']
-  const params: (string | number)[] = [groupId]
-  let paramIndex = 2
+  return unstable_cache(
+    async () => {
+      const conditions: string[] = ['group_id = $1']
+      const params: (string | number)[] = [groupId]
+      let paramIndex = 2
 
-  if (filters?.month) {
-    const year = filters.month.substring(0, 4)
-    const month = filters.month.substring(5, 7)
-    const monthNum = parseInt(month, 10)
-    const nextMonth = monthNum === 12
-      ? '01'
-      : String(monthNum + 1).padStart(2, '0')
-    const nextYear = monthNum === 12
-      ? String(parseInt(year, 10) + 1)
-      : year
+      if (month) {
+        const year = month.substring(0, 4)
+        const monthStr = month.substring(5, 7)
+        const monthNum = parseInt(monthStr, 10)
+        const nextMonth = monthNum === 12
+          ? '01'
+          : String(monthNum + 1).padStart(2, '0')
+        const nextYear = monthNum === 12
+          ? String(parseInt(year, 10) + 1)
+          : year
 
-    conditions.push(`date >= $${paramIndex}`)
-    params.push(`${year}-${month}-01`)
-    paramIndex++
+        conditions.push(`date >= $${paramIndex}`)
+        params.push(`${year}-${monthStr}-01`)
+        paramIndex++
 
-    conditions.push(`date < $${paramIndex}`)
-    params.push(`${nextYear}-${nextMonth}-01`)
-    paramIndex++
-  }
-
-  if (filters?.expenseType) {
-    conditions.push(`expense_type = $${paramIndex}`)
-    params.push(filters.expenseType)
-    paramIndex++
-  }
-
-  if (filters?.payerType) {
-    conditions.push(`payer_type = $${paramIndex}`)
-    params.push(filters.payerType)
-    paramIndex++
-  }
-
-  const whereClause = conditions.join(' AND ')
-
-  try {
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM transactions WHERE ${whereClause}`,
-      params
-    )
-
-    const totalCount = parseInt(countResult.rows[0].total, 10)
-    if (isNaN(totalCount)) {
-      return { error: 'Invalid count result' }
-    }
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
-    const safePage = Math.min(page, totalPages)
-    const offset = (safePage - 1) * pageSize
-
-    const result = await query(
-      `SELECT * FROM transactions
-       WHERE ${whereClause}
-       ORDER BY date DESC, id DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      [...params, pageSize, offset]
-    )
-
-    return {
-      success: true,
-      transactions: result.rows,
-      pagination: {
-        totalCount,
-        totalPages,
-        currentPage: safePage,
-        pageSize
+        conditions.push(`date < $${paramIndex}`)
+        params.push(`${nextYear}-${nextMonth}-01`)
+        paramIndex++
       }
+
+      if (expenseType) {
+        conditions.push(`expense_type = $${paramIndex}`)
+        params.push(expenseType)
+        paramIndex++
+      }
+
+      if (payerType) {
+        conditions.push(`payer_type = $${paramIndex}`)
+        params.push(payerType)
+        paramIndex++
+      }
+
+      const whereClause = conditions.join(' AND ')
+
+      try {
+        const countResult = await query(
+          `SELECT COUNT(*) as total FROM transactions WHERE ${whereClause}`,
+          params
+        )
+
+        const totalCount = parseInt(countResult.rows[0].total, 10)
+        if (isNaN(totalCount)) {
+          return { error: 'Invalid count result' }
+        }
+        const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+        const safePage = Math.min(page, totalPages)
+        const offset = (safePage - 1) * pageSize
+
+        const result = await query(
+          `SELECT * FROM transactions
+           WHERE ${whereClause}
+           ORDER BY date DESC, id DESC
+           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+          [...params, pageSize, offset]
+        )
+
+        return {
+          success: true as const,
+          transactions: result.rows,
+          pagination: {
+            totalCount,
+            totalPages,
+            currentPage: safePage,
+            pageSize
+          }
+        }
+      } catch (error) {
+        return { error: 'Failed to fetch transactions' }
+      }
+    },
+    ['transactions', groupId, month, expenseType, payerType, String(page), String(pageSize)],
+    {
+      revalidate: CACHE_DURATIONS.transactions,
+      tags: [CACHE_TAGS.transactions(groupId)]
     }
-  } catch (error) {
-    return { error: 'Failed to fetch transactions' }
-  }
+  )()
 }
 
 export async function updateTransactionExpenseType(
@@ -244,7 +261,10 @@ const GetSettlementDataSchema = z.object({
   targetMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month format. Expected YYYY-MM')
 })
 
-export async function getSettlementData(targetMonth: string) {
+export async function getSettlementData(targetMonth: string): Promise<
+  | { error: string }
+  | { success: true; settlement: any; userAName: string; userBName: string | null }
+> {
   const user = await requireAuth()
 
   const parsed = GetSettlementDataSchema.safeParse({ targetMonth })
@@ -258,52 +278,61 @@ export async function getSettlementData(targetMonth: string) {
     return { error: 'User is not in a group' }
   }
 
-  const groupResult = await query(
-    'SELECT * FROM groups WHERE id = $1',
-    [groupId]
-  )
+  return unstable_cache(
+    async () => {
+      const groupResult = await query(
+        'SELECT * FROM groups WHERE id = $1',
+        [groupId]
+      )
 
-  if (groupResult.rows.length === 0) {
-    return { error: 'Group not found' }
-  }
+      if (groupResult.rows.length === 0) {
+        return { error: 'Group not found' }
+      }
 
-  const group = groupResult.rows[0]
+      const group = groupResult.rows[0]
 
-  const year = targetMonth.substring(0, 4)
-  const month = targetMonth.substring(5, 7)
-  const monthNum = parseInt(month, 10)
-  const nextMonth = monthNum === 12
-    ? '01'
-    : String(monthNum + 1).padStart(2, '0')
-  const nextYear = monthNum === 12
-    ? String(parseInt(year, 10) + 1)
-    : year
+      const year = targetMonth.substring(0, 4)
+      const month = targetMonth.substring(5, 7)
+      const monthNum = parseInt(month, 10)
+      const nextMonth = monthNum === 12
+        ? '01'
+        : String(monthNum + 1).padStart(2, '0')
+      const nextYear = monthNum === 12
+        ? String(parseInt(year, 10) + 1)
+        : year
 
-  const transactionsResult = await query(
-    `SELECT * FROM transactions
-     WHERE group_id = $1
-       AND date >= $2
-       AND date < $3`,
-    [groupId, `${year}-${month}-01`, `${nextYear}-${nextMonth}-01`]
-  )
+      const transactionsResult = await query(
+        `SELECT * FROM transactions
+         WHERE group_id = $1
+           AND date >= $2
+           AND date < $3`,
+        [groupId, `${year}-${month}-01`, `${nextYear}-${nextMonth}-01`]
+      )
 
-  const transactions = transactionsResult.rows
+      const transactions = transactionsResult.rows
 
-  const usersResult = await query<{ id: string; name: string }>(
-    'SELECT id, name FROM users WHERE group_id = $1',
-    [groupId]
-  )
+      const usersResult = await query<{ id: string; name: string }>(
+        'SELECT id, name FROM users WHERE group_id = $1',
+        [groupId]
+      )
 
-  const userAData = usersResult.rows.find(u => u.id === group.user_a_id)
-  const userBData = usersResult.rows.find(u => u.id === group.user_b_id)
+      const userAData = usersResult.rows.find(u => u.id === group.user_a_id)
+      const userBData = usersResult.rows.find(u => u.id === group.user_b_id)
 
-  const { calculateSettlement } = await import('@/lib/settlement')
-  const settlement = calculateSettlement(transactions, group, targetMonth)
+      const { calculateSettlement } = await import('@/lib/settlement')
+      const settlement = calculateSettlement(transactions, group, targetMonth)
 
-  return {
-    success: true,
-    settlement,
-    userAName: userAData?.name || 'User A',
-    userBName: userBData?.name || null
-  }
+      return {
+        success: true as const,
+        settlement,
+        userAName: userAData?.name || 'User A',
+        userBName: userBData?.name || null
+      }
+    },
+    ['settlement', groupId, targetMonth],
+    {
+      revalidate: CACHE_DURATIONS.settlement,
+      tags: [CACHE_TAGS.settlement(groupId, targetMonth), CACHE_TAGS.settlementAll(groupId)]
+    }
+  )()
 }

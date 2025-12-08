@@ -42,10 +42,10 @@ export default function SettlementDashboard() {
       setError(null)
       const result = await getSettlementData(selectedMonth)
 
-      if (result.error) {
+      if ('error' in result) {
         setError(result.error)
         setSettlement(null)
-      } else if (result.success) {
+      } else if ('success' in result && result.success) {
         setSettlement(result.settlement)
         setUserAName(result.userAName)
         setUserBName(result.userBName)

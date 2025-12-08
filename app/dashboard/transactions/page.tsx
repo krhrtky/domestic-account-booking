@@ -57,9 +57,9 @@ function TransactionsContent() {
       pageSize
     })
 
-    if (result.error) {
+    if ('error' in result) {
       setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
-    } else if (result.transactions && result.pagination) {
+    } else if ('transactions' in result && result.transactions && result.pagination) {
       setTransactions(result.transactions)
       setPagination(result.pagination)
 
