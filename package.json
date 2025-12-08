@@ -15,6 +15,8 @@
     "test:e2e:debug": "node --env-file=.env.local node_modules/.bin/playwright test --debug",
     "test:e2e:demo": "node --env-file=.env.local node_modules/.bin/playwright test e2e/demo",
     "test:e2e:demo:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/demo --ui",
+    "test:e2e:a11y": "node --env-file=.env.local node_modules/.bin/playwright test e2e/accessibility",
+    "test:e2e:a11y:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/accessibility --ui",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -32,6 +34,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
