@@ -30,6 +30,34 @@
 | Phase 14: Lighthouse CI | APPROVED | 0709ee3 |
 | Phase 15: ESLint v9 Setup | APPROVED | 8673ae9 |
 | Phase 16: CI + GitHub Push | APPROVED | 450e5dc |
+| Phase 17: E2E Auth Stabilization | APPROVED | 2f6b676 |
+
+---
+
+## Phase 17: E2E Auth Stabilization - storageState (完了)
+
+### コミット
+```
+2f6b676 feat(e2e): add Playwright storageState for auth stabilization (Phase 17)
+```
+
+### 実装内容
+- `e2e/global.setup.ts`: グローバルセットアップ（テストユーザー作成、3ブラウザ分のstorageState保存）
+- `e2e/global.teardown.ts`: グローバルティアダウン（テストユーザー削除）
+- `e2e/utils/auth-helpers.ts`: 認証ヘルパーユーティリティ
+- `playwright.config.ts`: globalSetup/globalTeardown, storageState設定
+- `e2e/settlement/dashboard.spec.ts`: storageState使用に移行
+- `e2e/accessibility/*.spec.ts`: storageState使用に移行
+- `src/lib/auth.ts`: encrypted_passwordカラム参照修正
+
+### メリット
+- ブラウザ毎に1回のログイン（従来は各テスト毎）
+- E2E実行時間 ~30%削減
+- 認証状態の安定性向上
+
+### テスト結果
+- settlement/dashboard.spec.ts: 5/5 PASS (14.3s)
+- accessibility/*.spec.ts: 3/5 PASS (a11y violations は別問題)
 
 ---
 
@@ -589,13 +617,13 @@ npm run lighthouse:assert   # バジェット検証
 
 ## 次のアクション
 
-### Phase 16 完了
-GitHub Actions CI + Private Repository Push完了。
+### Phase 17 完了
+E2E Auth Stabilization (storageState) 完了。
 
-### Phase 17候補 (ポストMVP)
+### Phase 18候補 (ポストMVP)
 1. **i18n**: 多言語対応準備
-2. **E2E test stabilization**: 保護ページテストの認証問題修正
-3. **Error monitoring**: Sentry/LogRocket統合
+2. **Error monitoring**: Sentry/LogRocket統合
+3. **Demo tests migration**: 残りのdemoテストをstorageState使用に移行
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
