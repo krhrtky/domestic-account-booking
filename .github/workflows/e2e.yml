@@ -53,12 +53,10 @@ jobs:
 
       - name: Create .env.local for E2E tests
         run: |
-          cat > .env.local << EOF
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL=http://localhost:3000
-          NEXT_PUBLIC_APP_URL=http://localhost:3000
-          EOF
+          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env.local
+          echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.local
+          echo "NEXTAUTH_URL=http://localhost:3000" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env.local
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=${{ matrix.browser }}
