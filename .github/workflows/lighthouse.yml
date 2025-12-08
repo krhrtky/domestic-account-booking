@@ -29,6 +29,19 @@ jobs:
           echo "NEXTAUTH_URL=http://localhost:3000" >> .env.local
           echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env.local
 
+      - name: Verify .env.local created
+        run: |
+          echo "Checking .env.local exists and has content..."
+          if [ -f .env.local ]; then
+            echo "✓ .env.local exists"
+            echo "Line count: $(wc -l < .env.local)"
+            echo "DATABASE_URL set: $(grep -c '^DATABASE_URL=' .env.local || echo 0)"
+            echo "NEXTAUTH_SECRET set: $(grep -c '^NEXTAUTH_SECRET=' .env.local || echo 0)"
+          else
+            echo "✗ .env.local does not exist!"
+            exit 1
+          fi
+
       - name: Build production bundle
         run: npm run build
         env:
