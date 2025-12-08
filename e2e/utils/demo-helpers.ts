@@ -23,7 +23,15 @@ export interface DemoTransaction {
   expense_type: 'Household' | 'Personal'
 }
 
-export const loginUser = async (page: Page, user: TestUser) => {
+export const loginUser = async (page: Page, user: TestUser, skipIfAuthenticated = false) => {
+  if (skipIfAuthenticated) {
+    await page.goto('/dashboard')
+    const currentUrl = page.url()
+    if (!currentUrl.includes('/login')) {
+      return
+    }
+  }
+
   await page.goto('/login')
   await page.fill('input[name="email"]', user.email)
   await page.fill('input[name="password"]', user.password)

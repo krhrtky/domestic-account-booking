@@ -7,6 +7,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'html',
+  globalSetup: './e2e/global.setup.ts',
+  globalTeardown: './e2e/global.teardown.ts',
 
   use: {
     baseURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
@@ -22,6 +24,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
+        storageState: './e2e/.auth/user-chromium.json',
       },
     },
     {
@@ -29,6 +32,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Firefox'],
         viewport: { width: 1280, height: 720 },
+        storageState: './e2e/.auth/user-firefox.json',
       },
     },
     {
@@ -36,6 +40,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Safari'],
         viewport: { width: 1280, height: 720 },
+        storageState: './e2e/.auth/user-webkit.json',
       },
     },
   ],
