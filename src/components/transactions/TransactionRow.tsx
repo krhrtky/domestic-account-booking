@@ -54,6 +54,7 @@ export default function TransactionRow({ transaction, onUpdate }: TransactionRow
           disabled={isDeleting}
           className="text-red-600 hover:text-red-800 disabled:opacity-50"
           data-testid="transaction-delete-btn"
+          aria-label={`Delete transaction: ${transaction.description} on ${transaction.date}`}
         >
           Delete
         </button>

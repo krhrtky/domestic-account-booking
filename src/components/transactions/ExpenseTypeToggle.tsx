@@ -46,6 +46,8 @@ export default function ExpenseTypeToggle({
         disabled={isUpdating}
         className={'px-3 py-1 rounded text-sm font-medium ' + bgClass + ' hover:opacity-80 disabled:opacity-50'}
         data-testid="expense-type-toggle"
+        aria-label={`Toggle expense type, currently ${currentType}`}
+        aria-pressed={currentType === 'Household' ? 'true' : 'false'}
       >
         {isUpdating ? '...' : currentType}
       </button>

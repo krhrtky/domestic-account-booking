@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getTransactions } from '@/app/actions/transactions'
 import { Transaction, ExpenseType, PayerType } from '@/lib/types'
@@ -17,7 +17,7 @@ interface Pagination {
   pageSize: number
 }
 
-export default function TransactionsPage() {
+function TransactionsContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -162,5 +162,28 @@ export default function TransactionsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">Transactions</h1>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <table className="w-full">
+              <tbody>
+                <LoadingSkeleton variant="table-row" count={10} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    }>
+      <TransactionsContent />
+    </Suspense>
   )
 }
