@@ -278,16 +278,46 @@ b930348 fix(p1-ux): improve accessibility attributes
 
 ---
 
+## Phase 7: アクセシビリティ自動テスト (完了)
+
+### コミット
+```
+7ac06c6 feat(a11y): add automated accessibility testing with axe-core
+```
+
+### 新規ファイル
+| ファイル | 内容 |
+|---------|------|
+| e2e/accessibility/utils/a11y-helpers.ts | axe-core設定、formatViolations |
+| e2e/accessibility/auth.a11y.spec.ts | ログイン/サインアップページ (2テスト) |
+| e2e/accessibility/dashboard.a11y.spec.ts | ダッシュボードページ (1テスト) |
+| e2e/accessibility/transactions.a11y.spec.ts | トランザクションページ (1テスト) |
+| e2e/accessibility/settings.a11y.spec.ts | 設定ページ (1テスト) |
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| package.json | @axe-core/playwright追加、test:e2e:a11y scripts |
+| .github/workflows/e2e.yml | CI env vars修正 (NextAuth対応)、a11yテストstep追加 |
+
+### 機能概要
+- WCAG 2.1 Level AA自動テスト (wcag2a, wcag2aa, wcag21a, wcag21aa)
+- 5ページ対象: login, signup, dashboard, transactions, settings
+- CI統合: 違反があればビルド失敗
+- npm scripts: `test:e2e:a11y`, `test:e2e:a11y:ui`
+
+---
+
 ## 次のアクション
 
-### Phase 6 CSRF完了
-セキュリティヘッダーとドキュメントを追加。Next.js組み込みCSRF保護を文書化。
+### Phase 7 a11y完了
+axe-core自動テスト導入。5ページのWCAG 2.1 Level AA検証を自動化。
 
-### Phase 7候補 (ポストMVP)
+### Phase 8候補 (ポストMVP)
 1. **パフォーマンス最適化**: キャッシング戦略
 2. **Multi-browser E2E**: Firefox/Safari対応
-3. **アクセシビリティ**: axe-core自動テスト導入
-4. **セキュリティテスト**: 自動化ヘッダー検証テスト
+3. **セキュリティテスト**: 自動化ヘッダー検証テスト
+4. **a11y違反修正**: axe-coreで検出された問題の修正
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
@@ -307,6 +337,7 @@ b930348 fix(p1-ux): improve accessibility attributes
 - Zod validation
 - Vitest (106 tests passing)
 - Playwright E2E (14+ tests)
+- @axe-core/playwright (a11y自動テスト)
 - react-hot-toast (UX)
 - bcrypt (パスワードハッシュ)
 - Rate limiting (認証保護)
@@ -332,6 +363,8 @@ npm run dev          # 開発サーバー
 npm test -- --run    # 単体テスト (106/106 pass, watch無効)
 npm run test:e2e     # E2Eテスト (Playwright)
 npm run test:e2e:ui  # E2E UIモード (デバッグ用)
+npm run test:e2e:a11y    # アクセシビリティテスト
+npm run test:e2e:a11y:ui # a11yテスト UIモード
 npm run type-check   # 型チェック
 npm run build        # ビルド
 ```
@@ -405,6 +438,13 @@ supabase/
     └── 004_nextauth_schema.sql  # NextAuth用スキーマ (NEW)
 
 e2e/
+├── accessibility/        # Phase 7: axe-core a11yテスト (NEW)
+│   ├── auth.a11y.spec.ts
+│   ├── dashboard.a11y.spec.ts
+│   ├── transactions.a11y.spec.ts
+│   ├── settings.a11y.spec.ts
+│   └── utils/
+│       └── a11y-helpers.ts
 ├── auth/
 │   ├── login.spec.ts
 │   └── signup.spec.ts
