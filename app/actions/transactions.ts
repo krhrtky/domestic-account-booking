@@ -5,6 +5,9 @@ import { z } from 'zod'
 import { ExpenseType, PayerType } from '@/lib/types'
 import { query } from '@/lib/db'
 import { requireAuth } from '@/lib/session'
+import { getUserGroupId } from '@/lib/db-cache'
+import { revalidateTag } from 'next/cache'
+import { CACHE_TAGS } from '@/lib/cache'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -37,16 +40,11 @@ export async function uploadCSV(
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
-
-  const groupId = currentUserResult.rows[0].group_id
 
   const parseResult = await parseCSV(csvContent, fileName)
   if (!parseResult.success) {
@@ -78,6 +76,9 @@ export async function uploadCSV(
       params
     )
 
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
+
     return { success: true, count: result.rows.length }
   } catch (error) {
     return { error: 'Failed to save transactions' }
@@ -100,16 +101,11 @@ export async function getTransactions(filters?: {
     }
   }
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
-
-  const groupId = currentUserResult.rows[0].group_id
   const page = filters?.page ?? 1
   const pageSize = filters?.pageSize ?? 25
 
@@ -199,20 +195,20 @@ export async function updateTransactionExpenseType(
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
 
   try {
     await query(
       'UPDATE transactions SET expense_type = $1 WHERE id = $2 AND group_id = $3',
-      [expenseType, transactionId, currentUserResult.rows[0].group_id]
+      [expenseType, transactionId, groupId]
     )
+
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
 
     return { success: true }
   } catch (error) {
@@ -223,20 +219,20 @@ export async function updateTransactionExpenseType(
 export async function deleteTransaction(transactionId: string) {
   const user = await requireAuth()
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
 
   try {
     await query(
       'DELETE FROM transactions WHERE id = $1 AND group_id = $2',
-      [transactionId, currentUserResult.rows[0].group_id]
+      [transactionId, groupId]
     )
+
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
 
     return { success: true }
   } catch (error) {
@@ -256,16 +252,11 @@ export async function getSettlementData(targetMonth: string) {
     return { error: parsed.error.flatten().fieldErrors.targetMonth?.[0] || 'Invalid month format' }
   }
 
-  const currentUserResult = await query<{ group_id: string | null; name: string }>(
-    'SELECT group_id, name FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
-
-  const groupId = currentUserResult.rows[0].group_id
 
   const groupResult = await query(
     'SELECT * FROM groups WHERE id = $1',

@@ -3,6 +3,9 @@
 import { z } from 'zod'
 import { query, getClient } from '@/lib/db'
 import { requireAuth } from '@/lib/session'
+import { getUserGroupId } from '@/lib/db-cache'
+import { revalidateTag } from 'next/cache'
+import { CACHE_TAGS } from '@/lib/cache'
 
 const CreateGroupSchema = z.object({
   name: z.string().min(1).max(100).default('Household'),
@@ -58,6 +61,9 @@ export async function createGroup(data: {
 
     await client.query('COMMIT')
 
+    revalidateTag(CACHE_TAGS.group(groupId))
+    revalidateTag(CACHE_TAGS.user(user.id))
+
     return { success: true, group_id: groupId }
   } catch (error) {
     await client.query('ROLLBACK')
@@ -81,16 +87,11 @@ export async function invitePartner(email: string) {
 
   const user = await requireAuth()
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
-
-  const groupId = currentUserResult.rows[0].group_id
 
   const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
     'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
@@ -176,6 +177,9 @@ export async function acceptInvitation(token: string) {
 
     await client.query('COMMIT')
 
+    revalidateTag(CACHE_TAGS.group(invite.group_id))
+    revalidateTag(CACHE_TAGS.user(user.id))
+
     return { success: true }
   } catch (error) {
     await client.query('ROLLBACK')
@@ -201,20 +205,19 @@ export async function updateRatio(ratioA: number, ratioB: number) {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const currentUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const groupId = await getUserGroupId(user.id)
 
-  if (!currentUserResult.rows[0]?.group_id) {
+  if (!groupId) {
     return { error: 'User is not in a group' }
   }
 
   try {
     await query(
       'UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3',
-      [parsed.data.ratio_a, parsed.data.ratio_b, currentUserResult.rows[0].group_id]
+      [parsed.data.ratio_a, parsed.data.ratio_b, groupId]
     )
+
+    revalidateTag(CACHE_TAGS.group(groupId))
 
     return { success: true }
   } catch (error) {
