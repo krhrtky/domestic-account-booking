@@ -26,6 +26,7 @@
 | Phase 10: Multi-browser E2E | APPROVED | 17e0d94 |
 | Phase 11: A11y Improvements | APPROVED | 89cb39a |
 | Phase 12: API Endpoint Tests | APPROVED | 61bcb25 |
+| Phase 13: Time-based Caching | APPROVED | d82faad |
 
 ---
 
@@ -480,16 +481,42 @@ Total: 150 tests in 23 files (50 tests × 3 browsers)
 
 ---
 
+## Phase 13: Time-based Caching with unstable_cache (完了)
+
+### コミット
+```
+d82faad feat(perf): add time-based caching with unstable_cache (Phase 13)
+```
+
+### 実装内容
+- src/lib/db-cache.ts: React cache() → unstable_cache()移行
+- app/actions/transactions.ts: getTransactions/getSettlementDataのキャッシング
+- 型ガードの修正 ('error' in result パターン)
+
+### キャッシュ設定
+| 関数 | 有効期間 | タグ |
+|-----|---------|-----|
+| getUserGroupId | 300s (5分) | user(userId) |
+| getTransactions | 60s (1分) | transactions(groupId) |
+| getSettlementData | 600s (10分) | settlement(groupId, month), settlementAll(groupId) |
+
+### 検証結果
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+- npm run build: ✅ SUCCESS
+
+---
+
 ## 次のアクション
 
-### Phase 12 完了
-API Endpointセキュリティヘッダーテスト追加完了。
+### Phase 13 完了
+unstable_cacheによる時間ベースキャッシング実装完了。
 
-### Phase 13候補 (ポストMVP)
-1. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
-2. **Performance testing**: Lighthouse CI統合
-3. **i18n**: 多言語対応準備
-4. **E2E test stabilization**: 保護ページテストの認証問題修正
+### Phase 14候補 (ポストMVP)
+1. **Performance testing**: Lighthouse CI統合
+2. **i18n**: 多言語対応準備
+3. **E2E test stabilization**: 保護ページテストの認証問題修正
+4. **Error monitoring**: Sentry/LogRocket統合
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
