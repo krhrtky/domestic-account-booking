@@ -19,6 +19,9 @@
     "test:e2e:a11y:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/accessibility --ui",
     "test:e2e:security": "node --env-file=.env.local node_modules/.bin/playwright test e2e/security",
     "test:e2e:security:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/security --ui",
+    "test:e2e:firefox": "node --env-file=.env.local node_modules/.bin/playwright test --project=firefox",
+    "test:e2e:webkit": "node --env-file=.env.local node_modules/.bin/playwright test --project=webkit",
+    "test:e2e:all": "node --env-file=.env.local node_modules/.bin/playwright test",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
