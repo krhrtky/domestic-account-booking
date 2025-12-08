@@ -253,18 +253,43 @@ b930348 fix(p1-ux): improve accessibility attributes
 
 ---
 
+## Phase 6: セキュリティ強化 - CSRF対策 (完了)
+
+### コミット
+```
+9489f3c feat(security): add CSRF protection headers
+```
+
+### 新規/更新ファイル
+| ファイル | 内容 |
+|---------|------|
+| next.config.js | セキュリティヘッダー設定 |
+| docs/SECURITY-CSRF.md | CSRF対策ドキュメント |
+
+### セキュリティヘッダー
+- X-Frame-Options: DENY (クリックジャッキング防止)
+- Content-Security-Policy: frame-ancestors 'none' (iframe埋め込み禁止)
+- X-Content-Type-Options: nosniff (MIMEスニッフィング防止)
+- Referrer-Policy: strict-origin-when-cross-origin (リファラー制御)
+
+### 組み込み保護
+- Next.js 15 Server Actions: Origin header自動検証
+- NextAuth session cookies: httpOnly, sameSite=lax
+
+---
+
 ## 次のアクション
 
-### P1-UX完了
-ローディングスケルトン、エラー表示、フォームバリデーションを全面改善。
+### Phase 6 CSRF完了
+セキュリティヘッダーとドキュメントを追加。Next.js組み込みCSRF保護を文書化。
 
-### Phase 6候補 (ポストMVP)
+### Phase 7候補 (ポストMVP)
 1. **パフォーマンス最適化**: キャッシング戦略
-2. **セキュリティ強化**: CSRF対策強化
-3. **Multi-browser E2E**: Firefox/Safari対応
-4. **アクセシビリティ**: axe-core自動テスト導入
+2. **Multi-browser E2E**: Firefox/Safari対応
+3. **アクセシビリティ**: axe-core自動テスト導入
+4. **セキュリティテスト**: 自動化ヘッダー検証テスト
 
-### 残存 P1 課題 (全完了)
+### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
 2. ~~**P1-4: getCurrentGroup N+1クエリ**~~ - ✅ COMPLETED (NextAuth移行時にSQL JOINで最適化済み)
 3. ~~**P1-UX**: ローディング状態・エラー表示改善~~ - ✅ COMPLETED (b930348)
