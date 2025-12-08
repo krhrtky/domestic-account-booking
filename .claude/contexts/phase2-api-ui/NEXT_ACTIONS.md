@@ -27,7 +27,7 @@
 | Phase 11: A11y Improvements | APPROVED | 89cb39a |
 | Phase 12: API Endpoint Tests | APPROVED | 61bcb25 |
 | Phase 13: Time-based Caching | APPROVED | d82faad |
-| Phase 14: Lighthouse CI | APPROVED | (pending) |
+| Phase 14: Lighthouse CI | APPROVED | 0709ee3 |
 
 ---
 
@@ -512,7 +512,7 @@ d82faad feat(perf): add time-based caching with unstable_cache (Phase 13)
 
 ### コミット
 ```
-(pending) feat(perf): add Lighthouse CI for automated performance testing
+0709ee3 feat(perf): add Lighthouse CI for automated performance testing (Phase 14)
 ```
 
 ### 実装内容
