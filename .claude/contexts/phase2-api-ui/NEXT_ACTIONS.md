@@ -338,16 +338,42 @@ f2f9d58 feat(security): add security headers verification E2E tests
 
 ---
 
+## Phase 9: パフォーマンス最適化 - キャッシング (完了)
+
+### コミット
+```
+8621d8e feat(perf): add server-side caching with React cache and revalidation
+```
+
+### 新規ファイル
+| ファイル | 内容 |
+|---------|------|
+| src/lib/cache.ts | CACHE_TAGS, CACHE_DURATIONS定義 |
+| src/lib/db-cache.ts | getUserGroupId (React cache) |
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| app/actions/transactions.ts | getUserGroupId使用、revalidateTag追加 |
+| app/actions/group.ts | getUserGroupId使用、revalidateTag追加 |
+
+### キャッシング戦略
+- **Request-level deduplication**: React cache()でgetUserGroupIdをメモ化
+- **Cache invalidation**: revalidateTagでトランザクション/グループ/settlement無効化
+- **Tags**: transactions, group, settlement, settlementAll (グループ全体無効化用)
+
+---
+
 ## 次のアクション
 
-### Phase 8 完了
-セキュリティヘッダー検証テスト実装。公開ページ/保護ページの4ヘッダーを自動検証。
+### Phase 9 完了
+サーバーサイドキャッシング実装。React cache()とrevalidateTagで効率的なデータ管理。
 
-### Phase 9候補 (ポストMVP)
-1. **パフォーマンス最適化**: キャッシング戦略
-2. **Multi-browser E2E**: Firefox/Safari対応
-3. **a11y違反修正**: axe-coreで検出された問題の修正
-4. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
+### Phase 10候補 (ポストMVP)
+1. **Multi-browser E2E**: Firefox/Safari対応
+2. **a11y違反修正**: axe-coreで検出された問題の修正
+3. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
+4. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
@@ -411,9 +437,11 @@ src/
 │   ├── types.ts          # 型定義
 │   ├── settlement.ts     # 精算ロジック
 │   ├── csv-parser.ts     # CSVパーサー
-│   ├── db.ts             # PostgreSQL connection pool (NEW)
-│   ├── auth.ts           # NextAuth設定 (NEW)
-│   ├── session.ts        # getServerSession wrapper (NEW)
+│   ├── db.ts             # PostgreSQL connection pool
+│   ├── db-cache.ts       # React cache() wrappers (NEW)
+│   ├── cache.ts          # Cache tags/durations (NEW)
+│   ├── auth.ts           # NextAuth設定
+│   ├── session.ts        # getServerSession wrapper
 │   ├── rate-limiter.ts   # Rate limiting
 │   └── get-client-ip.ts  # IP取得ユーティリティ
 ├── components/
