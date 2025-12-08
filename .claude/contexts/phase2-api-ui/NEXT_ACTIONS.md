@@ -17,6 +17,13 @@
 | Phase 3: E2E Tests | APPROVED | 1321c14 |
 | P1: Toast Notifications | APPROVED | b9991c2 |
 | Phase 5: NextAuth Migration | APPROVED | 77fadda〜8a9ad8e (10 commits) |
+| P1-Pagination | APPROVED | 7c1d34c |
+| P1-UX | APPROVED | b13ea85〜b930348 (5 commits) |
+| Phase 6: CSRF Protection | APPROVED | 9489f3c |
+| Phase 7: A11y Auto Testing | APPROVED | 7ac06c6 |
+| Phase 8: Security Headers Tests | APPROVED | f2f9d58 |
+| Phase 9: Caching | APPROVED | 8621d8e |
+| Phase 10: Multi-browser E2E | APPROVED | (pending commit) |
 
 ---
 
@@ -364,16 +371,68 @@ f2f9d58 feat(security): add security headers verification E2E tests
 
 ---
 
+## Phase 10: Multi-browser E2E Testing (完了)
+
+### 実装内容
+- Firefox/WebKit (Safari) E2Eテスト対応
+- CI matrix戦略でchromium/firefox/webkit並列実行
+- 統一viewport (1280x720)、日本語ロケール (ja-JP)、Asia/Tokyoタイムゾーン
+- ブラウザ別アーティファクトアップロード (失敗時のみ)
+
+### 更新ファイル
+| ファイル | 変更内容 |
+|---------|---------|
+| playwright.config.ts | 3ブラウザプロジェクト設定、locale/timezoneId追加、workers: 1固定 |
+| .github/workflows/e2e.yml | matrix戦略、fail-fast: false、ブラウザ別artifact |
+| package.json | test:e2e:firefox, test:e2e:webkit, test:e2e:all scripts追加 |
+
+### Playwright設定
+```typescript
+projects: [
+  { name: 'chromium', use: { viewport: { width: 1280, height: 720 } } },
+  { name: 'firefox', use: { viewport: { width: 1280, height: 720 } } },
+  { name: 'webkit', use: { viewport: { width: 1280, height: 720 } } },
+]
+use: {
+  locale: 'ja-JP',
+  timezoneId: 'Asia/Tokyo',
+}
+```
+
+### CI matrix戦略
+```yaml
+strategy:
+  fail-fast: false
+  matrix:
+    browser: [chromium, firefox, webkit]
+```
+
+### E2Eテスト規模
+```
+Total: 150 tests in 23 files (50 tests × 3 browsers)
+- auth (8 tests × 3)
+- accessibility (5 tests × 3)
+- security (9 tests × 3)
+- demo scenarios (28 tests × 3)
+```
+
+### 検証結果
+- npm run type-check: ✅ PASS
+- npm test --run: ✅ 106/106 PASS
+- npx playwright test --list: ✅ 150 tests detected (3 browsers)
+
+---
+
 ## 次のアクション
 
-### Phase 9 完了
-サーバーサイドキャッシング実装。React cache()とrevalidateTagで効率的なデータ管理。
+### Phase 10 完了
+3ブラウザ対応E2Eテスト、CI matrix統合完了。
 
-### Phase 10候補 (ポストMVP)
-1. **Multi-browser E2E**: Firefox/Safari対応
-2. **a11y違反修正**: axe-coreで検出された問題の修正
-3. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
-4. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
+### Phase 11候補 (ポストMVP)
+1. **a11y違反修正**: axe-coreで検出された問題の修正
+2. **API Endpointテスト**: セキュリティヘッダーのAPI検証追加
+3. **unstable_cache**: 時間ベースキャッシング (settlement計算用)
+4. **Performance testing**: Lighthouse CI統合
 
 ### 全P1課題 (完了)
 1. ~~**P1-2: alert(JSON.stringify)**~~ - ✅ COMPLETED (toast通知に置換)
@@ -417,7 +476,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```bash
 npm run dev          # 開発サーバー
 npm test -- --run    # 単体テスト (106/106 pass, watch無効)
-npm run test:e2e     # E2Eテスト (Playwright)
+npm run test:e2e     # E2Eテスト (Playwright, chromiumデフォルト)
+npm run test:e2e:firefox    # E2Eテスト Firefox
+npm run test:e2e:webkit     # E2Eテスト WebKit (Safari)
+npm run test:e2e:all        # E2Eテスト 全ブラウザ (chromium/firefox/webkit)
 npm run test:e2e:ui  # E2E UIモード (デバッグ用)
 npm run test:e2e:a11y    # アクセシビリティテスト
 npm run test:e2e:a11y:ui # a11yテスト UIモード
