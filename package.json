@@ -17,6 +17,8 @@
     "test:e2e:demo:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/demo --ui",
     "test:e2e:a11y": "node --env-file=.env.local node_modules/.bin/playwright test e2e/accessibility",
     "test:e2e:a11y:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/accessibility --ui",
+    "test:e2e:security": "node --env-file=.env.local node_modules/.bin/playwright test e2e/security",
+    "test:e2e:security:ui": "node --env-file=.env.local node_modules/.bin/playwright test e2e/security --ui",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
