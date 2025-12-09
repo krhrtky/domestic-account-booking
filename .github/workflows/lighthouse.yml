@@ -8,8 +8,23 @@ on:
 
 jobs:
   lighthouse:
-    timeout-minutes: 30
+    timeout-minutes: 15
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -22,10 +37,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Apply database migrations
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+
       - name: Build production bundle
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -36,7 +58,7 @@ jobs:
           AUTH_COOKIE=$(node scripts/lighthouse-auth.js)
           echo "cookie=$AUTH_COOKIE" >> $GITHUB_OUTPUT
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
 
       - name: Update Lighthouse config with auth cookie
@@ -50,7 +72,7 @@ jobs:
           echo $! > .server.pid
           npx wait-on http://localhost:3000 -t 30000
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
