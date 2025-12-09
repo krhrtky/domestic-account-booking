@@ -6,10 +6,31 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  NEXTAUTH_SECRET: test-secret-for-ci-lighthouse
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
 jobs:
   lighthouse:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
@@ -24,31 +45,32 @@ jobs:
 
       - name: Create .env.local for Lighthouse tests
         run: |
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env.local
-          echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env.local
-          echo "NEXTAUTH_URL=http://localhost:3000" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env.local
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
 
-      - name: Verify .env.local created
+      - name: Setup database schema
         run: |
-          echo "Checking .env.local exists and has content..."
-          if [ -f .env.local ]; then
-            echo "✓ .env.local exists"
-            echo "Line count: $(wc -l < .env.local)"
-            echo "DATABASE_URL set: $(grep -c '^DATABASE_URL=' .env.local || echo 0)"
-            echo "NEXTAUTH_SECRET set: $(grep -c '^NEXTAUTH_SECRET=' .env.local || echo 0)"
-          else
-            echo "✗ .env.local does not exist!"
-            exit 1
-          fi
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+            CREATE TABLE IF NOT EXISTS auth.users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS users (
+              id UUID PRIMARY KEY,
+              name VARCHAR(255),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+          "
 
       - name: Build production bundle
         run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: http://localhost:3000
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
 
       - name: Create test session
         id: auth
@@ -66,11 +88,6 @@ jobs:
           npm start &
           echo $! > .server.pid
           npx wait-on http://localhost:3000 -t 30000
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: http://localhost:3000
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
 
       - name: Run Lighthouse CI
         run: npm run lighthouse
