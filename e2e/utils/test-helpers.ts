@@ -29,7 +29,7 @@ export const createTestUser = async (user: TestUser) => {
     const passwordHash = await bcrypt.hash(user.password, 12)
 
     const authResult = await client.query<{ id: string }>(
-      'INSERT INTO auth.users (id, email, encrypted_password) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+      'INSERT INTO auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
       [user.email.toLowerCase(), passwordHash]
     )
 

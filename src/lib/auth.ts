@@ -22,8 +22,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const result = await query<{ id: string; email: string; encrypted_password: string }>(
-          'SELECT au.id, au.email, au.encrypted_password FROM auth.users au WHERE au.email = $1',
+        const result = await query<{ id: string; email: string; password_hash: string }>(
+          'SELECT au.id, au.email, au.password_hash FROM auth.users au WHERE au.email = $1',
           [credentials.email.toLowerCase()]
         )
 
@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = result.rows[0]
-        const isValid = await bcrypt.compare(credentials.password, user.encrypted_password)
+        const isValid = await bcrypt.compare(credentials.password, user.password_hash)
 
         if (!isValid) {
           return null

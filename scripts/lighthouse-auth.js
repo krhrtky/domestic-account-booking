@@ -2,6 +2,13 @@ const { Pool } = require('pg')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 
+const TIMEOUT_MS = 30000
+
+setTimeout(() => {
+  console.error('Error: Script timeout after 30s')
+  process.exit(1)
+}, TIMEOUT_MS)
+
 const databaseUrl = process.env.DATABASE_URL
 const nextAuthSecret = process.env.NEXTAUTH_SECRET
 
@@ -17,6 +24,9 @@ if (!nextAuthSecret) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
+  max: 1,
+  connectionTimeoutMillis: 5000,
+  idleTimeoutMillis: 1000,
 })
 
 async function createTestSession() {
@@ -60,16 +70,13 @@ async function createTestSession() {
     )
 
     console.log(`next-auth.session-token=${token}`)
-
-    await pool.end()
-    process.exit(0)
   } catch (error) {
     await client.query('ROLLBACK')
     console.error('Error creating test session:', error)
-    await pool.end()
     process.exit(1)
   } finally {
     client.release()
+    await pool.end()
   }
 }
 
