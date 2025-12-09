@@ -14,7 +14,7 @@ env:
 
 jobs:
   lighthouse:
-    timeout-minutes: 30
+    timeout-minutes: 15
     runs-on: ubuntu-latest
 
     services:
@@ -26,12 +26,12 @@ jobs:
           POSTGRES_DB: test_db
         ports:
           - 5432:5432
+
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
@@ -42,36 +42,26 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
       - name: Create .env.local for Lighthouse tests
         run: |
           echo "DATABASE_URL=$DATABASE_URL" > .env.local
           echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
           echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
           echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
-
-      - name: Setup database schema
+      - name: Apply database migrations
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
-            CREATE TABLE IF NOT EXISTS auth.users (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE TABLE IF NOT EXISTS users (
-              id UUID PRIMARY KEY,
-              name VARCHAR(255),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-          "
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
 
       - name: Build production bundle
         run: npm run build
-
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
       - name: Create test session
         id: auth
         run: |
@@ -88,7 +78,11 @@ jobs:
           npm start &
           echo $! > .server.pid
           npx wait-on http://localhost:3000 -t 30000
-
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
       - name: Run Lighthouse CI
         run: npm run lighthouse
         env:
