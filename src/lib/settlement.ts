@@ -28,9 +28,13 @@ export const calculateSettlement = (
   validateRatio(group.ratio_a, group.ratio_b)
   validateMonthFormat(targetMonth)
 
-  const householdTransactions = transactions.filter(
-    (t) => t.expense_type === 'Household' && t.date.startsWith(targetMonth)
-  )
+  const householdTransactions = transactions.filter((t) => {
+    const dateStr =
+      typeof t.date === 'string'
+        ? t.date
+        : (t.date as unknown as Date).toISOString().slice(0, 10)
+    return t.expense_type === 'Household' && dateStr.startsWith(targetMonth)
+  })
 
   const paidByA = householdTransactions
     .filter((t) => t.payer_type === 'UserA')
