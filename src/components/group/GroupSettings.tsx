@@ -35,12 +35,13 @@ export function GroupSettings({ group }: { group: any }) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Income Ratio</label>
+        <p className="block text-sm font-medium mb-2">Income Ratio</p>
         <div className="flex items-center gap-4">
           <div className="flex-1">
-            <label className="text-sm">{group.user_a.name}</label>
+            <label htmlFor="ratioA" className="text-sm">{group.user_a.name}</label>
             <input
               type="range"
+              id="ratioA"
               name="ratioA"
               min="1"
               max="99"
@@ -51,9 +52,10 @@ export function GroupSettings({ group }: { group: any }) {
             <p className="text-center font-bold">{ratioA}%</p>
           </div>
           <div className="flex-1">
-            <label className="text-sm">{group.user_b?.name || 'Partner'}</label>
+            <label htmlFor="ratioB" className="text-sm">{group.user_b?.name || 'Partner'}</label>
             <input
               type="range"
+              id="ratioB"
               min="1"
               max="99"
               value={ratioB}
