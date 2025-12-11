@@ -41,7 +41,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium]
+        include:
+          - browser: chromium-unauth
+            test-filter: e2e/auth
+            job-name: auth
+          - browser: chromium
+            test-filter: e2e/demo e2e/settlement e2e/accessibility
+            job-name: app
 
     services:
       postgres:
@@ -104,8 +110,8 @@ jobs:
             );
           "
 
-      - name: Run E2E tests
-        run: npm run test:e2e -- --project=${{ matrix.browser }}
+      - name: Run E2E tests (${{ matrix.job-name }})
+        run: npm run test:e2e -- --project=${{ matrix.browser }} ${{ matrix.test-filter }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
           NEXTAUTH_SECRET: test-secret-for-ci-e2e
@@ -113,6 +119,7 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
 
       - name: Run Accessibility tests
+        if: matrix.browser == 'chromium'
         run: npm run test:e2e:a11y -- --project=${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -121,6 +128,7 @@ jobs:
           NEXT_PUBLIC_APP_URL: http://localhost:3000
 
       - name: Run Security tests
+        if: matrix.browser == 'chromium'
         run: npm run test:e2e:security -- --project=${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -130,6 +138,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.job-name }}
           path: playwright-report/
           retention-days: 30
