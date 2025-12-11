@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { generateTestEmail, cleanupTestData, getAuthUserByEmail } from '../utils/test-helpers'
 
 test.describe('Sign Up Flow', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let testEmail: string
   let userId: string
 
