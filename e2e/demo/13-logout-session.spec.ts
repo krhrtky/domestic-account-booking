@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser } from '../utils/test-helpers
 import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 13: Logout & Session Persistence', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
 
   test.beforeAll(async () => {

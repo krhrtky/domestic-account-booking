@@ -43,10 +43,10 @@ jobs:
       matrix:
         include:
           - browser: chromium-unauth
-            test-filter: e2e/auth
-            job-name: auth
+            test-filter: e2e/auth e2e/demo
+            job-name: auth-and-demo
           - browser: chromium
-            test-filter: e2e/demo e2e/settlement e2e/accessibility
+            test-filter: e2e/settlement
             job-name: app
 
     services:

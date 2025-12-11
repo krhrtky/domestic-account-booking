@@ -6,8 +6,11 @@ import {
   getUserByEmail,
   getGroupById,
 } from '../utils/test-helpers'
+import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let userB: TestUser
   let groupId: string
@@ -27,6 +30,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
   })
 
   test('should allow partner invitation and group joining', async ({ page, context }) => {
+    await loginUser(page, userA)
     await page.goto('/settings')
 
     await page.fill('input[name="groupName"]', 'Shared Household')

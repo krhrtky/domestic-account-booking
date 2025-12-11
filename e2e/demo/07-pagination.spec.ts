@@ -10,6 +10,8 @@ import { loginUser, insertTransactions } from '../utils/demo-helpers'
 import { paginationTransactions } from '../fixtures/demo-data'
 
 test.describe('Scenario 7: Transaction Pagination', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 

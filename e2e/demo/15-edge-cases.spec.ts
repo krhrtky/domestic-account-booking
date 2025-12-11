@@ -9,6 +9,8 @@ import {
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 

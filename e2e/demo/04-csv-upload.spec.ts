@@ -10,6 +10,8 @@ import { loginUser } from '../utils/demo-helpers'
 import path from 'path'
 
 test.describe('Scenario 4: CSV Upload & Transaction Import', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 

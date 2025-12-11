@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 12: Ratio Update Impact', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 

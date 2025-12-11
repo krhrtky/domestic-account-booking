@@ -10,6 +10,8 @@ import {
 import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 5: Transaction Classification', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
   let transactionId: string

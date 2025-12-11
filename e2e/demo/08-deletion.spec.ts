@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../ut
 import { loginUser, insertTransaction } from '../utils/demo-helpers'
 
 test.describe('Scenario 8: Transaction Deletion', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 
