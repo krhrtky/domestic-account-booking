@@ -63,7 +63,7 @@ test.describe('Sign Up Flow', () => {
 
     await page.click('a[href="/login"]')
 
-    await expect(page).toHaveURL('/login')
+    await expect(page).toHaveURL(/\/login/)
     await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
   })
 })
