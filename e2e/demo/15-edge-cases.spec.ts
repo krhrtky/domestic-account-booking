@@ -39,11 +39,17 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText(/0|no transactions/i)).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]').getByText(/0|no transactions/i)).toBeVisible()
   })
 
   test('should handle exactly equal contributions', async ({ page }) => {
     await loginUser(page, userA)
+
+    await page.goto('/settings')
+    await page.fill('input[name="groupName"]', 'Equal Test Group')
+    await page.fill('input[name="ratioA"]', '50')
+    await page.click('button[type="submit"]')
+    await page.waitForTimeout(1000)
 
     const userData = await getUserByEmail(userA.email)
     groupId = userData!.group_id!
