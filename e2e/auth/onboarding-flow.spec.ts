@@ -7,7 +7,9 @@ import {
   getGroupById,
 } from '../utils/test-helpers'
 
-test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
+test.describe('User Onboarding Flow - Signup to Group Creation', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let testEmail: string
   let userId: string
 
