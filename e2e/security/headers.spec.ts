@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser } from '../utils/test-helpers
 import { verifySecurityHeaders, SECURITY_HEADERS } from './utils/headers-helpers'
 
 test.describe('Security Headers - Public Pages', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   test('login page should have security headers', async ({ page }) => {
     const response = await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
@@ -12,8 +14,8 @@ test.describe('Security Headers - Public Pages', () => {
 
   test('signup page should have security headers', async ({ page }) => {
     const response = await page.goto('/signup')
-    await expect(page.getByRole('heading')).toBeVisible()
-    
+    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
+
     verifySecurityHeaders(response)
   })
 

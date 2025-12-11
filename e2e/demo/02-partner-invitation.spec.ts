@@ -48,7 +48,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     const partnerEmail = `invite-b-${timestamp}@example.com`
 
     await partnerEmailInput.fill(partnerEmail)
-    await page.click('button:has-text("Invite Partner")')
+    await page.click('button:has-text("Invite")')
     await page.waitForTimeout(1000)
 
     const inviteUrl = await page.locator('[data-testid="invite-url"]').textContent()
