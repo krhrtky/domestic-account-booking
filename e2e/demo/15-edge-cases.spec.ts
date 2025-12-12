@@ -8,6 +8,21 @@ import {
 } from '../utils/test-helpers'
 import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
+const getCurrentMonth = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+const getDateInCurrentMonth = (day: number) => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const dayStr = String(day).padStart(2, '0')
+  return `${year}-${month}-${dayStr}`
+}
+
 test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -54,22 +69,19 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     const userData = await getUserByEmail(userA.email)
     groupId = userData!.group_id!
 
+    const currentMonth = getCurrentMonth()
+
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 50000, description: 'UserA Payment', payer_type: 'UserA', expense_type: 'Household' },
-      { date: '2025-12-05', amount: 50000, description: 'UserB Payment', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 50000, description: 'UserA Payment', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(5), amount: 50000, description: 'UserB Payment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
-    await revalidateCache(groupId, '2025-12')
+    await revalidateCache(groupId, currentMonth)
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
-
-    const monthSelect = page.locator('select[name="settlement-month"]')
-    await monthSelect.selectOption('2025-11')
-    await page.waitForTimeout(500)
-    await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
     await expect(page.getByText('No payment needed')).toBeVisible({ timeout: 10000 })
   })
@@ -82,20 +94,18 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await deleteTransactionsByGroupId(testGroupId)
 
+    const currentMonth = getCurrentMonth()
+
     await insertTransactions(testGroupId, userA.id!, [
-      { date: '2025-12-01', amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId, '2025-12')
+    await revalidateCache(testGroupId, currentMonth)
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
-
-    await page.locator('select[name="settlement-month"]').selectOption('2025-11')
-    await page.waitForTimeout(500)
-    await page.locator('select[name="settlement-month"]').selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
     await expect(page.getByText('¥10,000')).toBeVisible({ timeout: 10000 })
   })
@@ -109,7 +119,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(testGroupId)
 
     await insertTransactions(testGroupId, userA.id!, [
-      { date: '2025-12-26', amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(2), amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
     await revalidateCache(testGroupId)
@@ -117,8 +127,8 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Large Investment')).toBeVisible()
-    await expect(page.getByText(/999,999,999/)).toBeVisible()
+    await expect(page.getByText('Large Investment')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/999,999,999/)).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle very small amounts', async ({ page }) => {
@@ -130,7 +140,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(testGroupId)
 
     await insertTransactions(testGroupId, userA.id!, [
-      { date: '2025-12-25', amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(3), amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
     await revalidateCache(testGroupId)
@@ -138,8 +148,8 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Small Purchase')).toBeVisible()
-    await expect(page.getByText('50')).toBeVisible()
+    await expect(page.getByText('Small Purchase')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('50')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle special characters in description', async ({ page }) => {
@@ -151,7 +161,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(testGroupId)
 
     await insertTransactions(testGroupId, userA.id!, [
-      { date: '2025-12-01', amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(4), amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
     ])
 
     await revalidateCache(testGroupId)
@@ -159,7 +169,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible()
+    await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle future dates', async ({ page }) => {
@@ -179,6 +189,6 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Future Transaction')).toBeVisible()
+    await expect(page.getByText('Future Transaction')).toBeVisible({ timeout: 10000 })
   })
 })

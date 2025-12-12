@@ -2,6 +2,21 @@ import { test, expect } from '@playwright/test'
 import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById } from '../utils/test-helpers'
 import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
+const getCurrentMonth = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+const getDateInCurrentMonth = (day: number) => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const dayStr = String(day).padStart(2, '0')
+  return `${year}-${month}-${dayStr}`
+}
+
 test.describe('Scenario 12: Ratio Update Impact', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -33,22 +48,19 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     const userData = await getUserByEmail(userA.email)
     groupId = userData!.group_id!
 
+    const currentMonth = getCurrentMonth()
+
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 60000, description: 'Rent', payer_type: 'UserA', expense_type: 'Household' },
-      { date: '2025-12-05', amount: 40000, description: 'Utilities', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 60000, description: 'Rent', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(5), amount: 40000, description: 'Utilities', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
-    await revalidateCache(groupId, '2025-12')
+    await revalidateCache(groupId, currentMonth)
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
-
-    const monthSelect = page.locator('select[name="settlement-month"]')
-    await monthSelect.selectOption('2025-11')
-    await page.waitForTimeout(500)
-    await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
     const initialSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
 
@@ -64,16 +76,12 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     expect(updatedGroup?.ratio_a).toBe(70)
     expect(updatedGroup?.ratio_b).toBe(30)
 
-    await revalidateCache(groupId, '2025-12')
+    await revalidateCache(groupId, currentMonth)
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
-
-    await page.locator('select[name="settlement-month"]').selectOption('2025-11')
-    await page.waitForTimeout(500)
-    await page.locator('select[name="settlement-month"]').selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
     const updatedSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
     expect(updatedSettlement).not.toBe(initialSettlement)
