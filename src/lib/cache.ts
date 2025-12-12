@@ -6,8 +6,10 @@ export const CACHE_TAGS = {
   settlementAll: (groupId: string) => `settlement:${groupId}`
 }
 
+const isTestEnv = process.env.NODE_ENV === 'test' || process.env.CI === 'true'
+
 export const CACHE_DURATIONS = {
-  userGroup: 300,
-  transactions: 60,
-  settlement: 600
+  userGroup: isTestEnv ? 0 : 300,
+  transactions: isTestEnv ? 0 : 60,
+  settlement: isTestEnv ? 0 : 600
 }

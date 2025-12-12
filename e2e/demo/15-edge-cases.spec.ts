@@ -61,6 +61,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     const monthSelect = page.locator('select[name="settlement-month"]')
@@ -84,6 +85,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId, '2025-12')
     await page.goto('/dashboard')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await page.locator('select[name="settlement-month"]').selectOption('2025-12')
@@ -106,6 +108,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await expect(page.getByText('Large Investment')).toBeVisible()
@@ -126,6 +129,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await expect(page.getByText('Small Purchase')).toBeVisible()
@@ -146,6 +150,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible()
@@ -165,6 +170,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await expect(page.getByText('Future Transaction')).toBeVisible()

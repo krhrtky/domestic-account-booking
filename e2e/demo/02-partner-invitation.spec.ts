@@ -29,7 +29,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     if (userB?.id) await cleanupTestData(userB.id)
   })
 
-  test('should allow partner invitation and group joining', async ({ page, context }) => {
+  test('should allow partner invitation and group joining', async ({ page, browser }) => {
     await loginUser(page, userA)
     await page.goto('/settings')
 
@@ -54,7 +54,8 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     const inviteUrl = await page.locator('[data-testid="invite-url"]').textContent()
     expect(inviteUrl).toBeTruthy()
 
-    const invitePage = await context.newPage()
+    const userBContext = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const invitePage = await userBContext.newPage()
 
     userB = await createTestUser({
       email: partnerEmail,
@@ -77,5 +78,6 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     await expect(page.getByText('User B')).toBeVisible()
 
     await invitePage.close()
+    await userBContext.close()
   })
 })

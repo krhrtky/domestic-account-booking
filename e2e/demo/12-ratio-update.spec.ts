@@ -40,6 +40,7 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
 
     await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     const monthSelect = page.locator('select[name="settlement-month"]')
@@ -62,6 +63,7 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
 
     await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
+    await page.reload()
     await page.waitForTimeout(1000)
 
     await page.locator('select[name="settlement-month"]').selectOption('2025-12')
