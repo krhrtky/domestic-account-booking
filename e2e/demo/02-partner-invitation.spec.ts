@@ -63,8 +63,13 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
       name: 'User B',
     })
 
-    await loginUser(invitePage, userB)
     await invitePage.goto(inviteUrl!)
+    await invitePage.waitForURL(/login/, { timeout: 10000 })
+
+    await invitePage.fill('input[name="email"]', userB.email)
+    await invitePage.fill('input[name="password"]', userB.password)
+    await invitePage.click('button[type="submit"]')
+
     await invitePage.waitForURL(/dashboard/, { timeout: 30000 })
 
     const userBData = await getUserByEmail(userB.email)

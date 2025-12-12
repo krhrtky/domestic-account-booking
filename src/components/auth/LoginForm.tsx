@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from '@/lib/hooks/useToast'
 import { logIn } from '@/app/actions/auth'
 import FormField from '@/components/ui/FormField'
@@ -15,6 +15,8 @@ interface FieldErrors {
 
 export function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -66,7 +68,7 @@ export function LoginForm() {
       setIsLoading(false)
     } else {
       toast.success('Login successful')
-      router.push('/dashboard')
+      router.push(callbackUrl)
       router.refresh()
     }
   }
