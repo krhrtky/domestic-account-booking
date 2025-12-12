@@ -55,7 +55,6 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     expect(inviteUrl).toBeTruthy()
 
     const invitePage = await context.newPage()
-    await invitePage.goto('/signup')
 
     userB = await createTestUser({
       email: partnerEmail,
@@ -63,6 +62,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
       name: 'User B',
     })
 
+    await loginUser(invitePage, userB)
     await invitePage.goto(inviteUrl!)
     await expect(invitePage).toHaveURL('/dashboard', { timeout: 10000 })
 
