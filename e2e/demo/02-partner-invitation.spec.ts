@@ -80,7 +80,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     expect(groupData?.user_b_id).toBe(userB.id)
 
     await page.reload()
-    await expect(page.getByText('User B')).toBeVisible()
+    await expect(page.getByText('Members: User A & User B')).toBeVisible()
 
     await invitePage.close()
     await userBContext.close()

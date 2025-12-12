@@ -69,7 +69,9 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.getByText('No payment needed')).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByText('No payment needed')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle single transaction', async ({ page }) => {
@@ -93,7 +95,9 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.locator('select[name="settlement-month"]').selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.getByText('¥10,000')).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByText('¥10,000')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle very large amounts', async ({ page }) => {

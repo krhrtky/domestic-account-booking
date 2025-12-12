@@ -50,7 +50,9 @@ test.describe('Scenario 9: Settlement Calculation - Equal Ratio', () => {
     await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    await expect(page.getByText(/80,000/)).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+
+    await expect(page.getByText(/80,000/)).toBeVisible({ timeout: 10000 })
 
     await expect(page.getByText(/60,000/)).toBeVisible()
 

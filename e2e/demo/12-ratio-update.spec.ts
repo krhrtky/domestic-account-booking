@@ -48,7 +48,9 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    const initialSettlement = await page.locator('.bg-white.rounded-lg.shadow').first().textContent()
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+
+    const initialSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
 
     await page.goto('/settings')
 
@@ -71,7 +73,9 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     await page.locator('select[name="settlement-month"]').selectOption('2025-12')
     await page.waitForTimeout(2000)
 
-    const updatedSettlement = await page.locator('.bg-white.rounded-lg.shadow').first().textContent()
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 10000 })
+
+    const updatedSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
     expect(updatedSettlement).not.toBe(initialSettlement)
   })
 })
