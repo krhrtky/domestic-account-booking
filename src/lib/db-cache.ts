@@ -1,9 +1,8 @@
-import { unstable_cache } from 'next/cache'
 import { query } from './db'
-import { CACHE_DURATIONS, CACHE_TAGS } from './cache'
+import { CACHE_DURATIONS, CACHE_TAGS, cachedFetch } from './cache'
 
 export const getUserGroupId = async (userId: string): Promise<string | null> => {
-  return unstable_cache(
+  return cachedFetch(
     async () => {
       const result = await query<{ group_id: string | null }>(
         'SELECT group_id FROM users WHERE id = $1',
@@ -16,5 +15,5 @@ export const getUserGroupId = async (userId: string): Promise<string | null> => 
       revalidate: CACHE_DURATIONS.userGroup,
       tags: [CACHE_TAGS.user(userId)]
     }
-  )()
+  )
 }

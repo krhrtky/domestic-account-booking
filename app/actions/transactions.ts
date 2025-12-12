@@ -6,8 +6,8 @@ import { ExpenseType, PayerType } from '@/lib/types'
 import { query } from '@/lib/db'
 import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
-import { revalidateTag, unstable_cache } from 'next/cache'
-import { CACHE_TAGS, CACHE_DURATIONS } from '@/lib/cache'
+import { revalidateTag } from 'next/cache'
+import { CACHE_TAGS, CACHE_DURATIONS, cachedFetch } from '@/lib/cache'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -117,7 +117,7 @@ export async function getTransactions(filters?: {
   const page = filters?.page ?? 1
   const pageSize = filters?.pageSize ?? 25
 
-  return unstable_cache(
+  return cachedFetch(
     async () => {
       const conditions: string[] = ['group_id = $1']
       const params: (string | number)[] = [groupId]
@@ -206,7 +206,7 @@ export async function getTransactions(filters?: {
       revalidate: CACHE_DURATIONS.transactions,
       tags: [CACHE_TAGS.transactions(groupId)]
     }
-  )()
+  )
 }
 
 export async function updateTransactionExpenseType(
@@ -286,7 +286,7 @@ export async function getSettlementData(targetMonth: string): Promise<
     return { error: 'User is not in a group' }
   }
 
-  return unstable_cache(
+  return cachedFetch(
     async () => {
       const groupResult = await query(
         'SELECT * FROM groups WHERE id = $1',
@@ -342,5 +342,5 @@ export async function getSettlementData(targetMonth: string): Promise<
       revalidate: CACHE_DURATIONS.settlement,
       tags: [CACHE_TAGS.settlement(groupId, targetMonth), CACHE_TAGS.settlementAll(groupId)]
     }
-  )()
+  )
 }
