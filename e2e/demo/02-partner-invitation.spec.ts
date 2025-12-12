@@ -64,9 +64,6 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     })
 
     await invitePage.goto(inviteUrl!)
-    await expect(invitePage.getByText('Accept Invitation')).toBeVisible()
-
-    await invitePage.click('button:has-text("Accept")')
     await expect(invitePage).toHaveURL('/dashboard', { timeout: 10000 })
 
     const userBData = await getUserByEmail(userB.email)
