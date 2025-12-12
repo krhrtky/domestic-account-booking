@@ -66,7 +66,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText(/0|balanced|no payment/i)).toBeVisible()
+    await expect(page.getByText('No payment needed')).toBeVisible()
   })
 
   test('should handle single transaction', async ({ page }) => {

@@ -48,8 +48,8 @@ test.describe('Scenario 8: Transaction Deletion', () => {
     await expect(page.getByText('Test Delete Transaction')).toBeVisible()
 
     const deleteButton = page.locator('[data-testid="transaction-delete-btn"]').first()
-    
-    page.on('dialog', async dialog => {
+
+    page.once('dialog', async dialog => {
       expect(dialog.type()).toBe('confirm')
       await dialog.dismiss()
     })
@@ -58,7 +58,7 @@ test.describe('Scenario 8: Transaction Deletion', () => {
 
     await expect(page.getByText('Test Delete Transaction')).toBeVisible()
 
-    page.on('dialog', async dialog => {
+    page.once('dialog', async dialog => {
       expect(dialog.type()).toBe('confirm')
       await dialog.accept()
     })

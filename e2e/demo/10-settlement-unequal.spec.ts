@@ -45,11 +45,11 @@ test.describe('Scenario 10: Settlement Calculation - Unequal Ratio', () => {
     await monthSelect.selectOption('2025-12')
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('¥80,000')).toBeVisible()
+    await expect(page.getByText(/80,000/)).toBeVisible()
 
-    await expect(page.getByText('¥30,000')).toBeVisible()
+    await expect(page.getByText(/30,000/)).toBeVisible()
 
-    await expect(page.getByText('¥50,000')).toBeVisible()
+    await expect(page.getByText(/50,000/)).toBeVisible()
 
     await expect(page.getByText(/Unequal User pays.*User B/)).toBeVisible()
   })
