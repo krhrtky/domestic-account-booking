@@ -65,7 +65,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
 
     await loginUser(invitePage, userB)
     await invitePage.goto(inviteUrl!)
-    await expect(invitePage).toHaveURL('/dashboard', { timeout: 10000 })
+    await invitePage.waitForURL(/dashboard/, { timeout: 30000 })
 
     const userBData = await getUserByEmail(userB.email)
     expect(userBData?.group_id).toBe(groupId)

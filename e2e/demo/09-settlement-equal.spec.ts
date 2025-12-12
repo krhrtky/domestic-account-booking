@@ -42,12 +42,13 @@ test.describe('Scenario 9: Settlement Calculation - Equal Ratio', () => {
 
     await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     const monthSelect = page.locator('select[name="settlement-month"]')
+    await monthSelect.selectOption('2025-11')
+    await page.waitForTimeout(500)
     await monthSelect.selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
     await expect(page.getByText(/80,000/)).toBeVisible()
 

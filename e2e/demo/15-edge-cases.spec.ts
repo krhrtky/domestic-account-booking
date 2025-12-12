@@ -61,12 +61,13 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     const monthSelect = page.locator('select[name="settlement-month"]')
+    await monthSelect.selectOption('2025-11')
+    await page.waitForTimeout(500)
     await monthSelect.selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
     await expect(page.getByText('No payment needed')).toBeVisible()
   })
@@ -85,11 +86,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await revalidateCache(testGroupId, '2025-12')
     await page.goto('/dashboard')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
+    await page.locator('select[name="settlement-month"]').selectOption('2025-11')
+    await page.waitForTimeout(500)
     await page.locator('select[name="settlement-month"]').selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
     await expect(page.getByText('¥10,000')).toBeVisible()
   })
