@@ -104,7 +104,12 @@ async function createTestSession() {
 }
 
 console.error('[DEBUG] Starting createTestSession...')
-createTestSession().catch((error) => {
-  console.error('[FATAL] Unhandled error in createTestSession:', error)
-  process.exit(1)
-})
+createTestSession()
+  .then(() => {
+    console.error('[DEBUG] Script exiting successfully')
+    process.exit(0)
+  })
+  .catch((error) => {
+    console.error('[FATAL] Unhandled error in createTestSession:', error)
+    process.exit(1)
+  })

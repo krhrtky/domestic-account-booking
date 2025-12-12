@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { generateTestEmail, cleanupTestData, getAuthUserByEmail } from '../utils/test-helpers'
 
 test.describe('Sign Up Flow', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let testEmail: string
   let userId: string
 
@@ -61,7 +63,7 @@ test.describe('Sign Up Flow', () => {
 
     await page.click('a[href="/login"]')
 
-    await expect(page).toHaveURL('/login')
+    await expect(page).toHaveURL(/\/login/)
     await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
   })
 })

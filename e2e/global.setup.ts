@@ -95,9 +95,10 @@ async function globalSetup(config: FullConfig) {
 
     console.log(`✓ Test user created: ${testUser.email} (ID: ${testUser.id})`)
 
-    await setupAuth('chromium', config)
-    await setupAuth('firefox', config)
-    await setupAuth('webkit', config)
+    const browsers = (process.env.CI ? ['chromium'] : ['chromium', 'firefox', 'webkit']) as Array<'chromium' | 'firefox' | 'webkit'>
+    for (const browser of browsers) {
+      await setupAuth(browser, config)
+    }
 
     console.log('✓ Global setup complete\n')
   } catch (error) {

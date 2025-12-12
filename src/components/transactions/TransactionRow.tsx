@@ -34,7 +34,7 @@ export default function TransactionRow({ transaction, onUpdate }: TransactionRow
         {transaction.description}
       </td>
       <td className="px-4 py-3 text-sm text-gray-900 text-right" data-testid="transaction-amount">
-        {transaction.amount.toLocaleString()}
+        {Math.round(transaction.amount).toLocaleString()}
       </td>
       <td className="px-4 py-3 text-sm" data-testid="transaction-payer">
         <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">

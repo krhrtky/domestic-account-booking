@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../ut
 import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
 test.describe('Scenario 11: Settlement with Common Account', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 

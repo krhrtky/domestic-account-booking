@@ -7,7 +7,9 @@ import {
   getGroupById,
 } from '../utils/test-helpers'
 
-test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
+test.describe('User Onboarding Flow - Signup to Group Creation', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let testEmail: string
   let userId: string
 
@@ -23,10 +25,10 @@ test.describe('Scenario 1: New User Onboarding & Group Creation', () => {
 
   test('should complete full onboarding flow from signup to group creation', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveURL('/login')
+    await expect(page).toHaveURL(/\/login/)
 
     await page.click('a[href="/signup"]')
-    await expect(page).toHaveURL('/signup')
+    await expect(page).toHaveURL(/\/signup/)
 
     await page.fill('input[name="name"]', 'Demo User A')
     await page.fill('input[name="email"]', testEmail)

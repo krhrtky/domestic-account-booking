@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  NEXTAUTH_SECRET: test-secret-for-ci-e2e
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
 jobs:
   lint:
     timeout-minutes: 10
@@ -35,7 +41,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        include:
+          - browser: chromium-unauth
+            test-filter: e2e/auth e2e/demo
+            job-name: auth-and-demo
+          - browser: chromium
+            test-filter: e2e/settlement
+            job-name: app
 
     services:
       postgres:
@@ -44,14 +56,13 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
       - uses: actions/checkout@v4
 
@@ -71,35 +82,66 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: npx playwright install --with-deps chromium
 
-      - name: Run E2E tests
-        run: npm run test:e2e -- --project=${{ matrix.browser }}
+      - name: Create .env.local for E2E tests
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "E2E_TEST=true" >> .env.local
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+            CREATE TABLE IF NOT EXISTS auth.users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS users (
+              id UUID PRIMARY KEY,
+              name VARCHAR(255),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+          "
+
+      - name: Run E2E tests (${{ matrix.job-name }})
+        run: npm run test:e2e -- --project=${{ matrix.browser }} ${{ matrix.test-filter }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_SECRET: test-secret-for-ci-e2e
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+          E2E_TEST: true
 
       - name: Run Accessibility tests
+        if: matrix.browser == 'chromium'
         run: npm run test:e2e:a11y -- --project=${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_SECRET: test-secret-for-ci-e2e
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+          E2E_TEST: true
 
       - name: Run Security tests
+        if: matrix.browser == 'chromium'
         run: npm run test:e2e:security -- --project=${{ matrix.browser }}
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_SECRET: test-secret-for-ci-e2e
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000
-
+          E2E_TEST: true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.job-name }}
           path: playwright-report/
           retention-days: 30

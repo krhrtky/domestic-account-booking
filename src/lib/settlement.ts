@@ -28,21 +28,28 @@ export const calculateSettlement = (
   validateRatio(group.ratio_a, group.ratio_b)
   validateMonthFormat(targetMonth)
 
-  const householdTransactions = transactions.filter(
-    (t) => t.expense_type === 'Household' && t.date.startsWith(targetMonth)
-  )
+  const householdTransactions = transactions.filter((t) => {
+    const dateStr =
+      typeof t.date === 'string'
+        ? t.date
+        : (t.date as unknown as Date).toISOString().slice(0, 10)
+    return t.expense_type === 'Household' && dateStr.startsWith(targetMonth)
+  })
+
+  const toNumber = (val: number | string): number =>
+    typeof val === 'string' ? parseFloat(val) : val
 
   const paidByA = householdTransactions
     .filter((t) => t.payer_type === 'UserA')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const paidByB = householdTransactions
     .filter((t) => t.payer_type === 'UserB')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const paidByCommon = householdTransactions
     .filter((t) => t.payer_type === 'Common')
-    .reduce((sum, t) => sum + t.amount, 0)
+    .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const totalHousehold = paidByA + paidByB
 

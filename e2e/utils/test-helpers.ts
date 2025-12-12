@@ -118,6 +118,7 @@ export const getTransactionsByGroupId = async (groupId: string) => {
     date: Date
     description: string
     amount: number
+    payer_type: string
     expense_type: string
   }>('SELECT * FROM transactions WHERE group_id = $1 ORDER BY date DESC', [groupId])
   return result.rows
@@ -130,16 +131,18 @@ export const insertTransaction = async (transaction: {
   description: string
   amount: number
   expenseType: string
+  payerType?: 'UserA' | 'UserB' | 'Common'
 }) => {
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO transactions (user_id, group_id, date, description, amount, expense_type)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
     [
       transaction.userId,
       transaction.groupId,
       transaction.date,
       transaction.description,
       transaction.amount,
+      transaction.payerType || 'UserA',
       transaction.expenseType,
     ]
   )
@@ -154,6 +157,7 @@ export const insertTransactions = async (
     description: string
     amount: number
     expenseType: string
+    payerType?: 'UserA' | 'UserB' | 'Common'
   }>
 ) => {
   if (transactions.length === 0) return []
@@ -162,15 +166,15 @@ export const insertTransactions = async (
   const placeholders: string[] = []
 
   transactions.forEach((t, i) => {
-    const offset = i * 6
+    const offset = i * 7
     placeholders.push(
-      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6})`
+      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`
     )
-    values.push(t.userId, t.groupId, t.date, t.description, t.amount, t.expenseType)
+    values.push(t.userId, t.groupId, t.date, t.description, t.amount, t.payerType || 'UserA', t.expenseType)
   })
 
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO transactions (user_id, group_id, date, description, amount, expense_type)
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type)
      VALUES ${placeholders.join(', ')} RETURNING id`,
     values
   )
@@ -185,6 +189,7 @@ export const getTransactionById = async (transactionId: string) => {
     date: Date
     description: string
     amount: number
+    payer_type: string
     expense_type: string
   }>('SELECT * FROM transactions WHERE id = $1', [transactionId])
   return result.rows[0] || null
@@ -204,4 +209,40 @@ export const updateGroupRatio = async (
     ratioB,
     groupId,
   ])
+}
+
+export const acceptInvitationDirectly = async (
+  userId: string,
+  groupId: string,
+  inviteToken?: string
+) => {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    await client.query(
+      'UPDATE users SET group_id = $1 WHERE id = $2',
+      [groupId, userId]
+    )
+
+    await client.query(
+      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
+      [userId, groupId]
+    )
+
+    if (inviteToken) {
+      await client.query(
+        'UPDATE invitations SET used_at = $1 WHERE id = $2',
+        [new Date().toISOString(), inviteToken]
+      )
+    }
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
 }

@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../ut
 import { loginUser, insertTransaction } from '../utils/demo-helpers'
 
 test.describe('Scenario 8: Transaction Deletion', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 
@@ -46,8 +48,8 @@ test.describe('Scenario 8: Transaction Deletion', () => {
     await expect(page.getByText('Test Delete Transaction')).toBeVisible()
 
     const deleteButton = page.locator('[data-testid="transaction-delete-btn"]').first()
-    
-    page.on('dialog', async dialog => {
+
+    page.once('dialog', async dialog => {
       expect(dialog.type()).toBe('confirm')
       await dialog.dismiss()
     })
@@ -56,7 +58,7 @@ test.describe('Scenario 8: Transaction Deletion', () => {
 
     await expect(page.getByText('Test Delete Transaction')).toBeVisible()
 
-    page.on('dialog', async dialog => {
+    page.once('dialog', async dialog => {
       expect(dialog.type()).toBe('confirm')
       await dialog.accept()
     })

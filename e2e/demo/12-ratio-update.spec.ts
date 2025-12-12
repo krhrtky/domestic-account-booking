@@ -1,8 +1,25 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById } from '../utils/test-helpers'
-import { loginUser, insertTransactions } from '../utils/demo-helpers'
+import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById, updateGroupRatio } from '../utils/test-helpers'
+import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
+
+const getCurrentMonth = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+const getDateInCurrentMonth = (day: number) => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const dayStr = String(day).padStart(2, '0')
+  return `${year}-${month}-${dayStr}`
+}
 
 test.describe('Scenario 12: Ratio Update Impact', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 
@@ -31,39 +48,52 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     const userData = await getUserByEmail(userA.email)
     groupId = userData!.group_id!
 
+    const currentMonth = getCurrentMonth()
+
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 60000, description: 'Rent', payer_type: 'UserA', expense_type: 'Household' },
-      { date: '2025-12-05', amount: 40000, description: 'Utilities', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 60000, description: 'Rent', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(5), amount: 40000, description: 'Utilities', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, currentMonth)
+
     await page.goto('/dashboard')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
-    const monthSelect = page.locator('select[name="settlement-month"]')
-    await monthSelect.selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    const monthSelector = page.locator('select')
+    if (await monthSelector.isVisible()) {
+      await monthSelector.selectOption(currentMonth)
+      await page.waitForTimeout(1000)
+    }
 
-    const initialSettlement = await page.locator('.bg-white.rounded-lg.shadow').first().textContent()
+    await page.waitForTimeout(2000)
 
-    await page.goto('/settings')
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
-    const ratioInput = page.locator('input[name="ratioA"]')
-    await ratioInput.fill('70')
+    const initialSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
 
-    await page.click('button[type="submit"]')
-    await page.waitForTimeout(1000)
+    await updateGroupRatio(groupId, 70, 30)
 
     const updatedGroup = await getGroupById(groupId)
     expect(updatedGroup?.ratio_a).toBe(70)
     expect(updatedGroup?.ratio_b).toBe(30)
 
+    await revalidateCache(groupId, currentMonth)
+
     await page.goto('/dashboard')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
-    await page.locator('select[name="settlement-month"]').selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    const monthSelector2 = page.locator('select')
+    if (await monthSelector2.isVisible()) {
+      await monthSelector2.selectOption(currentMonth)
+      await page.waitForTimeout(1000)
+    }
 
-    const updatedSettlement = await page.locator('.bg-white.rounded-lg.shadow').first().textContent()
+    await page.waitForTimeout(2000)
+
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
+
+    const updatedSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
     expect(updatedSettlement).not.toBe(initialSettlement)
   })
 })

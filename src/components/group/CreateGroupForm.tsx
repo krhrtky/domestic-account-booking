@@ -36,9 +36,10 @@ export function CreateGroupForm() {
       <h2 className="text-lg font-semibold mb-4">Create Household Group</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Group Name</label>
+          <label htmlFor="groupName" className="block text-sm font-medium mb-2">Group Name</label>
           <input
             type="text"
+            id="groupName"
             name="groupName"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -46,9 +47,10 @@ export function CreateGroupForm() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Your Income Ratio</label>
+          <label htmlFor="ratioA" className="block text-sm font-medium mb-2">Your Income Ratio</label>
           <input
             type="range"
+            id="ratioA"
             name="ratioA"
             min="1"
             max="99"

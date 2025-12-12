@@ -6,9 +6,27 @@ import {
   getUserByEmail,
   deleteTransactionsByGroupId,
 } from '../utils/test-helpers'
-import { loginUser, insertTransactions } from '../utils/demo-helpers'
 
-test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
+import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
+
+const getCurrentMonth = () => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  return `${year}-${month}`
+}
+
+const getDateInCurrentMonth = (day: number) => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const dayStr = String(day).padStart(2, '0')
+  return `${year}-${month}-${dayStr}`
+}
+
+test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let groupId: string
 
@@ -32,33 +50,45 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.fill('input[name="groupName"]', 'Empty Group')
     await page.fill('input[name="ratioA"]', '50')
     await page.click('button[type="submit"]')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
+
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText(/0|no transactions/i)).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]').getByText(/0|no transactions/i)).toBeVisible()
   })
 
   test('should handle exactly equal contributions', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    groupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
+
+    const currentMonth = getCurrentMonth()
 
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 50000, description: 'UserA Payment', payer_type: 'UserA', expense_type: 'Household' },
-      { date: '2025-12-05', amount: 50000, description: 'UserB Payment', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 50000, description: 'UserA Payment', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(5), amount: 50000, description: 'UserB Payment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, currentMonth)
+
     await page.goto('/dashboard')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
-    const monthSelect = page.locator('select[name="settlement-month"]')
-    await monthSelect.selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    const monthSelector = page.locator('select')
+    if (await monthSelector.isVisible()) {
+      await monthSelector.selectOption(currentMonth)
+      await page.waitForTimeout(1000)
+    }
 
-    await expect(page.getByText(/0|balanced|no payment/i)).toBeVisible()
+    await page.waitForTimeout(2000)
+
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
+
+    await expect(page.getByText('No payment needed')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle single transaction', async ({ page }) => {
@@ -66,17 +96,28 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await deleteTransactionsByGroupId(groupId)
 
+    const currentMonth = getCurrentMonth()
+
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(1), amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, currentMonth)
+
     await page.goto('/dashboard')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
-    await page.locator('select[name="settlement-month"]').selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    const monthSelector2 = page.locator('select')
+    if (await monthSelector2.isVisible()) {
+      await monthSelector2.selectOption(currentMonth)
+      await page.waitForTimeout(1000)
+    }
 
-    await expect(page.getByText('¥10,000')).toBeVisible()
+    await page.waitForTimeout(2000)
+
+    await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
+
+    await expect(page.getByText(/10,000/).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle very large amounts', async ({ page }) => {
@@ -85,14 +126,16 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-26', amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(2), amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Large Investment')).toBeVisible()
-    await expect(page.getByText(/999,999,999/)).toBeVisible()
+    await expect(page.getByText('Large Investment')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/999,999,999/)).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle very small amounts', async ({ page }) => {
@@ -101,14 +144,16 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-25', amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(3), amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Small Purchase')).toBeVisible()
-    await expect(page.getByText('50')).toBeVisible()
+    await expect(page.getByText('Small Purchase')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="transaction-amount"]').getByText('50')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle special characters in description', async ({ page }) => {
@@ -117,13 +162,15 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await deleteTransactionsByGroupId(groupId)
 
     await insertTransactions(groupId, userA.id!, [
-      { date: '2025-12-01', amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
+      { date: getDateInCurrentMonth(4), amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible()
+    await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle future dates', async ({ page }) => {
@@ -135,9 +182,11 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2099-12-31', amount: 10000, description: 'Future Transaction', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
+    await page.reload()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText('Future Transaction')).toBeVisible()
+    await expect(page.getByText('Future Transaction')).toBeVisible({ timeout: 10000 })
   })
 })

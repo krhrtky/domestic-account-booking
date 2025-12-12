@@ -3,6 +3,8 @@ import { createTestUser, cleanupTestData, TestUser } from '../utils/test-helpers
 import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 13: Logout & Session Persistence', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
 
   test.beforeAll(async () => {
@@ -30,16 +32,16 @@ test.describe('Scenario 13: Logout & Session Persistence', () => {
 
     await page.close()
     const newPage = await context.newPage()
-    await newPage.goto('/')
+    await newPage.goto('/dashboard')
     await expect(newPage).toHaveURL('/dashboard', { timeout: 5000 })
 
     const logoutButton = newPage.locator('button:has-text("Logout")')
     if (await logoutButton.isVisible()) {
       await logoutButton.click()
-      await expect(newPage).toHaveURL('/login', { timeout: 5000 })
+      await expect(newPage).toHaveURL(/\/login/, { timeout: 5000 })
     }
 
     await newPage.goto('/dashboard')
-    await expect(newPage).toHaveURL('/login', { timeout: 5000 })
+    await expect(newPage).toHaveURL(/\/login/, { timeout: 5000 })
   })
 })

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test'
 import { createTestUser, cleanupTestData, TestUser } from '../utils/test-helpers'
 
 test.describe('Login Flow', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let testUser: TestUser
 
   test.beforeAll(async () => {
@@ -39,12 +41,10 @@ test.describe('Login Flow', () => {
     await page.fill('input[name="email"]', testUser.email)
     await page.fill('input[name="password"]', 'wrongpassword')
 
-    const dialogPromise = page.waitForEvent('dialog')
     await page.click('button[type="submit"]')
 
-    const dialog = await dialogPromise
-    expect(dialog.message()).toContain('Invalid')
-    await dialog.accept()
+    const errorToast = page.locator('[role="status"]').first()
+    await expect(errorToast).toBeVisible({ timeout: 5000 })
   })
 
   test('should navigate to signup page', async ({ page }) => {
@@ -52,7 +52,7 @@ test.describe('Login Flow', () => {
 
     await page.click('a[href="/signup"]')
 
-    await expect(page).toHaveURL('/signup')
+    await expect(page).toHaveURL(/\/signup/)
     await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
   })
 

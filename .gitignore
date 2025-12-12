@@ -39,6 +39,7 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+e2e/.auth/
 
 # Lighthouse CI
 .lighthouseci/

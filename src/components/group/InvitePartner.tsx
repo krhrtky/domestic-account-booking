@@ -26,7 +26,7 @@ export function InvitePartner() {
       {inviteUrl ? (
         <div>
           <p className="text-sm text-green-600 mb-2">Invitation sent!</p>
-          <p className="text-xs text-gray-600 break-all">{inviteUrl}</p>
+          <p className="text-xs text-gray-600 break-all" data-testid="invite-url">{inviteUrl}</p>
         </div>
       ) : (
         <div className="flex gap-2">

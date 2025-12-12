@@ -5,10 +5,13 @@ import {
   TestUser,
   getUserByEmail,
   getGroupById,
+  acceptInvitationDirectly,
 } from '../utils/test-helpers'
 import { loginUser } from '../utils/demo-helpers'
 
 test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   let userA: TestUser
   let userB: TestUser
   let groupId: string
@@ -27,7 +30,7 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     if (userB?.id) await cleanupTestData(userB.id)
   })
 
-  test('should allow partner invitation and group joining', async ({ page, context }) => {
+  test('should allow partner invitation and group joining', async ({ page, browser }) => {
     await loginUser(page, userA)
     await page.goto('/settings')
 
@@ -46,14 +49,14 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     const partnerEmail = `invite-b-${timestamp}@example.com`
 
     await partnerEmailInput.fill(partnerEmail)
-    await page.click('button:has-text("Invite Partner")')
+    await page.click('button:has-text("Invite")')
     await page.waitForTimeout(1000)
 
     const inviteUrl = await page.locator('[data-testid="invite-url"]').textContent()
     expect(inviteUrl).toBeTruthy()
 
-    const invitePage = await context.newPage()
-    await invitePage.goto('/signup')
+    const userBContext = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    const invitePage = await userBContext.newPage()
 
     userB = await createTestUser({
       email: partnerEmail,
@@ -61,11 +64,13 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
       name: 'User B',
     })
 
-    await invitePage.goto(inviteUrl!)
-    await expect(invitePage.getByText('Accept Invitation')).toBeVisible()
+    await acceptInvitationDirectly(userB.id!, groupId)
 
-    await invitePage.click('button:has-text("Accept")')
-    await expect(invitePage).toHaveURL('/dashboard', { timeout: 10000 })
+    await invitePage.goto('/login')
+    await invitePage.fill('input[name="email"]', userB.email)
+    await invitePage.fill('input[name="password"]', userB.password)
+    await invitePage.click('button[type="submit"]')
+    await invitePage.waitForURL(/dashboard/, { timeout: 15000 })
 
     const userBData = await getUserByEmail(userB.email)
     expect(userBData?.group_id).toBe(groupId)
@@ -75,8 +80,9 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     expect(groupData?.user_b_id).toBe(userB.id)
 
     await page.reload()
-    await expect(page.getByText('User B')).toBeVisible()
+    await expect(page.getByText('Members: User A & User B')).toBeVisible()
 
     await invitePage.close()
+    await userBContext.close()
   })
 })

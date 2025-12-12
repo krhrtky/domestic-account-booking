@@ -39,14 +39,14 @@ export default function SettlementSummary({ settlement, userAName, userBName }: 
 
   if (settlement.total_household === 0) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div data-testid="settlement-summary" className="bg-white p-6 rounded-lg shadow">
         <p className="text-gray-500 text-center">No transactions for this month</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow space-y-6">
+    <div data-testid="settlement-summary" className="bg-white p-6 rounded-lg shadow space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">Settlement Summary</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
