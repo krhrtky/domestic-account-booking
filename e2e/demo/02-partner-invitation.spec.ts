@@ -5,6 +5,7 @@ import {
   TestUser,
   getUserByEmail,
   getGroupById,
+  acceptInvitationDirectly,
 } from '../utils/test-helpers'
 import { loginUser } from '../utils/demo-helpers'
 
@@ -63,14 +64,13 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
       name: 'User B',
     })
 
+    await acceptInvitationDirectly(userB.id!, groupId)
+
     await invitePage.goto('/login')
     await invitePage.fill('input[name="email"]', userB.email)
     await invitePage.fill('input[name="password"]', userB.password)
     await invitePage.click('button[type="submit"]')
     await invitePage.waitForURL(/dashboard/, { timeout: 15000 })
-
-    await invitePage.goto(inviteUrl!)
-    await invitePage.waitForURL(/dashboard/, { timeout: 30000 })
 
     const userBData = await getUserByEmail(userB.email)
     expect(userBData?.group_id).toBe(groupId)

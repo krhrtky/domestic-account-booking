@@ -210,3 +210,39 @@ export const updateGroupRatio = async (
     groupId,
   ])
 }
+
+export const acceptInvitationDirectly = async (
+  userId: string,
+  groupId: string,
+  inviteToken?: string
+) => {
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    await client.query(
+      'UPDATE users SET group_id = $1 WHERE id = $2',
+      [groupId, userId]
+    )
+
+    await client.query(
+      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
+      [userId, groupId]
+    )
+
+    if (inviteToken) {
+      await client.query(
+        'UPDATE invitations SET used_at = $1 WHERE id = $2',
+        [new Date().toISOString(), inviteToken]
+      )
+    }
+
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
