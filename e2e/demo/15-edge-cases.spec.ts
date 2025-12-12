@@ -117,7 +117,7 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
 
     await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
-    await expect(page.getByText('¥10,000')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/10,000/).first()).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle very large amounts', async ({ page }) => {

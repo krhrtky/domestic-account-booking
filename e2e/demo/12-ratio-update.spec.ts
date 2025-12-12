@@ -73,11 +73,15 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
     const initialSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
 
     await page.goto('/settings')
+    await page.waitForLoadState('networkidle')
 
-    const ratioInput = page.locator('input[name="ratioA"]')
-    await ratioInput.fill('70')
+    const slider = page.locator('input#ratioA')
+    await slider.evaluate((el: HTMLInputElement) => {
+      el.value = '70'
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
 
-    await page.click('button[type="submit"]')
+    await page.getByRole('button', { name: /Save Changes/i }).click()
     await page.waitForTimeout(1000)
 
     const updatedGroup = await getGroupById(groupId)

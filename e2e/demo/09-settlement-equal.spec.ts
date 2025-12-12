@@ -75,7 +75,7 @@ test.describe('Scenario 9: Settlement Calculation - Equal Ratio', () => {
 
     await expect(page.getByText(/60,000/)).toBeVisible({ timeout: 10000 })
 
-    await expect(page.getByText(/20,000/)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/20,000/).first()).toBeVisible({ timeout: 10000 })
 
     await expect(page.getByText(/User B pays.*Settlement User/)).toBeVisible({ timeout: 10000 })
   })

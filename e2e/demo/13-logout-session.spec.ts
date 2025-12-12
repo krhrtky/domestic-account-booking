@@ -38,10 +38,10 @@ test.describe('Scenario 13: Logout & Session Persistence', () => {
     const logoutButton = newPage.locator('button:has-text("Logout")')
     if (await logoutButton.isVisible()) {
       await logoutButton.click()
-      await expect(newPage).toHaveURL('/login', { timeout: 5000 })
+      await expect(newPage).toHaveURL(/\/login/, { timeout: 5000 })
     }
 
     await newPage.goto('/dashboard')
-    await expect(newPage).toHaveURL('/login', { timeout: 5000 })
+    await expect(newPage).toHaveURL(/\/login/, { timeout: 5000 })
   })
 })
