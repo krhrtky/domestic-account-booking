@@ -56,8 +56,16 @@ test.describe('Scenario 10: Settlement Calculation - Unequal Ratio', () => {
     ])
 
     await revalidateCache(groupId, currentMonth)
+
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
+
+    const monthSelector = page.locator('select')
+    if (await monthSelector.isVisible()) {
+      await monthSelector.selectOption(currentMonth)
+      await page.waitForTimeout(1000)
+    }
+
     await page.waitForTimeout(2000)
 
     await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
