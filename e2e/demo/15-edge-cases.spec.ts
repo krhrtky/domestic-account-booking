@@ -72,9 +72,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle single transaction', async ({ page }) => {
     await loginUser(page, userA)
 
-    await deleteTransactionsByGroupId(groupId)
+    const userData = await getUserByEmail(userA.email)
+    const testGroupId = userData!.group_id!
 
-    await insertTransactions(groupId, userA.id!, [
+    await deleteTransactionsByGroupId(testGroupId)
+
+    await insertTransactions(testGroupId, userA.id!, [
       { date: '2025-12-01', amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
@@ -90,9 +93,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very large amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    await deleteTransactionsByGroupId(groupId)
+    const userData = await getUserByEmail(userA.email)
+    const testGroupId = userData!.group_id!
 
-    await insertTransactions(groupId, userA.id!, [
+    await deleteTransactionsByGroupId(testGroupId)
+
+    await insertTransactions(testGroupId, userA.id!, [
       { date: '2025-12-26', amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
@@ -106,9 +112,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very small amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    await deleteTransactionsByGroupId(groupId)
+    const userData = await getUserByEmail(userA.email)
+    const testGroupId = userData!.group_id!
 
-    await insertTransactions(groupId, userA.id!, [
+    await deleteTransactionsByGroupId(testGroupId)
+
+    await insertTransactions(testGroupId, userA.id!, [
       { date: '2025-12-25', amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
@@ -122,9 +131,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle special characters in description', async ({ page }) => {
     await loginUser(page, userA)
 
-    await deleteTransactionsByGroupId(groupId)
+    const userData = await getUserByEmail(userA.email)
+    const testGroupId = userData!.group_id!
 
-    await insertTransactions(groupId, userA.id!, [
+    await deleteTransactionsByGroupId(testGroupId)
+
+    await insertTransactions(testGroupId, userA.id!, [
       { date: '2025-12-01', amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
     ])
 
@@ -137,9 +149,12 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle future dates', async ({ page }) => {
     await loginUser(page, userA)
 
-    await deleteTransactionsByGroupId(groupId)
+    const userData = await getUserByEmail(userA.email)
+    const testGroupId = userData!.group_id!
 
-    await insertTransactions(groupId, userA.id!, [
+    await deleteTransactionsByGroupId(testGroupId)
+
+    await insertTransactions(testGroupId, userA.id!, [
       { date: '2099-12-31', amount: 10000, description: 'Future Transaction', payer_type: 'UserA', expense_type: 'Household' },
     ])
 

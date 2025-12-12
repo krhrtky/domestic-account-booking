@@ -63,7 +63,7 @@ export async function signUp(formData: FormData) {
     const passwordHash = await bcrypt.hash(password, 12)
 
     const authResult = await client.query<{ id: string }>(
-      'INSERT INTO auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+      'INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, NOW(), NOW(), NOW()) RETURNING id',
       [normalizedEmail, passwordHash]
     )
 
@@ -109,8 +109,8 @@ export async function logIn(formData: FormData) {
     }
   }
 
-  const result = await query<{ id: string; password_hash: string }>(
-    'SELECT id, password_hash FROM auth.users WHERE email = $1',
+  const result = await query<{ id: string; encrypted_password: string }>(
+    'SELECT id, encrypted_password FROM auth.users WHERE email = $1',
     [normalizedEmail]
   )
 
@@ -119,7 +119,7 @@ export async function logIn(formData: FormData) {
   }
 
   const user = result.rows[0]
-  const isValid = await bcrypt.compare(password, user.password_hash)
+  const isValid = await bcrypt.compare(password, user.encrypted_password)
 
   if (!isValid) {
     return { error: 'Invalid email or password' }
