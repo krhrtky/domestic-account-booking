@@ -153,7 +153,7 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.waitForTimeout(1000)
 
     await expect(page.getByText('Small Purchase')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('50')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('[data-testid="transaction-amount"]').getByText('50')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle special characters in description', async ({ page }) => {

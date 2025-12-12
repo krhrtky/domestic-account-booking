@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById } from '../utils/test-helpers'
+import { createTestUser, cleanupTestData, TestUser, getUserByEmail, getGroupById, updateGroupRatio } from '../utils/test-helpers'
 import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
 const getCurrentMonth = () => {
@@ -72,17 +72,7 @@ test.describe('Scenario 12: Ratio Update Impact', () => {
 
     const initialSettlement = await page.locator('[data-testid="settlement-summary"]').textContent()
 
-    await page.goto('/settings')
-    await page.waitForLoadState('networkidle')
-
-    const slider = page.locator('input#ratioA')
-    await slider.evaluate((el: HTMLInputElement) => {
-      el.value = '70'
-      el.dispatchEvent(new Event('change', { bubbles: true }))
-    })
-
-    await page.getByRole('button', { name: /Save Changes/i }).click()
-    await page.waitForTimeout(1000)
+    await updateGroupRatio(groupId, 70, 30)
 
     const updatedGroup = await getGroupById(groupId)
     expect(updatedGroup?.ratio_a).toBe(70)
