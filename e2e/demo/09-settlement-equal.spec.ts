@@ -71,11 +71,6 @@ test.describe('Scenario 9: Settlement Calculation - Equal Ratio', () => {
 
     await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
-    const summaryContent = await page.locator('[data-testid="settlement-summary"]').textContent()
-    console.log(`Settlement Summary Content: ${summaryContent}`)
-    console.log(`Current Month: ${currentMonth}`)
-    console.log(`Group ID: ${groupId}`)
-
     await expect(page.getByText(/80,000/)).toBeVisible({ timeout: 10000 })
 
     await expect(page.getByText(/60,000/)).toBeVisible({ timeout: 10000 })
