@@ -1,4 +1,5 @@
 import { acceptInvitation } from '@/app/actions/group'
+import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
@@ -9,6 +10,12 @@ export default async function InvitePage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
+
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect(`/login?callbackUrl=/invite/${token}`)
+  }
+
   const result = await acceptInvitation(token)
 
   if (result.error) {

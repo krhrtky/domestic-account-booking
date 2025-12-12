@@ -2,6 +2,7 @@ import Link from 'next/link'
 import SettlementDashboard from '@/components/settlement/SettlementDashboard'
 import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
+import LogoutButton from '@/components/auth/LogoutButton'
 
 export default async function DashboardPage() {
   const user = await getCurrentUser()
@@ -13,7 +14,10 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <LogoutButton />
+        </div>
 
         <SettlementDashboard />
 

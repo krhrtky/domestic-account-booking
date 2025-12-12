@@ -168,3 +168,12 @@ export const formatCurrency = (amount: number): string => {
     currency: 'JPY',
   }).format(amount)
 }
+
+export const revalidateCache = async (groupId: string, month?: string): Promise<void> => {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  await fetch(`${baseUrl}/api/test/revalidate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ groupId, month }),
+  })
+}

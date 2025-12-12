@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { query, getClient } from '@/lib/db'
-import { requireAuth } from '@/lib/session'
+import { requireAuth, getCurrentUser } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS } from '@/lib/cache'
@@ -130,7 +130,10 @@ export async function invitePartner(email: string) {
 }
 
 export async function acceptInvitation(token: string) {
-  const user = await requireAuth()
+  const user = await getCurrentUser()
+  if (!user) {
+    return { error: 'Please log in to accept this invitation' }
+  }
 
   const inviteResult = await query<{
     group_id: string

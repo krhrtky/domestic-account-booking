@@ -6,7 +6,7 @@ import {
   getUserByEmail,
   deleteTransactionsByGroupId,
 } from '../utils/test-helpers'
-import { loginUser, insertTransactions } from '../utils/demo-helpers'
+import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
 test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
@@ -59,6 +59,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2025-12-05', amount: 50000, description: 'UserB Payment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
@@ -81,6 +82,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2025-12-01', amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(testGroupId, '2025-12')
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
@@ -102,6 +104,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2025-12-26', amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
     await page.waitForTimeout(1000)
 
@@ -121,6 +124,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2025-12-25', amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
     await page.waitForTimeout(1000)
 
@@ -140,6 +144,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2025-12-01', amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
     await page.waitForTimeout(1000)
 
@@ -158,6 +163,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
       { date: '2099-12-31', amount: 10000, description: 'Future Transaction', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
+    await revalidateCache(testGroupId)
     await page.goto('/dashboard/transactions')
     await page.waitForTimeout(1000)
 

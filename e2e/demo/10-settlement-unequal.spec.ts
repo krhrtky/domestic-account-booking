@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../utils/test-helpers'
-import { loginUser, insertTransactions } from '../utils/demo-helpers'
+import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
 test.describe('Scenario 10: Settlement Calculation - Unequal Ratio', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
@@ -38,6 +38,7 @@ test.describe('Scenario 10: Settlement Calculation - Unequal Ratio', () => {
       { date: '2025-12-05', amount: 50000, description: 'Furniture', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, '2025-12')
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
