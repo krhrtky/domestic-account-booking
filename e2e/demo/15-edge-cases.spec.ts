@@ -6,6 +6,7 @@ import {
   getUserByEmail,
   deleteTransactionsByGroupId,
 } from '../utils/test-helpers'
+
 import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
 const getCurrentMonth = () => {
@@ -23,7 +24,7 @@ const getDateInCurrentMonth = (day: number) => {
   return `${year}-${month}-${dayStr}`
 }
 
-test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
+test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   let userA: TestUser
@@ -49,7 +50,10 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.fill('input[name="groupName"]', 'Empty Group')
     await page.fill('input[name="ratioA"]', '50')
     await page.click('button[type="submit"]')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
+
+    const userData = await getUserByEmail(userA.email)
+    groupId = userData!.group_id!
 
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
@@ -60,14 +64,7 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle exactly equal contributions', async ({ page }) => {
     await loginUser(page, userA)
 
-    await page.goto('/settings')
-    await page.fill('input[name="groupName"]', 'Equal Test Group')
-    await page.fill('input[name="ratioA"]', '50')
-    await page.click('button[type="submit"]')
-    await page.waitForTimeout(1000)
-
-    const userData = await getUserByEmail(userA.email)
-    groupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
 
     const currentMonth = getCurrentMonth()
 
@@ -97,18 +94,15 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle single transaction', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    const testGroupId = userData!.group_id!
-
-    await deleteTransactionsByGroupId(testGroupId)
+    await deleteTransactionsByGroupId(groupId)
 
     const currentMonth = getCurrentMonth()
 
-    await insertTransactions(testGroupId, userA.id!, [
+    await insertTransactions(groupId, userA.id!, [
       { date: getDateInCurrentMonth(1), amount: 10000, description: 'Single Payment', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId, currentMonth)
+    await revalidateCache(groupId, currentMonth)
 
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
@@ -129,16 +123,13 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very large amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    const testGroupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
 
-    await deleteTransactionsByGroupId(testGroupId)
-
-    await insertTransactions(testGroupId, userA.id!, [
+    await insertTransactions(groupId, userA.id!, [
       { date: getDateInCurrentMonth(2), amount: 999999999, description: 'Large Investment', payer_type: 'UserB', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId)
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
     await page.reload()
     await page.waitForTimeout(1000)
@@ -150,16 +141,13 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle very small amounts', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    const testGroupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
 
-    await deleteTransactionsByGroupId(testGroupId)
-
-    await insertTransactions(testGroupId, userA.id!, [
+    await insertTransactions(groupId, userA.id!, [
       { date: getDateInCurrentMonth(3), amount: 50, description: 'Small Purchase', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId)
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
     await page.reload()
     await page.waitForTimeout(1000)
@@ -171,16 +159,13 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle special characters in description', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    const testGroupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
 
-    await deleteTransactionsByGroupId(testGroupId)
-
-    await insertTransactions(testGroupId, userA.id!, [
+    await insertTransactions(groupId, userA.id!, [
       { date: getDateInCurrentMonth(4), amount: 3500, description: "Café & Restaurant (50% off!)", payer_type: 'UserA', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId)
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
     await page.reload()
     await page.waitForTimeout(1000)
@@ -191,16 +176,13 @@ test.describe('Scenario 15: Edge Cases & Data Boundaries', () => {
   test('should handle future dates', async ({ page }) => {
     await loginUser(page, userA)
 
-    const userData = await getUserByEmail(userA.email)
-    const testGroupId = userData!.group_id!
+    await deleteTransactionsByGroupId(groupId)
 
-    await deleteTransactionsByGroupId(testGroupId)
-
-    await insertTransactions(testGroupId, userA.id!, [
+    await insertTransactions(groupId, userA.id!, [
       { date: '2099-12-31', amount: 10000, description: 'Future Transaction', payer_type: 'UserA', expense_type: 'Household' },
     ])
 
-    await revalidateCache(testGroupId)
+    await revalidateCache(groupId)
     await page.goto('/dashboard/transactions')
     await page.reload()
     await page.waitForTimeout(1000)
