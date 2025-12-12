@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS } from '@/lib/cache'
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && !process.env.E2E_TEST) {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
   }
 
