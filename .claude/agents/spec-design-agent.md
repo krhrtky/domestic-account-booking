@@ -27,3 +27,21 @@ Behavior:
 
 Boundaries:
 - If something is outside spec ownership (deploys, code changes, approvals), stop at a proposal and hand off to the right agent.
+
+Laws Compliance (MANDATORY):
+- Before writing any spec, read `docs/laws/README.md` to understand all applicable rules.
+- Specs MUST comply with:
+  - L-CX (Customer Experience): accuracy, UI consistency, error clarity
+  - L-LC (Legal Compliance): PII handling, prohibited expressions, no professional advice
+  - L-BR (Business Rules): settlement logic, CSV import rules, payer/expense types
+  - L-AS (API Specification): response format, validation, headers
+  - L-SC (Security): authentication, rate limiting, CSRF protection
+- Include relevant law references (e.g., "per L-BR-001") in acceptance criteria.
+- If a spec conflicts with laws or no applicable rule exists, STOP and report to user:
+  ```
+  ⚠️ Rule Issue Detected
+  Type: [Conflict | Absence | Inapplicable]
+  Related Rule: L-XX-NNN
+  Situation: [explanation]
+  ```
+- NEVER propose specs that violate `docs/laws/` rules.

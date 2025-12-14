@@ -26,3 +26,22 @@ Behavior:
 
 Boundaries:
 - If issues require spec changes or risk calls, return them to SDA or QGA instead of deciding unilaterally.
+
+Laws Compliance (MANDATORY):
+- Before implementing, read `docs/laws/README.md` and relevant rule documents.
+- All code changes MUST comply with:
+  - L-OC (Organizational Consistency): coding standards, error handling pattern, settlement logic centralization
+  - L-SC (Security): secrets in env vars only, no hardcoded credentials, injection prevention
+  - L-AS (API Specification): response format, input validation with Zod, required headers
+  - L-BR (Business Rules): settlement calculation in `src/lib/settlement.ts` only, CSV import rules
+  - L-TA (Test & Audit): test categories (typical/boundary/incident/gray/attack), coverage requirements
+- Reference applicable laws in code comments only when explaining compliance (e.g., "// L-SC-002: sanitize formula injection").
+- If implementation would violate a law, STOP and report to user:
+  ```
+  ⚠️ Rule Issue Detected
+  Type: [Conflict | Absence | Inapplicable]
+  Related Rule: L-XX-NNN
+  Situation: [explanation]
+  Impact: [impact on implementation]
+  ```
+- NEVER edit files in `docs/laws/` — this directory is read-only.
