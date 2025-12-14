@@ -8,12 +8,60 @@ export interface ParsedTransaction {
 }
 
 export type ParseResult =
-  | { success: true; data: ParsedTransaction[] }
-  | { success: false; errors: string[] }
+  | { success: true; data: ParsedTransaction[]; warnings?: string[] }
+  | { success: false; errors: string[]; warnings?: string[] }
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
+const MAX_ROW_COUNT = 10000
 
 const DATE_REGEX = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
+const SENSITIVE_COLUMN_PATTERNS: RegExp[] = [
+  /カード番号/i,
+  /card.?number/i,
+  /口座番号/i,
+  /account.?number/i,
+  /暗証番号/i,
+  /pin/i,
+  /cvv/i,
+  /cvc/i,
+]
+
+const FORMULA_PREFIXES = ['=', '+', '-', '@']
+
+interface ColumnFilterResult {
+  filteredHeaders: string[]
+  excludedColumns: string[]
+}
+
+const filterSensitiveColumns = (headers: string[]): ColumnFilterResult => {
+  const excludedColumns: string[] = []
+  const filteredHeaders = headers.filter((header) => {
+    const isSensitive = SENSITIVE_COLUMN_PATTERNS.some((pattern) =>
+      pattern.test(header)
+    )
+    if (isSensitive) {
+      excludedColumns.push(header)
+      return false
+    }
+    return true
+  })
+
+  return { filteredHeaders, excludedColumns }
+}
+
+const sanitizeCSVField = (value: string): string => {
+  let sanitized = value.replace(/[\r\n]/g, '')
+
+  if (
+    sanitized.length > 0 &&
+    FORMULA_PREFIXES.includes(sanitized[0])
+  ) {
+    sanitized = "'" + sanitized
+  }
+
+  return sanitized
+}
 
 const detectDateColumn = (headers: string[]): number => {
   const datePatterns = ['date', '日付', '利用日', 'Date']
@@ -102,18 +150,34 @@ export const parseCSV = async (
           return
         }
 
+        if (results.data.length > MAX_ROW_COUNT) {
+          resolve({
+            success: false,
+            errors: [`行数が上限(${MAX_ROW_COUNT.toLocaleString()}行)を超えています`],
+          })
+          return
+        }
+
         const headers = results.meta.fields || []
-        const dateIdx = detectDateColumn(headers)
-        const descIdx = detectDescriptionColumn(headers)
-        const amountIdx = detectAmountColumn(headers)
+        const { filteredHeaders, excludedColumns } = filterSensitiveColumns(headers)
+        const warnings: string[] = []
+
+        if (excludedColumns.length > 0) {
+          warnings.push(`機密情報を含む可能性のある列を除外しました: ${excludedColumns.join(', ')}`)
+        }
+
+        const dateIdx = detectDateColumn(filteredHeaders)
+        const descIdx = detectDescriptionColumn(filteredHeaders)
+        const amountIdx = detectAmountColumn(filteredHeaders)
 
         if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
-          const headerList = headers.length > 0 ? headers.join(', ') : 'none'
+          const headerList = filteredHeaders.length > 0 ? filteredHeaders.join(', ') : 'none'
           resolve({
             success: false,
             errors: [
               'Could not detect required columns. Found headers: ' + headerList,
             ],
+            warnings: warnings.length > 0 ? warnings : undefined,
           })
           return
         }
@@ -123,9 +187,9 @@ export const parseCSV = async (
 
         results.data.forEach((row: any, idx: number) => {
           try {
-            const dateStr = row[headers[dateIdx]]
-            const description = row[headers[descIdx]]
-            const amountStr = row[headers[amountIdx]]
+            const dateStr = row[filteredHeaders[dateIdx]]
+            const description = sanitizeCSVField(row[filteredHeaders[descIdx]])
+            const amountStr = row[filteredHeaders[amountIdx]]
 
             if (!dateStr || !description || !amountStr) {
               return
@@ -153,11 +217,16 @@ export const parseCSV = async (
           resolve({
             success: false,
             errors: ['No valid transactions found', ...errors],
+            warnings: warnings.length > 0 ? warnings : undefined,
           })
           return
         }
 
-        resolve({ success: true, data: transactions })
+        resolve({
+          success: true,
+          data: transactions,
+          warnings: warnings.length > 0 ? warnings : undefined,
+        })
       },
     })
   })

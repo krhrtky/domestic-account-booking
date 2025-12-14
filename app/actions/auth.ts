@@ -8,14 +8,14 @@ import bcrypt from 'bcryptjs'
 import { query, getClient } from '@/lib/db'
 
 const SignUpSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
+  name: z.string().min(1, '名前を入力してください').max(100),
+  email: z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(8, 'パスワードは8文字以上で入力してください')
 })
 
 const LogInSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(1, 'Password is required')
+  email: z.string().email('有効なメールアドレスを入力してください'),
+  password: z.string().min(1, 'パスワードを入力してください')
 })
 
 export async function signUp(formData: FormData) {
@@ -34,6 +34,7 @@ export async function signUp(formData: FormData) {
 
   const headersList = await headers()
   const clientIP = getClientIP(headersList)
+  // L-SC-004: Signup rate limit - 3 attempts per 15 minutes (per IP)
   const rateLimitResult = checkRateLimit(clientIP, {
     maxAttempts: 3,
     windowMs: 15 * 60 * 1000
@@ -41,7 +42,7 @@ export async function signUp(formData: FormData) {
 
   if (!rateLimitResult.allowed) {
     return {
-      error: `Too many signup attempts. Please try again in ${rateLimitResult.retryAfter} seconds.`
+      error: `アカウント作成の試行回数が上限を超えました。${rateLimitResult.retryAfter}秒後に再試行してください。`
     }
   }
 
@@ -57,7 +58,7 @@ export async function signUp(formData: FormData) {
 
     if (existingUser.rows.length > 0) {
       await client.query('ROLLBACK')
-      return { error: 'Email already registered' }
+      return { error: 'このメールアドレスは既に登録されています' }
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
@@ -79,7 +80,7 @@ export async function signUp(formData: FormData) {
     return { success: true }
   } catch (error) {
     await client.query('ROLLBACK')
-    return { error: 'Failed to create user account' }
+    return { error: 'アカウントの作成に失敗しました' }
   } finally {
     client.release()
   }
@@ -98,6 +99,7 @@ export async function logIn(formData: FormData) {
   const { email, password } = parsed.data
   const normalizedEmail = email.toLowerCase()
 
+  // L-SC-004: Login rate limit - 5 attempts per 15 minutes (per email)
   const rateLimitResult = checkRateLimit(normalizedEmail, {
     maxAttempts: 5,
     windowMs: 15 * 60 * 1000
@@ -105,7 +107,7 @@ export async function logIn(formData: FormData) {
 
   if (!rateLimitResult.allowed) {
     return {
-      error: `Too many login attempts. Please try again in ${rateLimitResult.retryAfter} seconds.`
+      error: `ログイン試行回数が上限を超えました。${rateLimitResult.retryAfter}秒後に再試行してください。`
     }
   }
 
@@ -115,14 +117,14 @@ export async function logIn(formData: FormData) {
   )
 
   if (result.rows.length === 0) {
-    return { error: 'Invalid email or password' }
+    return { error: 'メールアドレスまたはパスワードが正しくありません' }
   }
 
   const user = result.rows[0]
   const isValid = await bcrypt.compare(password, user.password_hash)
 
   if (!isValid) {
-    return { error: 'Invalid email or password' }
+    return { error: 'メールアドレスまたはパスワードが正しくありません' }
   }
 
   resetRateLimit(normalizedEmail, 'login')

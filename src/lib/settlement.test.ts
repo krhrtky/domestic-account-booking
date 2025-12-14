@@ -245,14 +245,14 @@ describe('calculateSettlement', () => {
     it('throws error when ratio_a is negative', () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: -10, ratio_b: 110 }
       expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
-        'ratio_a must be between 0 and 100'
+        '負担割合Aは0〜100の範囲で入力してください'
       )
     })
 
     it('throws error when ratio_a is greater than 100', () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 110, ratio_b: -10 }
       expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
-        'ratio_a must be between 0 and 100'
+        '負担割合Aは0〜100の範囲で入力してください'
       )
     })
 
@@ -264,19 +264,19 @@ describe('calculateSettlement', () => {
     it('throws error when ratios do not sum to 100', () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 40, ratio_b: 40 }
       expect(() => calculateSettlement([], invalidGroup, '2025-01')).toThrow(
-        'ratio_a + ratio_b must equal 100'
+        '負担割合の合計は100%である必要があります'
       )
     })
 
     it('throws error for invalid month format', () => {
       expect(() => calculateSettlement([], mockGroup, '2025-1')).toThrow(
-        'Invalid month format'
+        '月の形式が正しくありません'
       )
       expect(() => calculateSettlement([], mockGroup, '202501')).toThrow(
-        'Invalid month format'
+        '月の形式が正しくありません'
       )
       expect(() => calculateSettlement([], mockGroup, '2025/01')).toThrow(
-        'Invalid month format'
+        '月の形式が正しくありません'
       )
     })
 

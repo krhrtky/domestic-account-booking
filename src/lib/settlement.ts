@@ -4,19 +4,19 @@ const MONTH_FORMAT_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/
 
 const validateRatio = (ratioA: number, ratioB: number): void => {
   if (ratioA < 0 || ratioA > 100) {
-    throw new Error('ratio_a must be between 0 and 100')
+    throw new Error('負担割合Aは0〜100の範囲で入力してください')
   }
   if (ratioB < 0 || ratioB > 100) {
-    throw new Error('ratio_b must be between 0 and 100')
+    throw new Error('負担割合Bは0〜100の範囲で入力してください')
   }
   if (ratioA + ratioB !== 100) {
-    throw new Error('ratio_a + ratio_b must equal 100')
+    throw new Error('負担割合の合計は100%である必要があります')
   }
 }
 
 const validateMonthFormat = (month: string): void => {
   if (!MONTH_FORMAT_REGEX.test(month)) {
-    throw new Error('Invalid month format. Expected YYYY-MM (e.g., 2025-01)')
+    throw new Error('月の形式が正しくありません。YYYY-MM形式で入力してください（例: 2025-01）')
   }
 }
 
