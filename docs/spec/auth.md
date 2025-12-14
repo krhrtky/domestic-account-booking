@@ -110,6 +110,27 @@
 | /api/auth/login | 5回 | 15分 |
 | /api/auth/signup | 3回 | 1時間 |
 
+### CSRF保護（L-SC-005）
+
+Next.js 15 Server Actionsの組み込み保護を使用：
+
+| 保護機構 | 説明 |
+|---------|------|
+| Originヘッダー検証 | 同一ドメインからのリクエストのみ許可 |
+| Action ID検証 | ビルド時生成の暗号学的IDで外部サイトからの呼び出しを防止 |
+| セッション認証 | httpOnly + sameSite=lax Cookieによる保護 |
+
+### セキュリティヘッダー
+
+`next.config.js`で設定：
+
+| ヘッダー | 値 | 目的 |
+|---------|-----|------|
+| X-Frame-Options | DENY | クリックジャッキング防止 |
+| Content-Security-Policy | frame-ancestors 'none' | フレーム埋め込み禁止 |
+| X-Content-Type-Options | nosniff | MIMEスニッフィング防止 |
+| Referrer-Policy | strict-origin-when-cross-origin | リファラー情報制御 |
+
 ## 認可マトリクス（L-SC-001）
 
 | リソース | 未認証 | 認証済（グループ外） | 認証済（グループ内） |
