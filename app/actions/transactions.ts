@@ -330,7 +330,18 @@ export async function getSettlementData(targetMonth: string): Promise<
         [groupId, `${year}-${month}-01`, `${nextYear}-${nextMonth}-01`]
       )
 
-      const transactions = transactionsResult.rows
+      const formatLocalDate = (date: Date): string => {
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+
+      const transactions = transactionsResult.rows.map(row => ({
+        ...row,
+        date: row.date instanceof Date ? formatLocalDate(row.date) : row.date,
+        amount: typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount,
+      }))
 
       const usersResult = await query<{ id: string; name: string }>(
         'SELECT id, name FROM users WHERE group_id = $1',

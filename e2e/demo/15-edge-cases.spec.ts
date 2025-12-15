@@ -58,7 +58,7 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     await page.goto('/dashboard')
     await page.waitForTimeout(1000)
 
-    await expect(page.locator('[data-testid="settlement-summary"]').getByText(/0|no transactions/i)).toBeVisible()
+    await expect(page.locator('[data-testid="settlement-summary"]').getByText(/0|今月の取引はありません/)).toBeVisible()
   })
 
   test('should handle exactly equal contributions', async ({ page }) => {
@@ -74,21 +74,29 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId, currentMonth)
+    await page.waitForTimeout(500)
 
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const monthSelector = page.locator('select')
     if (await monthSelector.isVisible()) {
+      const options = await monthSelector.locator('option').allTextContents()
+      const otherMonth = options.find(opt => !opt.includes(currentMonth.split('-')[1]))
+      if (otherMonth) {
+        const otherValue = await monthSelector.locator(`option:has-text("${otherMonth}")`).getAttribute('value')
+        if (otherValue) {
+          await monthSelector.selectOption(otherValue)
+          await page.waitForTimeout(500)
+        }
+      }
       await monthSelector.selectOption(currentMonth)
-      await page.waitForTimeout(1000)
+      await page.waitForLoadState('networkidle')
     }
-
-    await page.waitForTimeout(2000)
 
     await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
-    await expect(page.getByText('No payment needed')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText('精算不要')).toBeVisible({ timeout: 10000 })
   })
 
   test('should handle single transaction', async ({ page }) => {
@@ -103,17 +111,25 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId, currentMonth)
+    await page.waitForTimeout(500)
 
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
 
     const monthSelector2 = page.locator('select')
     if (await monthSelector2.isVisible()) {
+      const options = await monthSelector2.locator('option').allTextContents()
+      const otherMonth = options.find(opt => !opt.includes(currentMonth.split('-')[1]))
+      if (otherMonth) {
+        const otherValue = await monthSelector2.locator(`option:has-text("${otherMonth}")`).getAttribute('value')
+        if (otherValue) {
+          await monthSelector2.selectOption(otherValue)
+          await page.waitForTimeout(500)
+        }
+      }
       await monthSelector2.selectOption(currentMonth)
-      await page.waitForTimeout(1000)
+      await page.waitForLoadState('networkidle')
     }
-
-    await page.waitForTimeout(2000)
 
     await expect(page.locator('[data-testid="settlement-summary"]')).toBeVisible({ timeout: 15000 })
 
@@ -130,9 +146,10 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId)
+    await page.waitForTimeout(500)
+
     await page.goto('/dashboard/transactions')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Large Investment')).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/999,999,999/)).toBeVisible({ timeout: 10000 })
@@ -148,9 +165,10 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId)
+    await page.waitForTimeout(500)
+
     await page.goto('/dashboard/transactions')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Small Purchase')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('[data-testid="transaction-amount"]').getByText('50')).toBeVisible({ timeout: 10000 })
@@ -166,9 +184,10 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId)
+    await page.waitForTimeout(500)
+
     await page.goto('/dashboard/transactions')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText("Café & Restaurant (50% off!)")).toBeVisible({ timeout: 10000 })
   })
@@ -183,9 +202,10 @@ test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
     ])
 
     await revalidateCache(groupId)
+    await page.waitForTimeout(500)
+
     await page.goto('/dashboard/transactions')
-    await page.reload()
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByText('Future Transaction')).toBeVisible({ timeout: 10000 })
   })

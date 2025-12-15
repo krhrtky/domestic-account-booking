@@ -35,11 +35,11 @@ test.describe('Scenario 14: CSV Upload Error Handling', () => {
     const payerSelect = page.locator('select[name="payerType"]')
     await payerSelect.selectOption('UserA')
 
-    const uploadButton = page.locator('button:has-text("Upload")')
+    const uploadButton = page.locator('button:has-text("CSVをアップロード")')
     await uploadButton.click()
     await page.waitForTimeout(1000)
 
-    await expect(page.getByText(/missing|required|column/i)).toBeVisible()
+    await expect(page.getByText(/必須列.*が見つかりません/)).toBeVisible()
 
     if (testUser.id) await cleanupTestData(testUser.id)
   })

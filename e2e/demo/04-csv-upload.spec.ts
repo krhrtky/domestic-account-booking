@@ -53,7 +53,7 @@ test.describe('Scenario 4: CSV Upload & Transaction Import', () => {
     const payerSelect = page.locator('select[name="payerType"]')
     await payerSelect.selectOption('UserA')
 
-    const uploadButton = page.locator('button:has-text("Upload")')
+    const uploadButton = page.locator('button:has-text("CSVをアップロード")')
     await uploadButton.click()
 
     await expect(page).toHaveURL('/dashboard/transactions', { timeout: 10000 })

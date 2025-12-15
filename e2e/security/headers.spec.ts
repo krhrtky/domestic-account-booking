@@ -55,46 +55,66 @@ test.describe('Security Headers - Protected Pages', () => {
 
   test('dashboard should have security headers', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
     await page.click('button[type="submit"]')
-    
+
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
     const response = await page.goto('/dashboard')
-    
+
     verifySecurityHeaders(response)
   })
 
   test('transactions page should have security headers', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
     await page.click('button[type="submit"]')
-    
+
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
     const response = await page.goto('/transactions')
-    
+
     verifySecurityHeaders(response)
   })
 
   test('settings page should have security headers', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
     await page.click('button[type="submit"]')
-    
+
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
     const response = await page.goto('/settings')
-    
+
     verifySecurityHeaders(response)
   })
 
   test('all protected pages have consistent headers', async ({ page }) => {
     await page.goto('/login')
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
     await page.click('button[type="submit"]')
-    
+
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
     
     const pages = ['/dashboard', '/transactions', '/settings']

@@ -67,8 +67,13 @@ test.describe('Scenario 2: Partner Invitation & Group Joining', () => {
     await acceptInvitationDirectly(userB.id!, groupId)
 
     await invitePage.goto('/login')
-    await invitePage.fill('input[name="email"]', userB.email)
-    await invitePage.fill('input[name="password"]', userB.password)
+    const emailInput = invitePage.locator('input[name="email"]')
+    const passwordInput = invitePage.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(userB.email)
+    await passwordInput.clear()
+    await passwordInput.fill(userB.password)
     await invitePage.click('button[type="submit"]')
     await invitePage.waitForURL(/dashboard/, { timeout: 15000 })
 

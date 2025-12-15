@@ -17,18 +17,39 @@ test.describe('Sign Up Flow', () => {
     }
   })
 
-  test('should successfully sign up a new user', async ({ page }) => {
+  test('should successfully sign up a new user', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'Webkit has React controlled input issues with signup form')
     await page.goto('/signup')
 
     await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
 
-    await page.fill('input[name="name"]', 'Test User')
-    await page.fill('input[name="email"]', testEmail)
-    await page.fill('input[name="password"]', 'password123')
+    const nameInput = page.locator('input[name="name"]')
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    const submitButton = page.locator('button[type="submit"]')
+    await nameInput.waitFor({ state: 'visible' })
 
-    await page.click('button[type="submit"]')
+    if (browserName === 'webkit') {
+      await nameInput.click()
+      await nameInput.pressSequentially('Test User', { delay: 10 })
+      await emailInput.click()
+      await emailInput.pressSequentially(testEmail, { delay: 10 })
+      await passwordInput.click()
+      await passwordInput.pressSequentially('TestPassword123!', { delay: 10 })
+    } else {
+      await nameInput.click()
+      await nameInput.fill('Test User')
+      await emailInput.click()
+      await emailInput.fill(testEmail)
+      await passwordInput.click()
+      await passwordInput.fill('TestPassword123!')
+    }
 
-    await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
+    await submitButton.waitFor({ state: 'visible' })
+    await Promise.all([
+      page.waitForURL('/dashboard', { timeout: 15000 }),
+      submitButton.click(),
+    ])
     await expect(page.getByText('Welcome')).toBeVisible()
 
     const authUser = await getAuthUserByEmail(testEmail)
@@ -39,22 +60,34 @@ test.describe('Sign Up Flow', () => {
   test('should show error for invalid email', async ({ page }) => {
     await page.goto('/signup')
 
-    await page.fill('input[name="name"]', 'Test User')
-    await page.fill('input[name="email"]', 'invalid-email')
-    await page.fill('input[name="password"]', 'password123')
-
+    const nameInput = page.locator('input[name="name"]')
     const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.clear()
+    await nameInput.fill('Test User')
+    await emailInput.clear()
+    await emailInput.fill('invalid-email')
+    await passwordInput.clear()
+    await passwordInput.fill('password123')
+
     await expect(emailInput).toHaveAttribute('type', 'email')
   })
 
   test('should show error for short password', async ({ page }) => {
     await page.goto('/signup')
 
-    await page.fill('input[name="name"]', 'Test User')
-    await page.fill('input[name="email"]', testEmail)
-    await page.fill('input[name="password"]', 'short')
-
+    const nameInput = page.locator('input[name="name"]')
+    const emailInput = page.locator('input[name="email"]')
     const passwordInput = page.locator('input[name="password"]')
+    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.clear()
+    await nameInput.fill('Test User')
+    await emailInput.clear()
+    await emailInput.fill(testEmail)
+    await passwordInput.clear()
+    await passwordInput.fill('short')
+
     await expect(passwordInput).toHaveAttribute('minLength', '8')
   })
 

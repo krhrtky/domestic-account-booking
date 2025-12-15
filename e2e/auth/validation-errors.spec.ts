@@ -20,9 +20,16 @@ test.describe('Auth Validation Errors', () => {
 
     await page.goto('/signup')
 
-    await page.fill('input[name="name"]', 'New User')
-    await page.fill('input[name="email"]', existingUser.email)
-    await page.fill('input[name="password"]', 'TestPassword123!')
+    const nameInput = page.locator('input[name="name"]')
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.clear()
+    await nameInput.fill('New User')
+    await emailInput.clear()
+    await emailInput.fill(existingUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill('TestPassword123!')
 
     await page.click('button[type="submit"]')
 
@@ -35,22 +42,34 @@ test.describe('Auth Validation Errors', () => {
   test('should validate email format', async ({ page }) => {
     await page.goto('/signup')
 
-    await page.fill('input[name="name"]', 'Test User')
-    await page.fill('input[name="email"]', 'notanemail')
-    await page.fill('input[name="password"]', 'TestPassword123!')
-
+    const nameInput = page.locator('input[name="name"]')
     const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.clear()
+    await nameInput.fill('Test User')
+    await emailInput.clear()
+    await emailInput.fill('notanemail')
+    await passwordInput.clear()
+    await passwordInput.fill('TestPassword123!')
+
     await expect(emailInput).toHaveAttribute('type', 'email')
   })
 
   test('should validate password minimum length', async ({ page }) => {
     await page.goto('/signup')
 
-    await page.fill('input[name="name"]', 'Test User')
-    await page.fill('input[name="email"]', testEmail)
-    await page.fill('input[name="password"]', 'short')
-
+    const nameInput = page.locator('input[name="name"]')
+    const emailInput = page.locator('input[name="email"]')
     const passwordInput = page.locator('input[name="password"]')
+    await nameInput.waitFor({ state: 'visible' })
+    await nameInput.clear()
+    await nameInput.fill('Test User')
+    await emailInput.clear()
+    await emailInput.fill(testEmail)
+    await passwordInput.clear()
+    await passwordInput.fill('short')
+
     await expect(passwordInput).toHaveAttribute('minLength', '8')
   })
 
@@ -64,8 +83,13 @@ test.describe('Auth Validation Errors', () => {
 
     await page.goto('/login')
 
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', 'WrongPassword123!')
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill('WrongPassword123!')
 
     await page.click('button[type="submit"]')
 

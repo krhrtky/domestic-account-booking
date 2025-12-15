@@ -26,8 +26,13 @@ test.describe('Login Flow', () => {
 
     await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
 
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
 
     await page.click('button[type="submit"]')
 
@@ -38,8 +43,13 @@ test.describe('Login Flow', () => {
   test('should show error for invalid credentials', async ({ page }) => {
     await page.goto('/login')
 
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', 'wrongpassword')
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill('wrongpassword')
 
     await page.click('button[type="submit"]')
 
@@ -59,12 +69,17 @@ test.describe('Login Flow', () => {
   test('should show loading state during login', async ({ page }) => {
     await page.goto('/login')
 
-    await page.fill('input[name="email"]', testUser.email)
-    await page.fill('input[name="password"]', testUser.password)
+    const emailInput = page.locator('input[name="email"]')
+    const passwordInput = page.locator('input[name="password"]')
+    await emailInput.waitFor({ state: 'visible' })
+    await emailInput.clear()
+    await emailInput.fill(testUser.email)
+    await passwordInput.clear()
+    await passwordInput.fill(testUser.password)
 
     const submitButton = page.locator('button[type="submit"]')
     await submitButton.click()
 
-    await expect(submitButton).toHaveText('Logging in...')
+    await expect(submitButton).toHaveText('ログイン中...')
   })
 })

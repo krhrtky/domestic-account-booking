@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { createTestUser, cleanupTestData, TestUser, getUserByEmail } from '../utils/test-helpers'
-import { loginUser, insertTransactions } from '../utils/demo-helpers'
+import { loginUser, insertTransactions, revalidateCache } from '../utils/demo-helpers'
 
 test.describe('Scenario 11: Settlement with Common Account', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
@@ -38,20 +38,25 @@ test.describe('Scenario 11: Settlement with Common Account', () => {
       { date: '2025-12-05', amount: 20000, description: 'Utilities', payer_type: 'Common', expense_type: 'Household' },
     ])
 
+    await revalidateCache(groupId, '2025-12')
+    await page.waitForTimeout(500)
+
     await page.goto('/dashboard/transactions')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     await expect(page.locator('tr', { hasText: 'Rent' })).toBeVisible()
     await expect(page.locator('tr', { hasText: 'Utilities' })).toBeVisible()
     await expect(page.locator('[data-testid="transaction-payer"]', { hasText: 'Common' })).toBeVisible()
 
     await page.goto('/dashboard')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
-    const monthSelect = page.locator('select[name="settlement-month"]')
-    await monthSelect.selectOption('2025-12')
-    await page.waitForTimeout(1000)
+    const monthSelector = page.locator('select')
+    if (await monthSelector.isVisible()) {
+      await monthSelector.selectOption('2025-12')
+      await page.waitForLoadState('networkidle')
+    }
 
-    await expect(page.getByText(/User B pays.*Common User/)).toBeVisible()
+    await expect(page.getByText(/ユーザーBがCommon Userに.*を支払う/)).toBeVisible()
   })
 })

@@ -33,8 +33,13 @@ export const loginUser = async (page: Page, user: TestUser, skipIfAuthenticated 
   }
 
   await page.goto('/login')
-  await page.fill('input[name="email"]', user.email)
-  await page.fill('input[name="password"]', user.password)
+  const emailInput = page.locator('input[name="email"]')
+  const passwordInput = page.locator('input[name="password"]')
+  await emailInput.waitFor({ state: 'visible' })
+  await emailInput.clear()
+  await emailInput.fill(user.email)
+  await passwordInput.clear()
+  await passwordInput.fill(user.password)
   await page.click('button[type="submit"]')
   await page.waitForURL('/dashboard', { timeout: 10000 })
 }
