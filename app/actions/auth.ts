@@ -34,10 +34,10 @@ export async function signUp(formData: FormData) {
 
   const headersList = await headers()
   const clientIP = getClientIP(headersList)
-  // L-SC-004: Signup rate limit - 3 attempts per 15 minutes (per IP)
+  // L-SC-004: Signup rate limit - 3 attempts per 1 hour (per IP)
   const rateLimitResult = checkRateLimit(clientIP, {
     maxAttempts: 3,
-    windowMs: 15 * 60 * 1000
+    windowMs: 60 * 60 * 1000
   }, 'signup')
 
   if (!rateLimitResult.allowed) {

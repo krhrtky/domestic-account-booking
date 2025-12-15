@@ -16,11 +16,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
+    video: 'on',
   },
 
   projects: [
     {
       name: 'chromium-unauth',
+      testMatch: /auth\/(login|signup|validation-errors)\.spec\.ts|accessibility\/auth\.a11y\.spec\.ts|security\/headers\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },

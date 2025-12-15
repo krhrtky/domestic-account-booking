@@ -19,12 +19,12 @@ export default function CSVUploadForm() {
     e.preventDefault()
 
     if (!file) {
-      setError('Please select a file')
+      setError('ファイルを選択してください')
       return
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setError('File size exceeds 5MB limit')
+      setError('ファイルサイズが5MBを超えています')
       return
     }
 
@@ -37,13 +37,13 @@ export default function CSVUploadForm() {
       const result = await uploadCSV(csvContent, file.name, payerType)
 
       if (result.error) {
-        setError(typeof result.error === 'string' ? result.error : 'Upload failed')
+        setError(typeof result.error === 'string' ? result.error : 'アップロードに失敗しました')
       } else if (result.count !== undefined) {
-        setSuccess(`${result.count} transactions imported successfully`)
+        setSuccess(`${result.count}件の取引をインポートしました`)
         setTimeout(() => router.push('/dashboard/transactions'), 1500)
       }
     } catch (err) {
-      setError('Failed to read file')
+      setError('ファイルの読み込みに失敗しました')
     } finally {
       setIsLoading(false)
     }
@@ -53,7 +53,7 @@ export default function CSVUploadForm() {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          CSV File
+          CSVファイル
         </label>
         <input
           type="file"
@@ -66,7 +66,7 @@ export default function CSVUploadForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Payer Type
+          支払元
         </label>
         <select
           name="payerType"
@@ -75,9 +75,9 @@ export default function CSVUploadForm() {
           className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={isLoading}
         >
-          <option value="UserA">User A</option>
-          <option value="UserB">User B</option>
-          <option value="Common">Common</option>
+          <option value="UserA">ユーザーA</option>
+          <option value="UserB">ユーザーB</option>
+          <option value="Common">共通</option>
         </select>
       </div>
 
@@ -98,7 +98,7 @@ export default function CSVUploadForm() {
         disabled={isLoading || !file}
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Uploading...' : 'Upload CSV'}
+        {isLoading ? 'アップロード中...' : 'CSVをアップロード'}
       </button>
     </form>
   )

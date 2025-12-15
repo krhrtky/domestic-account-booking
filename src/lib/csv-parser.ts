@@ -124,12 +124,12 @@ export const parseCSV = async (
   fileName: string
 ): Promise<ParseResult> => {
   if (!csvContent || csvContent.trim().length === 0) {
-    return { success: false, errors: ['CSV file is empty'] }
+    return { success: false, errors: ['CSVファイルが空です'] }
   }
 
   const byteSize = new TextEncoder().encode(csvContent).length
   if (byteSize > MAX_FILE_SIZE_BYTES) {
-    return { success: false, errors: ['File size exceeds 5MB limit'] }
+    return { success: false, errors: ['ファイルサイズが5MBを超えています'] }
   }
 
   return new Promise((resolve) => {
@@ -146,7 +146,7 @@ export const parseCSV = async (
         }
 
         if (results.data.length === 0) {
-          resolve({ success: false, errors: ['No data rows found in CSV'] })
+          resolve({ success: false, errors: ['CSVファイルにデータ行がありません'] })
           return
         }
 
@@ -171,11 +171,11 @@ export const parseCSV = async (
         const amountIdx = detectAmountColumn(filteredHeaders)
 
         if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
-          const headerList = filteredHeaders.length > 0 ? filteredHeaders.join(', ') : 'none'
+          const headerList = filteredHeaders.length > 0 ? filteredHeaders.join(', ') : 'なし'
           resolve({
             success: false,
             errors: [
-              'Could not detect required columns. Found headers: ' + headerList,
+              '必須列（日付、金額、摘要）が見つかりません。検出された列: ' + headerList,
             ],
             warnings: warnings.length > 0 ? warnings : undefined,
           })
@@ -216,7 +216,7 @@ export const parseCSV = async (
         if (transactions.length === 0) {
           resolve({
             success: false,
-            errors: ['No valid transactions found', ...errors],
+            errors: ['有効な取引データが見つかりませんでした', ...errors],
             warnings: warnings.length > 0 ? warnings : undefined,
           })
           return

@@ -108,7 +108,7 @@ describe('parseCSV', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.errors[0]).toContain('empty')
+      expect(result.errors[0]).toContain('空')
     }
   })
 

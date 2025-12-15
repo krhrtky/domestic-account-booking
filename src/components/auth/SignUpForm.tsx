@@ -26,19 +26,19 @@ export function SignUpForm() {
     const newErrors: FieldErrors = {}
 
     if (!name.trim()) {
-      newErrors.name = 'Name is required'
+      newErrors.name = '名前を入力してください'
     }
 
     if (!email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'メールアドレスを入力してください'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'メールアドレスの形式が正しくありません'
     }
 
     if (!password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'パスワードを入力してください'
     } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters'
+      newErrors.password = 'パスワードは8文字以上で入力してください'
     }
 
     setErrors(newErrors)
@@ -70,10 +70,10 @@ export function SignUpForm() {
     })
 
     if (signInResult?.error) {
-      toast.error('Account created, but login failed. Please try logging in.')
+      toast.error('アカウントは作成されましたが、ログインに失敗しました。再度ログインしてください。')
       router.push('/login')
     } else {
-      toast.success('Account created successfully')
+      toast.success('アカウントを作成しました')
       router.push('/dashboard')
       router.refresh()
     }
@@ -82,7 +82,7 @@ export function SignUpForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <FormField
-        label="Name"
+        label="名前"
         name="name"
         type="text"
         required
@@ -91,7 +91,7 @@ export function SignUpForm() {
         error={errors.name}
       />
       <FormField
-        label="Email"
+        label="メールアドレス"
         name="email"
         type="email"
         required
@@ -100,7 +100,7 @@ export function SignUpForm() {
         error={errors.email}
       />
       <FormField
-        label="Password"
+        label="パスワード"
         name="password"
         type="password"
         required
@@ -112,10 +112,10 @@ export function SignUpForm() {
       <LoadingButton
         type="submit"
         isLoading={isLoading}
-        loadingText="Creating account..."
+        loadingText="アカウント作成中..."
         className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
       >
-        Sign Up
+        アカウント作成
       </LoadingButton>
     </form>
   )

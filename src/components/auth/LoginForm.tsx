@@ -26,13 +26,13 @@ export function LoginForm() {
     const newErrors: FieldErrors = {}
 
     if (!email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'メールアドレスを入力してください'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'メールアドレスの形式が正しくありません'
     }
 
     if (!password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'パスワードを入力してください'
     }
 
     setErrors(newErrors)
@@ -64,10 +64,10 @@ export function LoginForm() {
     })
 
     if (signInResult?.error) {
-      toast.error('Login failed')
+      toast.error('ログインに失敗しました')
       setIsLoading(false)
     } else {
-      toast.success('Login successful')
+      toast.success('ログインしました')
       router.push(callbackUrl)
       router.refresh()
     }
@@ -76,7 +76,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <FormField
-        label="Email"
+        label="メールアドレス"
         name="email"
         type="email"
         required
@@ -85,7 +85,7 @@ export function LoginForm() {
         error={errors.email}
       />
       <FormField
-        label="Password"
+        label="パスワード"
         name="password"
         type="password"
         required
@@ -96,10 +96,10 @@ export function LoginForm() {
       <LoadingButton
         type="submit"
         isLoading={isLoading}
-        loadingText="Logging in..."
+        loadingText="ログイン中..."
         className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
       >
-        Log In
+        ログイン
       </LoadingButton>
     </form>
   )

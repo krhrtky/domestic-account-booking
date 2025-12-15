@@ -8,6 +8,7 @@ import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS, CACHE_DURATIONS, cachedFetch } from '@/lib/cache'
+import { checkRateLimit } from '@/lib/rate-limiter'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -35,6 +36,18 @@ export async function uploadCSV(
 ) {
   const user = await requireAuth()
 
+  // L-SC-004: CSV upload rate limit - 10 attempts per 1 minute (per user)
+  const rateLimitResult = checkRateLimit(user.id, {
+    maxAttempts: 10,
+    windowMs: 60 * 1000
+  }, 'csv-upload')
+
+  if (!rateLimitResult.allowed) {
+    return {
+      error: `CSV取り込みの試行回数が上限を超えました。${rateLimitResult.retryAfter}秒後に再試行してください。`
+    }
+  }
+
   const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
@@ -43,7 +56,7 @@ export async function uploadCSV(
   const groupId = await getUserGroupId(user.id)
 
   if (!groupId) {
-    return { error: 'User is not in a group' }
+    return { error: 'グループに所属していません' }
   }
 
   const parseResult = await parseCSV(csvContent, fileName)
@@ -81,7 +94,7 @@ export async function uploadCSV(
 
     return { success: true, count: result.rows.length }
   } catch (error) {
-    return { error: 'Failed to save transactions' }
+    return { error: '取引の保存に失敗しました' }
   }
 }
 
@@ -108,7 +121,7 @@ export async function getTransactions(filters?: {
   const groupId = await getUserGroupId(user.id)
 
   if (!groupId) {
-    return { error: 'User is not in a group' }
+    return { error: 'グループに所属していません' }
   }
 
   const month = filters?.month ?? ''
@@ -165,7 +178,7 @@ export async function getTransactions(filters?: {
 
         const totalCount = parseInt(countResult.rows[0].total, 10)
         if (isNaN(totalCount)) {
-          return { error: 'Invalid count result' }
+          return { error: '件数の取得に失敗しました' }
         }
         const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
         const safePage = Math.min(page, totalPages)
@@ -198,7 +211,7 @@ export async function getTransactions(filters?: {
           }
         }
       } catch (error) {
-        return { error: 'Failed to fetch transactions' }
+        return { error: '取引の取得に失敗しました' }
       }
     },
     ['transactions', groupId, month, expenseType, payerType, String(page), String(pageSize)],
@@ -223,7 +236,7 @@ export async function updateTransactionExpenseType(
   const groupId = await getUserGroupId(user.id)
 
   if (!groupId) {
-    return { error: 'User is not in a group' }
+    return { error: 'グループに所属していません' }
   }
 
   try {
@@ -237,7 +250,7 @@ export async function updateTransactionExpenseType(
 
     return { success: true }
   } catch (error) {
-    return { error: 'Failed to update transaction' }
+    return { error: '取引の更新に失敗しました' }
   }
 }
 
@@ -247,7 +260,7 @@ export async function deleteTransaction(transactionId: string) {
   const groupId = await getUserGroupId(user.id)
 
   if (!groupId) {
-    return { error: 'User is not in a group' }
+    return { error: 'グループに所属していません' }
   }
 
   try {
@@ -261,12 +274,12 @@ export async function deleteTransaction(transactionId: string) {
 
     return { success: true }
   } catch (error) {
-    return { error: 'Failed to delete transaction' }
+    return { error: '取引の削除に失敗しました' }
   }
 }
 
 const GetSettlementDataSchema = z.object({
-  targetMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Invalid month format. Expected YYYY-MM')
+  targetMonth: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, '月の形式が不正です（YYYY-MM形式で入力してください）')
 })
 
 export async function getSettlementData(targetMonth: string): Promise<
@@ -277,13 +290,13 @@ export async function getSettlementData(targetMonth: string): Promise<
 
   const parsed = GetSettlementDataSchema.safeParse({ targetMonth })
   if (!parsed.success) {
-    return { error: parsed.error.flatten().fieldErrors.targetMonth?.[0] || 'Invalid month format' }
+    return { error: parsed.error.flatten().fieldErrors.targetMonth?.[0] || '月の形式が不正です' }
   }
 
   const groupId = await getUserGroupId(user.id)
 
   if (!groupId) {
-    return { error: 'User is not in a group' }
+    return { error: 'グループに所属していません' }
   }
 
   return cachedFetch(
@@ -294,7 +307,7 @@ export async function getSettlementData(targetMonth: string): Promise<
       )
 
       if (groupResult.rows.length === 0) {
-        return { error: 'Group not found' }
+        return { error: 'グループが見つかりません' }
       }
 
       const group = groupResult.rows[0]
