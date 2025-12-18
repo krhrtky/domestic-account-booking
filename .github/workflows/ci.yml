@@ -29,6 +29,9 @@ jobs:
       - name: Run type check
         run: npm run type-check
 
+      - name: Architecture check (dependency-cruiser)
+        run: npm run check:arch
+
   unit-test:
     name: Unit Tests
     timeout-minutes: 10
