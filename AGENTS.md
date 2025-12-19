@@ -31,7 +31,7 @@
 - Keep PRs scoped: separate data-model changes from UI work; add migration notes when adjusting schemas.
 
 ## Architecture & Security Notes
-- Follow the PRD’s recommended stack: Next.js + TypeScript + Tailwind with Supabase/PostgreSQL.
+- Follow the PRD's recommended stack: Next.js + TypeScript + Tailwind with PostgreSQL.
 - Keep business rules (settlement math, CSV normalization) in pure functions to enable deterministic testing.
 - Store secrets in environment variables (`.env.local`); do not commit them. Document required keys in a `.env.example`.
 - Validate CSV uploads server-side and strip/escape user input to avoid injection in rendered views.

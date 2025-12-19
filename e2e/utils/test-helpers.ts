@@ -29,7 +29,7 @@ export const createTestUser = async (user: TestUser) => {
     const passwordHash = await bcrypt.hash(user.password, 12)
 
     const authResult = await client.query<{ id: string }>(
-      'INSERT INTO auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+      'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
       [user.email.toLowerCase(), passwordHash]
     )
 
@@ -52,7 +52,7 @@ export const createTestUser = async (user: TestUser) => {
 }
 
 export const deleteTestUser = async (userId: string) => {
-  await pool.query('DELETE FROM auth.users WHERE id = $1', [userId])
+  await pool.query('DELETE FROM custom_auth.users WHERE id = $1', [userId])
 }
 
 export const cleanupTestData = async (userId: string) => {
@@ -66,7 +66,7 @@ export const cleanupTestData = async (userId: string) => {
     await client.query('DELETE FROM groups WHERE user_a_id = $1', [userId])
     await client.query('DELETE FROM groups WHERE user_b_id = $1', [userId])
     await client.query('DELETE FROM users WHERE id = $1', [userId])
-    await client.query('DELETE FROM auth.users WHERE id = $1', [userId])
+    await client.query('DELETE FROM custom_auth.users WHERE id = $1', [userId])
 
     await client.query('COMMIT')
   } catch (error) {
@@ -93,7 +93,7 @@ export const getUserByEmail = async (email: string) => {
 
 export const getAuthUserByEmail = async (email: string) => {
   const result = await pool.query<{ id: string; email: string }>(
-    'SELECT id, email FROM auth.users WHERE email = $1',
+    'SELECT id, email FROM custom_auth.users WHERE email = $1',
     [email.toLowerCase()]
   )
   return result.rows[0] || null

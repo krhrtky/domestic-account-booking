@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const result = await query<{ id: string; email: string; password_hash: string }>(
-          'SELECT au.id, au.email, au.password_hash FROM auth.users au WHERE au.email = $1',
+          'SELECT au.id, au.email, au.password_hash FROM custom_auth.users au WHERE au.email = $1',
           [credentials.email.toLowerCase()]
         )
 

@@ -132,7 +132,7 @@ $$Balance_A = PaidBy_A^{Household} - ( (PaidBy_A^{Household} + PaidBy_B^{Househo
 ## 7. 非機能要件・技術スタック推奨 (Tech Stack Recommendation)
 
 * **Frontend:** Next.js (React), TypeScript, Tailwind CSS
-* **Backend/DB:** Supabase (PostgreSQL) or Firebase
+* **Backend/DB:** PostgreSQL (with NextAuth for authentication)
     * *Reason:* 認証(Auth)とDB構築が高速で、MVP開発に最適。
 * **Deployment:** Vercel
 * **UI/UX:**

@@ -52,7 +52,7 @@ export async function signUp(formData: FormData) {
     await client.query('BEGIN')
 
     const existingUser = await client.query(
-      'SELECT id FROM auth.users WHERE email = $1',
+      'SELECT id FROM custom_auth.users WHERE email = $1',
       [normalizedEmail]
     )
 
@@ -64,7 +64,7 @@ export async function signUp(formData: FormData) {
     const passwordHash = await bcrypt.hash(password, 12)
 
     const authResult = await client.query<{ id: string }>(
-      'INSERT INTO auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+      'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
       [normalizedEmail, passwordHash]
     )
 
@@ -112,7 +112,7 @@ export async function logIn(formData: FormData) {
   }
 
   const result = await query<{ id: string; password_hash: string }>(
-    'SELECT id, password_hash FROM auth.users WHERE email = $1',
+    'SELECT id, password_hash FROM custom_auth.users WHERE email = $1',
     [normalizedEmail]
   )
 
