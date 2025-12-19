@@ -1,6 +1,7 @@
 'use client'
 
 import { Transaction } from '@/lib/types'
+import { formatCurrency } from '@/lib/formatters'
 import ExpenseTypeToggle from './ExpenseTypeToggle'
 import { deleteTransaction } from '@/app/actions/transactions'
 import { useState } from 'react'
@@ -34,7 +35,7 @@ export default function TransactionRow({ transaction, onUpdate }: TransactionRow
         {transaction.description}
       </td>
       <td className="px-4 py-3 text-sm text-gray-900 text-right" data-testid="transaction-amount">
-        {Math.round(transaction.amount).toLocaleString()}
+        {formatCurrency(Math.round(transaction.amount))}
       </td>
       <td className="px-4 py-3 text-sm" data-testid="transaction-payer">
         <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">

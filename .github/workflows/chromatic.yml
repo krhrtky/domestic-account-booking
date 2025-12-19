@@ -1,0 +1,41 @@
+name: Visual Regression Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  vrt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run VRT tests
+        run: npm run test:vrt
+        env:
+          CI: true
+
+      - name: Upload VRT artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: vrt-snapshots
+          path: e2e/vrt/*.png
+          retention-days: 7

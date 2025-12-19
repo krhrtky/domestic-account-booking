@@ -1,6 +1,7 @@
 'use client'
 
 import { ParsedTransaction } from '@/lib/csv-parser'
+import { formatCurrency } from '@/lib/formatters'
 
 interface TransactionPreviewProps {
   transactions: ParsedTransaction[]
@@ -38,7 +39,7 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
                 <td className="px-4 py-2 text-sm">{t.date}</td>
                 <td className="px-4 py-2 text-sm">{t.description}</td>
                 <td className="px-4 py-2 text-sm text-right">
-                  {t.amount.toLocaleString()}
+                  {formatCurrency(t.amount)}
                 </td>
               </tr>
             ))}

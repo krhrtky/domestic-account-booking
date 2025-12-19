@@ -47,3 +47,4 @@ e2e/.auth/
 # Dependency Cruiser
 dependency-graph.svg
 dependency-report.html
+storybook-static

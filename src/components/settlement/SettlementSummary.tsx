@@ -1,6 +1,7 @@
 'use client'
 
 import type { Settlement } from '@/lib/types'
+import { formatCurrency } from '@/lib/formatters'
 
 interface SettlementSummaryProps {
   settlement: Settlement
@@ -9,12 +10,6 @@ interface SettlementSummaryProps {
 }
 
 export default function SettlementSummary({ settlement, userAName, userBName }: SettlementSummaryProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ja-JP', {
-      style: 'currency',
-      currency: 'JPY'
-    }).format(amount)
-  }
 
   const getPaymentInstruction = () => {
     if (settlement.balance_a > 0) {

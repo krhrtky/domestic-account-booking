@@ -22,7 +22,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium-unauth',
-      testMatch: /auth\/(login|signup|validation-errors)\.spec\.ts|accessibility\/auth\.a11y\.spec\.ts|security\/headers\.spec\.ts/,
+      testMatch: /auth\/(login|signup|validation-errors)\.spec\.ts|accessibility\/auth\.a11y\.spec\.ts|security\/headers\.spec\.ts|vrt\/.*\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },

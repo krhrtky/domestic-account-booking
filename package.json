@@ -29,7 +29,9 @@
     "lighthouse:assert": "lhci assert",
     "check:arch": "depcruise src app --config .dependency-cruiser.js --output-type err-long",
     "check:arch:graph": "depcruise src app --config .dependency-cruiser.js --output-type dot | dot -T svg > dependency-graph.svg",
-    "check:arch:html": "depcruise src app --config .dependency-cruiser.js --output-type err-html > dependency-report.html"
+    "check:arch:html": "depcruise src app --config .dependency-cruiser.js --output-type err-html > dependency-report.html",
+    "test:vrt": "node --env-file=.env.local.e2e node_modules/.bin/playwright test e2e/vrt --project=chromium-unauth",
+    "test:vrt:update": "node --env-file=.env.local.e2e node_modules/.bin/playwright test e2e/vrt --project=chromium-unauth --update-snapshots"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.17",
