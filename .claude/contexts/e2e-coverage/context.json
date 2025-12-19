@@ -1,0 +1,15 @@
+{
+  "id": "e2e-coverage",
+  "type": "spec",
+  "branch": "master",
+  "created": "2025-12-20T00:00:00+09:00",
+  "lastActive": "2025-12-20T00:00:00+09:00",
+  "description": "E2Eテストカバレッジ分析と追加仕様策定",
+  "relatedFiles": [
+    "docs/laws/07-test-audit.md",
+    "docs/laws/08-business-rules.md",
+    "REQUIREMENTS.md",
+    "e2e/**/*.spec.ts"
+  ],
+  "status": "active"
+}
