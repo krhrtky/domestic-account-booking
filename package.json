@@ -39,6 +39,7 @@
     "test:storybook:vrt:update": "STORYBOOK_VRT=true test-storybook --updateSnapshot"
   },
   "dependencies": {
+    "@swc/helpers": "^0.5.17",
     "@tailwindcss/postcss": "^4.1.17",
     "bcryptjs": "^2.4.3",
     "date-fns": "^4.1.0",
