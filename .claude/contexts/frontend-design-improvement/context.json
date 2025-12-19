@@ -1,0 +1,24 @@
+{
+  "id": "frontend-design-improvement",
+  "type": "feature",
+  "branch": "master",
+  "created": "2025-12-19T00:00:00.000Z",
+  "lastActive": "2025-12-19T00:00:00.000Z",
+  "description": "frontend-designスキルを使用したUI/UXデザイン改善",
+  "relatedFiles": [
+    "app/(auth)/login/page.tsx",
+    "app/(auth)/signup/page.tsx",
+    "app/dashboard/page.tsx",
+    "app/settings/page.tsx",
+    "src/components/auth/LoginForm.tsx",
+    "src/components/auth/SignUpForm.tsx",
+    "src/components/settlement/SettlementDashboard.tsx",
+    "src/components/settlement/SettlementSummary.tsx",
+    "src/components/transactions/TransactionList.tsx",
+    "src/components/ui/FormField.tsx",
+    "src/components/ui/LoadingButton.tsx",
+    "tailwind.config.js",
+    "app/globals.css"
+  ],
+  "status": "active"
+}

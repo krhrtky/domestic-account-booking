@@ -52,27 +52,27 @@ export default function CSVUploadForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-neutral-700 mb-2">
           CSVファイル
         </label>
         <input
           type="file"
           accept=".csv"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
-          className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
+          className="block w-full text-sm text-neutral-900 border border-neutral-300 rounded-lg cursor-pointer bg-neutral-50 focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
           disabled={isLoading}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-neutral-700 mb-2">
           支払元
         </label>
         <select
           name="payerType"
           value={payerType}
           onChange={(e) => setPayerType(e.target.value as PayerType)}
-          className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
           disabled={isLoading}
         >
           <option value="UserA">ユーザーA</option>
@@ -82,13 +82,13 @@ export default function CSVUploadForm() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-semantic-error-light border border-semantic-error/20 text-semantic-error px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+        <div className="bg-semantic-success-light border border-semantic-success/20 text-semantic-success px-4 py-3 rounded-lg">
           {success}
         </div>
       )}
@@ -96,7 +96,7 @@ export default function CSVUploadForm() {
       <button
         type="submit"
         disabled={isLoading || !file}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+        className="w-full bg-brand-primary text-white py-2 px-4 rounded-lg hover:bg-brand-primary-dark focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2 active:scale-[0.98] transition-all duration-fast disabled:bg-neutral-300 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isLoading ? 'アップロード中...' : 'CSVをアップロード'}
       </button>

@@ -74,33 +74,63 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <FormField
-        label="メールアドレス"
-        name="email"
-        type="email"
-        required
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        error={errors.email}
-      />
-      <FormField
-        label="パスワード"
-        name="password"
-        type="password"
-        required
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        error={errors.password}
-      />
-      <LoadingButton
-        type="submit"
-        isLoading={isLoading}
-        loadingText="ログイン中..."
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div
+        className="opacity-0 animate-fade-in-up"
+        style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}
       >
-        ログイン
-      </LoadingButton>
+        <FormField
+          label="メールアドレス"
+          name="email"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
+        />
+      </div>
+
+      <div
+        className="opacity-0 animate-fade-in-up"
+        style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
+      >
+        <FormField
+          label="パスワード"
+          name="password"
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={errors.password}
+        />
+      </div>
+
+      <div
+        className="pt-2 opacity-0 animate-fade-in-up"
+        style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}
+      >
+        <LoadingButton
+          type="submit"
+          isLoading={isLoading}
+          loadingText="ログイン中..."
+          className="w-full group"
+        >
+          <span>ログイン</span>
+          <svg
+            className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
+          </svg>
+        </LoadingButton>
+      </div>
     </form>
   )
 }

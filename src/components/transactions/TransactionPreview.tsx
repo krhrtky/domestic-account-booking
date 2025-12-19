@@ -13,32 +13,32 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
   const hasMore = transactions.length > previewLimit
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-bold mb-4">
+    <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+      <h2 className="text-xl font-bold text-neutral-900 mb-4">
         Preview ({transactions.length} transactions)
       </h2>
-      
+
       <div className="overflow-x-auto">
         <table className="min-w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-neutral-50">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+              <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
                 Date
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+              <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
                 Description
               </th>
-              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+              <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500">
                 Amount
               </th>
             </tr>
           </thead>
           <tbody>
             {displayTransactions.map((t, idx) => (
-              <tr key={idx} className="border-b">
-                <td className="px-4 py-2 text-sm">{t.date}</td>
-                <td className="px-4 py-2 text-sm">{t.description}</td>
-                <td className="px-4 py-2 text-sm text-right">
+              <tr key={idx} className="border-b border-neutral-200">
+                <td className="px-4 py-2 text-sm text-neutral-700">{t.date}</td>
+                <td className="px-4 py-2 text-sm text-neutral-700">{t.description}</td>
+                <td className="px-4 py-2 text-sm text-right text-neutral-700">
                   {formatCurrency(t.amount)}
                 </td>
               </tr>
@@ -46,9 +46,9 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
           </tbody>
         </table>
       </div>
-      
+
       {hasMore && (
-        <p className="mt-4 text-sm text-gray-500">
+        <p className="mt-4 text-sm text-neutral-500">
           ... and {transactions.length - previewLimit} more
         </p>
       )}

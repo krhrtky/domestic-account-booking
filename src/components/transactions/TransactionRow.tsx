@@ -11,11 +11,17 @@ interface TransactionRowProps {
   onUpdate: () => void
 }
 
+const payerStyles: Record<string, { bg: string; text: string; border: string }> = {
+  UserA: { bg: 'bg-brand-primary/10', text: 'text-brand-primary', border: 'border-brand-primary/20' },
+  UserB: { bg: 'bg-brand-accent/10', text: 'text-brand-accent', border: 'border-brand-accent/20' },
+  Common: { bg: 'bg-neutral-100', text: 'text-neutral-600', border: 'border-neutral-200' },
+}
+
 export default function TransactionRow({ transaction, onUpdate }: TransactionRowProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async () => {
-    if (!confirm('Delete this transaction?')) return
+    if (!confirm('この取引を削除しますか？')) return
 
     setIsDeleting(true)
     const result = await deleteTransaction(transaction.id)
@@ -26,38 +32,48 @@ export default function TransactionRow({ transaction, onUpdate }: TransactionRow
     }
   }
 
+  const payer = payerStyles[transaction.payer_type] || payerStyles.Common
+
   return (
-    <tr className="border-b hover:bg-gray-50" data-testid={`transaction-row-${transaction.id}`}>
-      <td className="px-4 py-3 text-sm text-gray-900" data-testid="transaction-date">
-        {transaction.date}
+    <tr
+      className="group hover:bg-brand-primary/[0.02] transition-colors duration-150"
+      data-testid={`transaction-row-${transaction.id}`}
+    >
+      <td className="px-4 py-4 text-sm text-neutral-600" data-testid="transaction-date">
+        <span className="font-medium text-neutral-900">{transaction.date}</span>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-900" data-testid="transaction-description">
+      <td className="px-4 py-4 text-sm text-neutral-700 max-w-xs truncate" data-testid="transaction-description">
         {transaction.description}
       </td>
-      <td className="px-4 py-3 text-sm text-gray-900 text-right" data-testid="transaction-amount">
-        {formatCurrency(Math.round(transaction.amount))}
+      <td className="px-4 py-4 text-sm text-right" data-testid="transaction-amount">
+        <span className="font-bold text-neutral-900">
+          {formatCurrency(Math.round(transaction.amount))}
+        </span>
       </td>
-      <td className="px-4 py-3 text-sm" data-testid="transaction-payer">
-        <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+      <td className="px-4 py-4 text-sm" data-testid="transaction-payer">
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${payer.bg} ${payer.text} ${payer.border}`}>
           {transaction.payer_type}
         </span>
       </td>
-      <td className="px-4 py-3 text-sm" data-testid="transaction-expense-type">
+      <td className="px-4 py-4 text-sm" data-testid="transaction-expense-type">
         <ExpenseTypeToggle
           transactionId={transaction.id}
           currentType={transaction.expense_type}
           onUpdate={onUpdate}
         />
       </td>
-      <td className="px-4 py-3 text-sm">
+      <td className="px-4 py-4 text-sm">
         <button
           onClick={handleDelete}
           disabled={isDeleting}
-          className="text-red-600 hover:text-red-800 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-500 hover:text-semantic-error hover:bg-semantic-error-light disabled:opacity-50 transition-all duration-150"
           data-testid="transaction-delete-btn"
-          aria-label={`Delete transaction: ${transaction.description} on ${transaction.date}`}
+          aria-label={`取引を削除: ${transaction.description} (${transaction.date})`}
         >
-          Delete
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          <span className="hidden sm:inline">削除</span>
         </button>
       </td>
     </tr>

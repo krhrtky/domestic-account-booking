@@ -37,21 +37,21 @@ export default function ExpenseTypeToggle({
     }
   }
 
-  const bgClass = currentType === 'Household' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+  const bgClass = currentType === 'Household' ? 'bg-semantic-info-light text-semantic-info' : 'bg-neutral-100 text-neutral-800'
 
   return (
     <div className="inline-flex flex-col items-center gap-1">
       <button
         onClick={handleToggle}
         disabled={isUpdating}
-        className={'px-3 py-1 rounded text-sm font-medium ' + bgClass + ' hover:opacity-80 disabled:opacity-50'}
+        className={'px-3 py-1 rounded-lg text-sm font-medium ' + bgClass + ' hover:opacity-80 disabled:opacity-60 transition-all duration-fast'}
         data-testid="expense-type-toggle"
         aria-label={`Toggle expense type, currently ${currentType}`}
         aria-pressed={currentType === 'Household' ? 'true' : 'false'}
       >
         {isUpdating ? '...' : currentType}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-semantic-error">{error}</span>}
     </div>
   )
 }

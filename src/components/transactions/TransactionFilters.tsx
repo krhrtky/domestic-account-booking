@@ -22,7 +22,7 @@ export default function TransactionFilters({
   return (
     <div className="flex gap-4 mb-6">
       <div>
-        <label htmlFor="month-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="month-filter" className="block text-sm font-medium text-neutral-700 mb-1">
           Month
         </label>
         <input
@@ -30,12 +30,12 @@ export default function TransactionFilters({
           id="month-filter"
           value={month || ''}
           onChange={(e) => onFilterChange({ month: e.target.value || undefined, expenseType, payerType })}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
         />
       </div>
 
       <div>
-        <label htmlFor="expense-type-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="expense-type-filter" className="block text-sm font-medium text-neutral-700 mb-1">
           Expense Type
         </label>
         <select
@@ -43,7 +43,7 @@ export default function TransactionFilters({
           name="expenseType"
           value={expenseType || ''}
           onChange={(e) => onFilterChange({ month, expenseType: e.target.value as ExpenseType || undefined, payerType })}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
         >
           <option value="">All</option>
           <option value="Household">Household</option>
@@ -52,7 +52,7 @@ export default function TransactionFilters({
       </div>
 
       <div>
-        <label htmlFor="payer-type-filter" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="payer-type-filter" className="block text-sm font-medium text-neutral-700 mb-1">
           Payer
         </label>
         <select
@@ -60,7 +60,7 @@ export default function TransactionFilters({
           name="payerType"
           value={payerType || ''}
           onChange={(e) => onFilterChange({ month, expenseType, payerType: e.target.value as PayerType || undefined })}
-          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
         >
           <option value="">All</option>
           <option value="UserA">User A</option>

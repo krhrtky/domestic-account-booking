@@ -59,74 +59,91 @@ export default function PaginationControls({
   }
 
   return (
-    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-700">
-          Showing {startItem}-{endItem} of {totalCount} transactions
+    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-neutral-200">
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-neutral-600">
+          <span className="font-medium text-neutral-900">{startItem}-{endItem}</span>
+          <span className="mx-1">/</span>
+          <span>{totalCount}件</span>
         </span>
-        <select
-          value={pageSize}
-          onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
-          className="px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Items per page"
-        >
-          <option value="10">10 / page</option>
-          <option value="25">25 / page</option>
-          <option value="50">50 / page</option>
-        </select>
+        <div className="relative">
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
+            className="appearance-none pl-3 pr-8 py-1.5 bg-white border-2 border-neutral-200 rounded-lg text-sm font-medium text-neutral-700 cursor-pointer focus:outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/15 hover:border-neutral-300 transition-all duration-200"
+            aria-label="表示件数"
+          >
+            <option value="10">10件</option>
+            <option value="25">25件</option>
+            <option value="50">50件</option>
+          </select>
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg className="w-4 h-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-1">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-          aria-label="Previous page"
+          className="p-2 rounded-lg border-2 border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-neutral-200 transition-all duration-150"
+          aria-label="前のページ"
         >
-          Previous
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
         </button>
 
-        {getPageNumbers().map((page, index) => {
-          if (page === '...') {
+        <div className="flex items-center gap-1 mx-1">
+          {getPageNumbers().map((page, index) => {
+            if (page === '...') {
+              return (
+                <span
+                  key={`ellipsis-${index < 2 ? 'start' : 'end'}`}
+                  className="px-2 py-1 text-neutral-400 text-sm"
+                  aria-hidden="true"
+                >
+                  ...
+                </span>
+              )
+            }
+
+            const pageNum = page as number
+            const isCurrentPage = pageNum === currentPage
+
             return (
-              <span
-                key={`ellipsis-${index < 2 ? 'start' : 'end'}`}
-                className="px-3 py-2 text-gray-500"
-                aria-hidden="true"
+              <button
+                key={pageNum}
+                onClick={() => onPageChange(pageNum)}
+                disabled={isCurrentPage}
+                className={`
+                  min-w-[36px] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-150
+                  ${isCurrentPage
+                    ? 'bg-brand-primary text-white shadow-sm'
+                    : 'text-neutral-600 hover:bg-neutral-100'
+                  }
+                `}
+                aria-label={`${pageNum}ページ目`}
+                aria-current={isCurrentPage ? 'page' : undefined}
               >
-                ...
-              </span>
+                {pageNum}
+              </button>
             )
-          }
-
-          const pageNum = page as number
-          const isCurrentPage = pageNum === currentPage
-
-          return (
-            <button
-              key={pageNum}
-              onClick={() => onPageChange(pageNum)}
-              disabled={isCurrentPage}
-              className={"px-3 py-2 rounded-lg border text-sm font-medium " + (
-                isCurrentPage
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-              ) + " disabled:cursor-default"}
-              aria-label={"Page " + pageNum}
-              aria-current={isCurrentPage ? 'page' : undefined}
-            >
-              {pageNum}
-            </button>
-          )
-        })}
+          })}
+        </div>
 
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
-          aria-label="Next page"
+          className="p-2 rounded-lg border-2 border-neutral-200 text-neutral-600 hover:bg-neutral-50 hover:border-neutral-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-neutral-200 transition-all duration-150"
+          aria-label="次のページ"
         >
-          Next
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </button>
       </div>
     </div>
