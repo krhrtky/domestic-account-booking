@@ -9,7 +9,8 @@ on:
       - master
 
 jobs:
-  vrt:
+  vrt-e2e:
+    name: E2E VRT
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -36,6 +37,44 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: vrt-snapshots
+          name: vrt-e2e-snapshots
           path: e2e/vrt/*.png
+          retention-days: 7
+
+  vrt-storybook:
+    name: Storybook VRT
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Storybook
+        run: npm run build-storybook
+
+      - name: Run Storybook VRT
+        run: |
+          npx concurrently -k -s first -n "SB,TEST" -c "magenta,blue" \
+            "npx http-server storybook-static --port 6006 --silent" \
+            "npx wait-on tcp:127.0.0.1:6006 && npm run test:storybook:vrt"
+        env:
+          CI: true
+
+      - name: Upload Storybook VRT artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: vrt-storybook-snapshots
+          path: .storybook/__snapshots__
           retention-days: 7
