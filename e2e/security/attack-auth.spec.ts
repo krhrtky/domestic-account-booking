@@ -27,8 +27,7 @@ test.describe('L-SC-001, L-TA-001: 認証攻撃シナリオ (Attack Cases)', () 
     })
   })
 
-  test.describe.skip('ATK-002: IDOR（他グループデータアクセス拒否）', () => {
-    // TODO: /api/me エンドポイント実装後にスキップ解除
+  test.describe('ATK-002: IDOR（他グループデータアクセス拒否）', () => {
     let attackerUser: TestUser
     let victimUser: TestUser
     let victimGroupId: string
