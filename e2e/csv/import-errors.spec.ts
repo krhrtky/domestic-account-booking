@@ -3,10 +3,10 @@ import { createTestUser, cleanupTestData, TestUser } from '../utils/test-helpers
 import { loginUser } from '../utils/demo-helpers'
 import path from 'path'
 import fs from 'fs'
+import iconv from 'iconv-lite'
 
 test.describe.skip('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident & Boundary Cases)', () => {
   // TODO: /api/me エンドポイント実装後にスキップ解除
-  // TODO: INC-001 Shift-JISテストは iconv-lite ライブラリでエンコーディング修正必要
   let testUser: TestUser
 
   test.beforeAll(async () => {
@@ -42,7 +42,7 @@ test.describe.skip('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incid
 
   test.describe('INC-001: 文字化けCSV（非UTF-8）', () => {
     test('Shift-JISエンコードのCSVをアップロードするとエラーメッセージが表示される', async ({ page }) => {
-      const shiftJisContent = Buffer.from('日付,金額,摘要\n2025-01-15,1000,テスト', 'shift_jis')
+      const shiftJisContent = iconv.encode('日付,金額,摘要\n2025-01-15,1000,テスト', 'Shift_JIS')
       const csvPath = path.join(__dirname, '../../tests/fixtures/shift-jis-test.csv')
       fs.writeFileSync(csvPath, shiftJisContent)
 
