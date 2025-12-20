@@ -9,6 +9,16 @@
             "type": "command",
             "command": ".claude/hooks/check-architecture.sh",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-lint.sh",
+            "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-typecheck.sh",
+            "timeout": 60
           }
         ]
       }
@@ -19,8 +29,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/check-architecture.sh",
-            "timeout": 60
+            "command": ".claude/hooks/ci-full-check.sh",
+            "timeout": 180
           },
           {
             "type": "command",
