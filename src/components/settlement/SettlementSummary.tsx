@@ -86,7 +86,7 @@ export default function SettlementSummary({ settlement, userAName, userBName }: 
             </div>
           </div>
           <div className="text-right">
-            <p className={`text-3xl font-bold ${paymentInfo.textClass}`}>{paymentInfo.amount}</p>
+            <p data-testid="settlement-amount" className={`text-3xl font-bold ${paymentInfo.textClass}`}>{paymentInfo.amount}</p>
           </div>
         </div>
       </div>

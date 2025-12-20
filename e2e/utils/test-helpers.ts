@@ -102,12 +102,22 @@ export const getAuthUserByEmail = async (email: string) => {
 export const getGroupById = async (groupId: string) => {
   const result = await pool.query<{
     id: string
+    name: string
     user_a_id: string
     user_b_id: string | null
     ratio_a: number
     ratio_b: number
+    created_at: Date
+    updated_at: Date
   }>('SELECT * FROM groups WHERE id = $1', [groupId])
-  return result.rows[0] || null
+  const row = result.rows[0]
+  if (!row) return null
+  return {
+    ...row,
+    user_b_id: row.user_b_id ?? undefined,
+    created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at.toISOString(),
+  }
 }
 
 export const getTransactionsByGroupId = async (groupId: string) => {
@@ -118,10 +128,19 @@ export const getTransactionsByGroupId = async (groupId: string) => {
     date: Date
     description: string
     amount: number
-    payer_type: string
-    expense_type: string
+    payer_type: 'UserA' | 'UserB' | 'Common'
+    expense_type: 'Household' | 'Personal'
+    source_file_name?: string
+    uploaded_by?: string
+    created_at: Date
+    updated_at: Date
   }>('SELECT * FROM transactions WHERE group_id = $1 ORDER BY date DESC', [groupId])
-  return result.rows
+  return result.rows.map((row) => ({
+    ...row,
+    date: row.date.toISOString().slice(0, 10),
+    created_at: row.created_at.toISOString(),
+    updated_at: row.updated_at.toISOString(),
+  }))
 }
 
 export const insertTransaction = async (transaction: {

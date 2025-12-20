@@ -21,6 +21,7 @@ export default function MonthSelector({ months, selectedMonth, onChange }: Month
         <select
           id="settlement-month-select"
           name="settlement-month"
+          data-testid="month-selector"
           value={selectedMonth}
           onChange={(e) => onChange(e.target.value)}
           aria-label="精算対象月を選択"

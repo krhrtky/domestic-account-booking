@@ -36,7 +36,9 @@
     "build-storybook": "storybook build",
     "test:storybook": "test-storybook",
     "test:storybook:vrt": "STORYBOOK_VRT=true test-storybook",
-    "test:storybook:vrt:update": "STORYBOOK_VRT=true test-storybook --updateSnapshot"
+    "test:storybook:vrt:update": "STORYBOOK_VRT=true test-storybook --updateSnapshot",
+    "seed": "node --env-file=.env.local node_modules/.bin/tsx scripts/seed-local.ts",
+    "seed:e2e": "node --env-file=.env.local.e2e node_modules/.bin/tsx scripts/seed-local.ts"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.17",
@@ -88,6 +90,7 @@
     "postcss": "^8.4.49",
     "storybook": "^10.1.10",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.0",
     "vitest": "^2.1.8",
