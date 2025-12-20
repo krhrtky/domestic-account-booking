@@ -76,7 +76,7 @@
     "@types/pg": "^8.11.10",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
-    "@vitest/ui": "^2.1.8",
+    "@vitest/ui": "^4.0.16",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
     "dependency-cruiser": "^17.3.4",
@@ -93,7 +93,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.0",
-    "vitest": "^2.1.8",
+    "vitest": "^4.0.16",
     "wait-on": "^8.0.1"
   }
 }
