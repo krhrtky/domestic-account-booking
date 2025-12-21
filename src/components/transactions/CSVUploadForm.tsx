@@ -22,8 +22,10 @@ export default function CSVUploadForm() {
   const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([])
   const [payerType, setPayerType] = useState<PayerType>('UserA')
   const [isLoading, setIsLoading] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [sensitiveWarning, setSensitiveWarning] = useState<string | null>(null)
   const router = useRouter()
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -42,6 +44,8 @@ export default function CSVUploadForm() {
 
     setFile(selectedFile)
     setError(null)
+    setSensitiveWarning(null)
+    setIsProcessing(true)
     setIsLoading(true)
 
     try {
@@ -59,16 +63,33 @@ export default function CSVUploadForm() {
         setExcludedHeaders(result.excludedHeaders)
         setColumnMapping(result.suggestedMapping)
 
-        const allRequiredFieldsMapped =
-          result.suggestedMapping.dateColumn &&
-          result.suggestedMapping.amountColumn &&
-          result.suggestedMapping.descriptionColumn
+        if (result.excludedHeaders.length > 0) {
+          setSensitiveWarning(
+            `機密情報を含む可能性のある列を除外しました: ${result.excludedHeaders.join(', ')}`
+          )
+        }
 
-        if (allRequiredFieldsMapped) {
-          setStep('preview')
-          await handlePreview(result.suggestedMapping, content, selectedFile.name)
+        const hasDateColumn = result.suggestedMapping.dateColumn !== null
+        const hasAmountColumn = result.suggestedMapping.amountColumn !== null
+
+        if (!hasDateColumn || !hasAmountColumn) {
+          const missingColumns = []
+          if (!hasDateColumn) missingColumns.push('日付')
+          if (!hasAmountColumn) missingColumns.push('金額')
+          setError(`必須列（${missingColumns.join('、')}）が見つかりません`)
+          setStep('upload')
         } else {
-          setStep('mapping')
+          const allRequiredFieldsMapped =
+            result.suggestedMapping.dateColumn &&
+            result.suggestedMapping.amountColumn &&
+            result.suggestedMapping.descriptionColumn
+
+          if (allRequiredFieldsMapped) {
+            setStep('preview')
+            await handlePreview(result.suggestedMapping, content, selectedFile.name)
+          } else {
+            setStep('mapping')
+          }
         }
       }
     } catch (err) {
@@ -76,6 +97,7 @@ export default function CSVUploadForm() {
       setStep('upload')
     } finally {
       setIsLoading(false)
+      setIsProcessing(false)
     }
   }
 
@@ -152,6 +174,12 @@ export default function CSVUploadForm() {
               disabled={isLoading}
             />
           </div>
+          {isProcessing && (
+            <div className="flex items-center space-x-2 text-neutral-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-primary"></div>
+              <span className="text-sm">処理中...</span>
+            </div>
+          )}
         </>
       )}
 
@@ -198,10 +226,7 @@ export default function CSVUploadForm() {
 
       {step === 'preview' && (
         <>
-          <div>
-            <h2 className="text-lg font-semibold text-neutral-900 mb-4">データプレビュー</h2>
-            <TransactionPreview transactions={previewTransactions} />
-          </div>
+          <TransactionPreview transactions={previewTransactions} />
 
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
@@ -242,6 +267,12 @@ export default function CSVUploadForm() {
             </button>
           </div>
         </>
+      )}
+
+      {sensitiveWarning && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+          {sensitiveWarning}
+        </div>
       )}
 
       {error && (

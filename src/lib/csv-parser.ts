@@ -77,7 +77,7 @@ const detectDateColumn = (headers: string[]): number => {
 }
 
 const detectDescriptionColumn = (headers: string[]): number => {
-  const descPatterns = ['description', '摘要', '内容', '店名', '商品名', 'Description']
+  const descPatterns = ['description', '摘要', '内容', '店名', '商品名', '利用先', 'Description']
   return headers.findIndex((h) =>
     descPatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
   )

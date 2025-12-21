@@ -15,7 +15,7 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
       <h2 className="text-xl font-bold text-neutral-900 mb-4">
-        Preview ({transactions.length} transactions)
+        データプレビュー ({transactions.length} 件)
       </h2>
 
       <div className="overflow-x-auto">
