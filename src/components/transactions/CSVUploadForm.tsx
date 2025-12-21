@@ -100,17 +100,7 @@ export default function CSVUploadForm() {
           setError(`必須列（${missingColumns.join('、')}）が見つかりません`)
           setStep('upload')
         } else {
-          const allRequiredFieldsMapped =
-            result.suggestedMapping.dateColumn &&
-            result.suggestedMapping.amountColumn &&
-            result.suggestedMapping.descriptionColumn
-
-          if (allRequiredFieldsMapped) {
-            setStep('preview')
-            await handlePreview(result.suggestedMapping, content, selectedFile.name)
-          } else {
-            setStep('mapping')
-          }
+          setStep('mapping')
         }
       }
     } catch (err) {

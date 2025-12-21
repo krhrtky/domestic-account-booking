@@ -72,6 +72,12 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
+
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
@@ -101,12 +107,18 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
+
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
       const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
-      
+
       await page.waitForTimeout(5000)
 
       const successOrProcessing = await page.getByText(/success|成功|処理中|インポート/i).isVisible().catch(() => false)
@@ -129,12 +141,11 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="defaultPayerType"]')
-      await payerSelect.selectOption('UserA')
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 10000 })
 
-      const uploadButton = page.locator('button:has-text("インポート実行")')
-      await uploadButton.click()
-      await page.waitForTimeout(2000)
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await page.waitForTimeout(3000)
 
       const errorMessage = await page.getByText(/上限|10,?000|行数|limit|超え/i).isVisible().catch(() => false)
       expect(errorMessage).toBeTruthy()
@@ -167,12 +178,18 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
+
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
       const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
-      
+
       await page.waitForTimeout(5000)
 
       const successOrProcessing = await page.getByText(/success|成功|処理中|インポート/i).isVisible().catch(() => false)
@@ -204,11 +221,6 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="defaultPayerType"]')
-      await payerSelect.selectOption('UserA')
-
-      const uploadButton = page.locator('button:has-text("インポート実行")')
-      await uploadButton.click()
       await page.waitForTimeout(2000)
 
       const errorMessage = await page.getByText(/サイズ|5MB|ファイル|大きすぎ|size|limit|超え/i).isVisible().catch(() => false)

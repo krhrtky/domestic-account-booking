@@ -32,11 +32,6 @@ test.describe('Scenario 14: CSV Upload Error Handling', () => {
     const fileInput = page.locator('input[type="file"]')
     await fileInput.setInputFiles(csvFilePath)
 
-    const payerSelect = page.locator('select[name="defaultPayerType"]')
-    await payerSelect.selectOption('UserA')
-
-    const uploadButton = page.locator('button:has-text("インポート実行")')
-    await uploadButton.click()
     await page.waitForTimeout(1000)
 
     await expect(page.getByText(/必須列.*が見つかりません/)).toBeVisible()

@@ -115,6 +115,12 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
+
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
@@ -162,6 +168,12 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
+
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
@@ -206,6 +218,12 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
 
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
+
+      await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+      await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
+      await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
       const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')

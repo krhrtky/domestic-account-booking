@@ -9,7 +9,7 @@ test.describe('CSV Column Mapping', () => {
     await page.goto('/dashboard/transactions/upload')
   })
 
-  test('UC-001: Auto-detects standard headers and imports without manual mapping', async ({ page }) => {
+  test('UC-001: Auto-detects standard headers and allows mapping verification', async ({ page }) => {
 
     const csvContent = `Date,Amount,Description
 2025-01-15,5400,Supermarket XYZ
@@ -21,6 +21,10 @@ test.describe('CSV Column Mapping', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from(csvContent)
     })
+
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await page.getByRole('button', { name: 'プレビューを表示' }).click()
 
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
@@ -48,6 +52,10 @@ test.describe('CSV Column Mapping', () => {
       buffer: Buffer.from(csvContent)
     })
 
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
     await expect(page.getByText('2025-01-15')).toBeVisible()
@@ -66,7 +74,9 @@ test.describe('CSV Column Mapping', () => {
       buffer: Buffer.from(csvContent)
     })
 
-    await expect(page.getByText(/機密情報を含む可能性のある列を除外しました/)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await expect(page.getByText(/機密情報を含む可能性のある列を除外しました/)).toBeVisible()
     await expect(page.getByText('カード番号')).toBeVisible()
   })
 
@@ -119,6 +129,10 @@ test.describe('CSV Column Mapping', () => {
       buffer: Buffer.from(csvContent)
     })
 
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
     await expect(page.getByRole('columnheader', { name: 'Payer' })).toBeVisible()
@@ -139,6 +153,10 @@ test.describe('CSV Column Mapping', () => {
       buffer: Buffer.from(csvContent)
     })
 
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await page.getByRole('button', { name: 'プレビューを表示' }).click()
+
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
     await expect(page.getByRole('columnheader', { name: 'Payer' })).toBeVisible()
@@ -156,6 +174,10 @@ test.describe('CSV Column Mapping', () => {
       mimeType: 'text/csv',
       buffer: Buffer.from(csvContent)
     })
+
+    await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
+
+    await page.getByRole('button', { name: 'プレビューを表示' }).click()
 
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
