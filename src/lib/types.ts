@@ -9,6 +9,7 @@ export interface Transaction {
   amount: number;
   description: string;
   payer_type: PayerType;
+  payer_user_id?: string | null;
   expense_type: ExpenseType;
   source_file_name?: string;
   uploaded_by?: string;
@@ -36,4 +37,11 @@ export interface Settlement {
   balance_a: number;
   ratio_a: number;
   ratio_b: number;
+}
+
+export interface ColumnMapping {
+  dateColumn: string | null;
+  amountColumn: string | null;
+  descriptionColumn: string | null;
+  payerColumn: string | null;
 }

@@ -1,15 +1,21 @@
 import Papa from 'papaparse'
+import { ColumnMapping } from './types'
 
 export interface ParsedTransaction {
   date: string
   description: string
   amount: number
   source_file_name: string
+  payer_name?: string
 }
 
 export type ParseResult =
   | { success: true; data: ParsedTransaction[]; warnings?: string[] }
   | { success: false; errors: string[]; warnings?: string[] }
+
+export interface ParseOptions {
+  columnMapping?: ColumnMapping
+}
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
 const MAX_ROW_COUNT = 10000
@@ -84,6 +90,57 @@ const detectAmountColumn = (headers: string[]): number => {
   )
 }
 
+const detectPayerColumn = (headers: string[]): number => {
+  const payerPatterns = ['payer', '支払者', '支払い者', 'User', 'ユーザー', '名前']
+  return headers.findIndex((h) =>
+    payerPatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
+  )
+}
+
+export const detectHeaders = (csvContent: string): {
+  headers: string[]
+  suggestedMapping: ColumnMapping
+  excludedHeaders: string[]
+} | { error: string } => {
+  if (!csvContent || csvContent.trim().length === 0) {
+    return { error: 'CSVファイルが空です' }
+  }
+
+  const parseResult = Papa.parse(csvContent, {
+    header: true,
+    preview: 1,
+  })
+
+  if (parseResult.errors.length > 0) {
+    return { error: parseResult.errors[0].message }
+  }
+
+  const headers = parseResult.meta.fields || []
+  if (headers.length === 0) {
+    return { error: 'CSVヘッダーが見つかりません' }
+  }
+
+  const { filteredHeaders, excludedColumns } = filterSensitiveColumns(headers)
+
+  const dateIdx = detectDateColumn(filteredHeaders)
+  const descIdx = detectDescriptionColumn(filteredHeaders)
+  const amountIdx = detectAmountColumn(filteredHeaders)
+  const payerIdx = detectPayerColumn(filteredHeaders)
+
+  const suggestedMapping: ColumnMapping = {
+    dateColumn: dateIdx !== -1 ? filteredHeaders[dateIdx] : null,
+    amountColumn: amountIdx !== -1 ? filteredHeaders[amountIdx] : null,
+    descriptionColumn: descIdx !== -1 ? filteredHeaders[descIdx] : null,
+    payerColumn: payerIdx !== -1 ? filteredHeaders[payerIdx] : null,
+  }
+
+  return {
+    headers: filteredHeaders,
+    suggestedMapping,
+    excludedHeaders: excludedColumns,
+  }
+}
+
 const normalizeDate = (dateStr: string): string | null => {
   const formats = [
     { regex: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, order: ['y', 'm', 'd'] },
@@ -121,7 +178,8 @@ const parseAmount = (amountStr: string): number => {
 
 export const parseCSV = async (
   csvContent: string,
-  fileName: string
+  fileName: string,
+  options?: ParseOptions
 ): Promise<ParseResult> => {
   if (!csvContent || csvContent.trim().length === 0) {
     return { success: false, errors: ['CSVファイルが空です'] }
@@ -166,11 +224,29 @@ export const parseCSV = async (
           warnings.push(`機密情報を含む可能性のある列を除外しました: ${excludedColumns.join(', ')}`)
         }
 
-        const dateIdx = detectDateColumn(filteredHeaders)
-        const descIdx = detectDescriptionColumn(filteredHeaders)
-        const amountIdx = detectAmountColumn(filteredHeaders)
+        let dateColumn: string | null
+        let descColumn: string | null
+        let amountColumn: string | null
+        let payerColumn: string | null
 
-        if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
+        if (options?.columnMapping) {
+          dateColumn = options.columnMapping.dateColumn
+          descColumn = options.columnMapping.descriptionColumn
+          amountColumn = options.columnMapping.amountColumn
+          payerColumn = options.columnMapping.payerColumn
+        } else {
+          const dateIdx = detectDateColumn(filteredHeaders)
+          const descIdx = detectDescriptionColumn(filteredHeaders)
+          const amountIdx = detectAmountColumn(filteredHeaders)
+          const payerIdx = detectPayerColumn(filteredHeaders)
+
+          dateColumn = dateIdx !== -1 ? filteredHeaders[dateIdx] : null
+          descColumn = descIdx !== -1 ? filteredHeaders[descIdx] : null
+          amountColumn = amountIdx !== -1 ? filteredHeaders[amountIdx] : null
+          payerColumn = payerIdx !== -1 ? filteredHeaders[payerIdx] : null
+        }
+
+        if (!dateColumn || !descColumn || !amountColumn) {
           const headerList = filteredHeaders.length > 0 ? filteredHeaders.join(', ') : 'なし'
           resolve({
             success: false,
@@ -187,9 +263,12 @@ export const parseCSV = async (
 
         results.data.forEach((row: any, idx: number) => {
           try {
-            const dateStr = row[filteredHeaders[dateIdx]]
-            const description = sanitizeCSVField(row[filteredHeaders[descIdx]])
-            const amountStr = row[filteredHeaders[amountIdx]]
+            const dateStr = row[dateColumn]
+            const description = sanitizeCSVField(row[descColumn])
+            const amountStr = row[amountColumn]
+            const payerName = payerColumn
+              ? sanitizeCSVField(row[payerColumn] || '').trim()
+              : undefined
 
             if (!dateStr || !description || !amountStr) {
               return
@@ -207,6 +286,7 @@ export const parseCSV = async (
               description,
               amount,
               source_file_name: fileName,
+              payer_name: payerName,
             })
           } catch (error) {
             errors.push('Row ' + (idx + 1) + ': ' + error)

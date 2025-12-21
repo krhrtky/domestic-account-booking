@@ -370,3 +370,176 @@ invalid-date,Invalid date,1000`
     })
   })
 })
+
+describe('L-BR-006: Column Mapping', () => {
+  describe('Typical Cases', () => {
+    it('detects standard headers and suggests mapping', async () => {
+      const { detectHeaders } = await import('./csv-parser')
+      const csvContent = `Date,Amount,Description
+2025-01-15,5400,Supermarket
+2025-01-16,450,Coffee`
+
+      const result = detectHeaders(csvContent)
+
+      expect('error' in result).toBe(false)
+      if ('headers' in result) {
+        expect(result.headers).toEqual(['Date', 'Amount', 'Description'])
+        expect(result.suggestedMapping.dateColumn).toBe('Date')
+        expect(result.suggestedMapping.amountColumn).toBe('Amount')
+        expect(result.suggestedMapping.descriptionColumn).toBe('Description')
+        expect(result.excludedHeaders).toEqual([])
+      }
+    })
+
+    it('uses custom column mapping when provided', async () => {
+      const csvContent = `利用日,ご利用金額,ご利用先名
+2025-01-15,5400,スーパー
+2025-01-16,450,カフェ`
+
+      const result = await parseCSV(csvContent, 'test.csv', {
+        columnMapping: {
+          dateColumn: '利用日',
+          amountColumn: 'ご利用金額',
+          descriptionColumn: 'ご利用先名',
+          payerColumn: null
+        }
+      })
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data).toHaveLength(2)
+        expect(result.data[0].date).toBe('2025-01-15')
+        expect(result.data[0].amount).toBe(5400)
+        expect(result.data[0].description).toBe('スーパー')
+      }
+    })
+
+    it('detects payer column when present', async () => {
+      const { detectHeaders } = await import('./csv-parser')
+      const csvContent = `日付,金額,摘要,支払者
+2025-01-15,5400,スーパー,UserA`
+
+      const result = detectHeaders(csvContent)
+
+      if ('headers' in result) {
+        expect(result.suggestedMapping.payerColumn).toBe('支払者')
+      }
+    })
+  })
+
+  describe('Boundary Cases', () => {
+    it('handles CSV with only required columns', async () => {
+      const csvContent = `Date,Amount,Description
+2025-01-15,100,Item`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+    })
+
+    it('returns error when required column is missing', async () => {
+      const csvContent = `Date,Description
+2025-01-15,Item`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(false)
+      if (!result.success) {
+        expect(result.errors[0]).toContain('必須列（日付、金額、摘要）が見つかりません')
+      }
+    })
+  })
+
+  describe('Gray Cases', () => {
+    it('auto-detects Japanese and English variations', async () => {
+      const { detectHeaders } = await import('./csv-parser')
+      const csvContent = `利用日,利用金額,内容
+2025-01-15,5400,Test`
+
+      const result = detectHeaders(csvContent)
+
+      if ('headers' in result) {
+        expect(result.suggestedMapping.dateColumn).toBe('利用日')
+        expect(result.suggestedMapping.amountColumn).toBe('利用金額')
+        expect(result.suggestedMapping.descriptionColumn).toBe('内容')
+      }
+    })
+  })
+
+  describe('Attack Cases - L-LC-001', () => {
+    it('excludes sensitive card number column', async () => {
+      const { detectHeaders } = await import('./csv-parser')
+      const csvContent = `日付,金額,摘要,カード番号
+2025-01-15,5400,Test,1234-5678-9012-3456`
+
+      const result = detectHeaders(csvContent)
+
+      if ('headers' in result) {
+        expect(result.excludedHeaders).toContain('カード番号')
+        expect(result.headers).not.toContain('カード番号')
+      }
+    })
+
+    it('excludes sensitive account number column', async () => {
+      const { detectHeaders } = await import('./csv-parser')
+      const csvContent = `Date,Amount,Description,Account Number
+2025-01-15,100,Test,1234567890`
+
+      const result = detectHeaders(csvContent)
+
+      if ('headers' in result) {
+        expect(result.excludedHeaders).toContain('Account Number')
+        expect(result.headers).not.toContain('Account Number')
+      }
+    })
+  })
+
+  describe('payer_name sanitization', () => {
+    it('sanitizes formula injection in payer_name', async () => {
+      const csv = `Date,Amount,Description,Payer
+2025-01-15,1000,Test,=CMD|calc`
+      const result = await parseCSV(csv, 'test.csv')
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data[0].payer_name).toBe("'=CMD|calc")
+      }
+    })
+
+    it('removes newlines from payer_name', async () => {
+      const csv = `Date,Amount,Description,Payer
+2025-01-15,1000,Test,"Alice
+Bob"`
+      const result = await parseCSV(csv, 'test.csv')
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data[0].payer_name).toBe('AliceBob')
+      }
+    })
+
+    it('sanitizes multiple formula prefixes in payer_name', async () => {
+      const csv1 = `Date,Amount,Description,Payer
+2025-01-15,1000,Test,+12345`
+      const result1 = await parseCSV(csv1, 'test.csv')
+      expect(result1.success).toBe(true)
+      if (result1.success) {
+        expect(result1.data[0].payer_name).toBe("'+12345")
+      }
+
+      const csv2 = `Date,Amount,Description,Payer
+2025-01-15,1000,Test,-12345`
+      const result2 = await parseCSV(csv2, 'test.csv')
+      expect(result2.success).toBe(true)
+      if (result2.success) {
+        expect(result2.data[0].payer_name).toBe("'-12345")
+      }
+
+      const csv3 = `Date,Amount,Description,Payer
+2025-01-15,1000,Test,@SUM(A1)`
+      const result3 = await parseCSV(csv3, 'test.csv')
+      expect(result3.success).toBe(true)
+      if (result3.success) {
+        expect(result3.data[0].payer_name).toBe("'@SUM(A1)")
+      }
+    })
+  })
+})
