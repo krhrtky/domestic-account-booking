@@ -19,14 +19,12 @@
             "type": "command",
             "command": ".claude/hooks/check-typecheck.sh",
             "timeout": 60
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
+          },
+          {
+            "type": "command",
+            "command": "npm run test",
+            "timeout": 60
+          },
           {
             "type": "command",
             "command": ".claude/hooks/ci-full-check.sh",

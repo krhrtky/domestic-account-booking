@@ -6,8 +6,13 @@ export default withAuth(
     const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
                        req.nextUrl.pathname.startsWith('/signup')
     const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
+    const isHomePage = req.nextUrl.pathname === '/'
 
     if (req.nextauth.token && isAuthPage) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+
+    if (req.nextauth.token && isHomePage) {
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
 
@@ -20,8 +25,9 @@ export default withAuth(
                           req.nextUrl.pathname.startsWith('/signup')
         const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
         const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth')
+        const isHomePage = req.nextUrl.pathname === '/'
 
-        if (isAuthPage || isInvitePage || isApiAuth) {
+        if (isAuthPage || isInvitePage || isApiAuth || isHomePage) {
           return true
         }
 

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { uploadCSV } from '@/app/actions/transactions'
 import { detectCSVHeaders } from '@/app/actions/csv-mappings'
+import { getCurrentGroup } from '@/app/actions/group'
 import { PayerType, ColumnMapping } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { parseCSV, ParsedTransaction } from '@/lib/csv-parser'
@@ -10,6 +11,11 @@ import ColumnMappingForm from './ColumnMappingForm'
 import TransactionPreview from './TransactionPreview'
 
 type Step = 'upload' | 'mapping' | 'preview' | 'payer'
+
+interface GroupInfo {
+  userAName: string
+  userBName: string | null
+}
 
 export default function CSVUploadForm() {
   const [file, setFile] = useState<File | null>(null)
@@ -20,13 +26,28 @@ export default function CSVUploadForm() {
   const [excludedHeaders, setExcludedHeaders] = useState<string[]>([])
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null)
   const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([])
-  const [payerType, setPayerType] = useState<PayerType>('UserA')
+  const [payerTypes, setPayerTypes] = useState<PayerType[]>([])
+  const [defaultPayerType, setDefaultPayerType] = useState<PayerType>('UserA')
+  const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [sensitiveWarning, setSensitiveWarning] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    async function fetchGroupInfo() {
+      const result = await getCurrentGroup()
+      if (result.success && result.group) {
+        setGroupInfo({
+          userAName: result.group.user_a.name,
+          userBName: result.group.user_b?.name ?? null
+        })
+      }
+    }
+    fetchGroupInfo()
+  }, [])
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024
 
@@ -110,6 +131,7 @@ export default function CSVUploadForm() {
 
       if (result.success) {
         setPreviewTransactions(result.data)
+        setPayerTypes(new Array(result.data.length).fill(defaultPayerType))
         setStep('preview')
       } else {
         setError(result.errors.join(', '))
@@ -119,6 +141,19 @@ export default function CSVUploadForm() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handlePayerChange = (index: number, payerType: PayerType) => {
+    setPayerTypes(prev => {
+      const newPayerTypes = [...prev]
+      newPayerTypes[index] = payerType
+      return newPayerTypes
+    })
+  }
+
+  const handleDefaultPayerChange = (payerType: PayerType) => {
+    setDefaultPayerType(payerType)
+    setPayerTypes(new Array(previewTransactions.length).fill(payerType))
   }
 
   const handleMappingConfirm = async () => {
@@ -143,7 +178,7 @@ export default function CSVUploadForm() {
     setSuccess(null)
 
     try {
-      const result = await uploadCSV(csvContent, file.name, payerType)
+      const result = await uploadCSV(csvContent, file.name, defaultPayerType, payerTypes)
 
       if (result.error) {
         setError(typeof result.error === 'string' ? result.error : 'アップロードに失敗しました')
@@ -226,24 +261,33 @@ export default function CSVUploadForm() {
 
       {step === 'preview' && (
         <>
-          <TransactionPreview transactions={previewTransactions} />
-
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-2">
-              支払元
+              一括設定
             </label>
             <select
-              name="payerType"
-              value={payerType}
-              onChange={(e) => setPayerType(e.target.value as PayerType)}
+              name="defaultPayerType"
+              value={defaultPayerType}
+              onChange={(e) => handleDefaultPayerChange(e.target.value as PayerType)}
               className="block w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all duration-fast"
               disabled={isLoading}
             >
-              <option value="UserA">ユーザーA</option>
-              <option value="UserB">ユーザーB</option>
+              <option value="UserA">{groupInfo?.userAName ?? 'ユーザーA'}</option>
+              <option value="UserB">{groupInfo?.userBName ?? 'ユーザーB'}</option>
               <option value="Common">共通</option>
             </select>
+            <p className="text-xs text-neutral-500 mt-1">
+              全ての明細に同じ支払元を設定します。個別に変更も可能です。
+            </p>
           </div>
+
+          <TransactionPreview
+            transactions={previewTransactions}
+            payerTypes={payerTypes}
+            onPayerChange={handlePayerChange}
+            userAName={groupInfo?.userAName}
+            userBName={groupInfo?.userBName ?? undefined}
+          />
 
           <div className="flex space-x-4">
             <button

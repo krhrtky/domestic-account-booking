@@ -3,11 +3,16 @@
 import { Transaction } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 import ExpenseTypeToggle from './ExpenseTypeToggle'
+import PayerSelect from './PayerSelect'
 import { deleteTransaction } from '@/app/actions/transactions'
 import { useState } from 'react'
 
 interface TransactionRowProps {
   transaction: Transaction
+  groupUserAId: string
+  groupUserBId?: string | null
+  userAName: string
+  userBName?: string | null
   onUpdate: () => void
 }
 
@@ -17,7 +22,7 @@ const payerStyles: Record<string, { bg: string; text: string; border: string }> 
   Common: { bg: 'bg-neutral-100', text: 'text-neutral-600', border: 'border-neutral-200' },
 }
 
-export default function TransactionRow({ transaction, onUpdate }: TransactionRowProps) {
+export default function TransactionRow({ transaction, groupUserAId, groupUserBId, userAName, userBName, onUpdate }: TransactionRowProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const handleDelete = async () => {
@@ -51,9 +56,20 @@ export default function TransactionRow({ transaction, onUpdate }: TransactionRow
         </span>
       </td>
       <td className="px-4 py-4 text-sm" data-testid="transaction-payer">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${payer.bg} ${payer.text} ${payer.border}`}>
-          {transaction.payer_type}
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${payer.bg} ${payer.text} ${payer.border}`}>
+            {transaction.payer_type}
+          </span>
+          <PayerSelect
+            transactionId={transaction.id}
+            currentPayerUserId={transaction.payer_user_id}
+            groupUserAId={groupUserAId}
+            groupUserBId={groupUserBId}
+            userAName={userAName}
+            userBName={userBName}
+            onUpdate={onUpdate}
+          />
+        </div>
       </td>
       <td className="px-4 py-4 text-sm" data-testid="transaction-expense-type">
         <ExpenseTypeToggle

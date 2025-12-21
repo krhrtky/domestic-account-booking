@@ -57,7 +57,7 @@ test.describe('Scenario 6: Transaction Filtering', () => {
     await expect(page.locator('tr', { hasText: 'Dec UserA Household' })).toBeVisible()
     await expect(page.locator('tr', { hasText: 'Dec UserA Personal' })).not.toBeVisible()
 
-    const payerFilter = page.locator('select[name="payerType"]')
+    const payerFilter = page.locator('select[name="payerType"], select[name="defaultPayerType"]').first()
     await payerFilter.selectOption('UserA')
     await page.waitForTimeout(500)
 

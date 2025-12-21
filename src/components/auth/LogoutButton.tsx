@@ -4,7 +4,7 @@ import { signOut } from 'next-auth/react'
 
 export default function LogoutButton() {
   const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' })
+    await signOut({ callbackUrl: '/' })
   }
 
   return (

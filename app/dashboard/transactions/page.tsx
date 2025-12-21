@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense, useRef } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getTransactions } from '@/app/actions/transactions'
 import { Transaction, ExpenseType, PayerType } from '@/lib/types'
@@ -26,6 +26,12 @@ function TransactionsContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [groupInfo, setGroupInfo] = useState<{
+    user_a_id: string
+    user_a_name: string
+    user_b_id: string | null
+    user_b_name: string | null
+  } | null>(null)
 
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const pageSize = [10, 25, 50].includes(parseInt(searchParams.get('size') || '25', 10))
@@ -34,6 +40,9 @@ function TransactionsContent() {
   const month = searchParams.get('month') || undefined
   const expenseType = (searchParams.get('expenseType') as ExpenseType) || undefined
   const payerType = (searchParams.get('payerType') as PayerType) || undefined
+
+  const [fetchTrigger, setFetchTrigger] = useState(0)
+  const isMountedRef = useRef(true)
 
   const updateURL = useCallback((params: Record<string, string | undefined>) => {
     const newParams = new URLSearchParams()
@@ -45,37 +54,9 @@ function TransactionsContent() {
     router.push(`${pathname}?${newParams.toString()}`)
   }, [router, pathname])
 
-  const loadTransactions = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-
-    const result = await getTransactions({
-      month,
-      expenseType,
-      payerType,
-      page,
-      pageSize
-    })
-
-    if ('error' in result) {
-      setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
-    } else if ('transactions' in result && result.transactions && result.pagination) {
-      setTransactions(result.transactions)
-      setPagination(result.pagination)
-
-      if (result.pagination.currentPage !== page) {
-        updateURL({
-          month,
-          expenseType,
-          payerType,
-          page: result.pagination.currentPage.toString(),
-          size: pageSize.toString()
-        })
-      }
-    }
-
-    setIsLoading(false)
-  }, [month, expenseType, payerType, page, pageSize, updateURL])
+  const triggerRefetch = useCallback(() => {
+    setFetchTrigger(prev => prev + 1)
+  }, [])
 
   const handleFilterChange = (newFilters: {
     month?: string
@@ -112,8 +93,49 @@ function TransactionsContent() {
   }
 
   useEffect(() => {
-    loadTransactions()
-  }, [loadTransactions])
+    isMountedRef.current = true
+
+    async function fetchTransactions() {
+      setIsLoading(true)
+      setError(null)
+
+      const result = await getTransactions({
+        month,
+        expenseType,
+        payerType,
+        page,
+        pageSize
+      })
+
+      if (!isMountedRef.current) return
+
+      if ('error' in result) {
+        setError(typeof result.error === 'string' ? result.error : 'Failed to load transactions')
+      } else if ('transactions' in result && result.transactions && result.pagination && 'group' in result) {
+        setTransactions(result.transactions)
+        setPagination(result.pagination)
+        setGroupInfo(result.group)
+
+        if (result.pagination.currentPage !== page) {
+          updateURL({
+            month,
+            expenseType,
+            payerType,
+            page: result.pagination.currentPage.toString(),
+            size: pageSize.toString()
+          })
+        }
+      }
+
+      setIsLoading(false)
+    }
+
+    fetchTransactions()
+
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [month, expenseType, payerType, page, pageSize, updateURL, fetchTrigger])
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -140,7 +162,7 @@ function TransactionsContent() {
             <ErrorAlert
               variant="card"
               message={error}
-              retry={loadTransactions}
+              retry={triggerRefetch}
             />
           )}
 
@@ -150,13 +172,23 @@ function TransactionsContent() {
                 <LoadingSkeleton variant="table-row" count={10} />
               </tbody>
             </table>
-          ) : (
+          ) : groupInfo ? (
             <TransactionList
               transactions={transactions}
-              onUpdate={loadTransactions}
+              groupUserAId={groupInfo.user_a_id}
+              groupUserBId={groupInfo.user_b_id}
+              userAName={groupInfo.user_a_name}
+              userBName={groupInfo.user_b_name}
+              onUpdate={triggerRefetch}
               pagination={pagination}
               onPageChange={handlePageChange}
               onPageSizeChange={handlePageSizeChange}
+            />
+          ) : (
+            <ErrorAlert
+              variant="card"
+              message="グループ情報の読み込みに失敗しました"
+              retry={triggerRefetch}
             />
           )}
         </div>

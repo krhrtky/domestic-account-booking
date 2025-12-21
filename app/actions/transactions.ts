@@ -13,7 +13,8 @@ import { checkRateLimit } from '@/lib/rate-limiter'
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
   fileName: z.string().min(1).max(255),
-  payerType: z.enum(['UserA', 'UserB', 'Common'])
+  payerType: z.enum(['UserA', 'UserB', 'Common']),
+  payerTypes: z.array(z.enum(['UserA', 'UserB', 'Common'])).optional()
 })
 
 const UpdateExpenseTypeSchema = z.object({
@@ -32,11 +33,11 @@ const GetTransactionsSchema = z.object({
 export async function uploadCSV(
   csvContent: string,
   fileName: string,
-  payerType: PayerType
+  payerType: PayerType,
+  payerTypes?: PayerType[]
 ) {
   const user = await requireAuth()
 
-  // L-SC-004: CSV upload rate limit - 10 attempts per 1 minute (per user)
   const rateLimitResult = checkRateLimit(user.id, {
     maxAttempts: 10,
     windowMs: 60 * 1000
@@ -48,7 +49,7 @@ export async function uploadCSV(
     }
   }
 
-  const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType })
+  const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType, payerTypes })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
@@ -64,26 +65,59 @@ export async function uploadCSV(
     return { error: parseResult.errors.join(', ') }
   }
 
+  const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
+    'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
+    [groupId]
+  )
+
+  if (groupResult.rows.length === 0) {
+    return { error: 'グループが見つかりません' }
+  }
+
+  const group = groupResult.rows[0]
+
+  const usersResult = await query<{ id: string; name: string }>(
+    'SELECT id, name FROM users WHERE group_id = $1',
+    [groupId]
+  )
+
+  const usersByName = new Map<string, string>()
+  usersResult.rows.forEach(u => {
+    usersByName.set(u.name.toLowerCase(), u.id)
+  })
+
   const values = parseResult.data.map((t, index) => {
-    const offset = index * 8
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`
+    const offset = index * 9
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`
   }).join(', ')
 
-  const params = parseResult.data.flatMap(t => [
-    groupId,
-    user.id,
-    t.date,
-    t.amount,
-    t.description,
-    payerType,
-    'Household' as ExpenseType,
-    t.source_file_name
-  ])
+  const params = parseResult.data.flatMap((t, index) => {
+    const rowPayerType = payerTypes?.[index] ?? payerType
+    let payerUserId: string | null = null
+    if (rowPayerType !== 'Common' && t.payer_name) {
+      const foundUserId = usersByName.get(t.payer_name.toLowerCase())
+      if (foundUserId) {
+        payerUserId = foundUserId
+      }
+    }
+
+    return [
+      groupId,
+      user.id,
+      t.date,
+      t.amount,
+      t.description,
+      rowPayerType,
+      'Household' as ExpenseType,
+      t.source_file_name,
+      payerUserId
+    ]
+  })
 
   try {
     const result = await query(
       `INSERT INTO transactions
-        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name)
+        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name, payer_user_id)
        VALUES ${values}
        RETURNING id`,
       params
@@ -107,7 +141,17 @@ export async function getTransactions(filters?: {
 }): Promise<
   | { error: { payerType?: string[]; month?: string[]; expenseType?: string[]; page?: string[]; pageSize?: string[] } }
   | { error: string }
-  | { success: true; transactions: any[]; pagination: { totalCount: number; totalPages: number; currentPage: number; pageSize: number } }
+  | {
+      success: true;
+      transactions: any[];
+      pagination: { totalCount: number; totalPages: number; currentPage: number; pageSize: number };
+      group: {
+        user_a_id: string;
+        user_a_name: string;
+        user_b_id: string | null;
+        user_b_name: string | null;
+      };
+    }
 > {
   const user = await requireAuth()
 
@@ -132,6 +176,28 @@ export async function getTransactions(filters?: {
 
   return cachedFetch(
     async () => {
+      const groupResult = await query<{
+        user_a_id: string;
+        user_b_id: string | null;
+      }>(
+        'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
+        [groupId]
+      )
+
+      if (groupResult.rows.length === 0) {
+        return { error: 'グループが見つかりません' }
+      }
+
+      const groupData = groupResult.rows[0]
+
+      const usersResult = await query<{ id: string; name: string }>(
+        'SELECT id, name FROM users WHERE group_id = $1',
+        [groupId]
+      )
+
+      const userAData = usersResult.rows.find(u => u.id === groupData.user_a_id)
+      const userBData = usersResult.rows.find(u => u.id === groupData.user_b_id)
+
       const conditions: string[] = ['group_id = $1']
       const params: (string | number)[] = [groupId]
       let paramIndex = 2
@@ -208,6 +274,12 @@ export async function getTransactions(filters?: {
             totalPages,
             currentPage: safePage,
             pageSize
+          },
+          group: {
+            user_a_id: groupData.user_a_id,
+            user_a_name: userAData?.name || 'User A',
+            user_b_id: groupData.user_b_id,
+            user_b_name: userBData?.name || null
           }
         }
       } catch (error) {
@@ -275,6 +347,53 @@ export async function deleteTransaction(transactionId: string) {
     return { success: true }
   } catch (error) {
     return { error: '取引の削除に失敗しました' }
+  }
+}
+
+const UpdatePayerSchema = z.object({
+  transactionId: z.string().uuid(),
+  payerUserId: z.string().uuid().nullable()
+})
+
+export async function updateTransactionPayer(
+  transactionId: string,
+  payerUserId?: string | null
+): Promise<{ success: true } | { error: string | Record<string, string[]> }> {
+  const user = await requireAuth()
+
+  const parsed = UpdatePayerSchema.safeParse({ transactionId, payerUserId: payerUserId ?? null })
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors }
+  }
+
+  const groupId = await getUserGroupId(user.id)
+
+  if (!groupId) {
+    return { error: 'グループに所属していません' }
+  }
+
+  if (payerUserId) {
+    const userCheck = await query<{ id: string }>(
+      'SELECT id FROM users WHERE id = $1 AND group_id = $2',
+      [payerUserId, groupId]
+    )
+    if (userCheck.rows.length === 0) {
+      return { error: 'この支払い元を設定する権限がありません' }
+    }
+  }
+
+  try {
+    await query(
+      'UPDATE transactions SET payer_user_id = $1 WHERE id = $2 AND group_id = $3',
+      [payerUserId ?? null, transactionId, groupId]
+    )
+
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
+
+    return { success: true }
+  } catch (error) {
+    return { error: '支払い元の更新に失敗しました' }
   }
 }
 
