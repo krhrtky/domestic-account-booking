@@ -1,13 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET } from './route'
 import * as session from '@/lib/session'
-import * as db from '@/lib/db'
+
+// Mock prisma
+vi.mock('@/lib/prisma', () => ({
+  default: {
+    user: {
+      findUnique: vi.fn()
+    }
+  }
+}))
 
 vi.mock('@/lib/session')
-vi.mock('@/lib/db')
+
+import prisma from '@/lib/prisma'
 
 describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
-  const mockQuery = vi.mocked(db.query)
+  const mockFindUnique = vi.mocked(prisma.user.findUnique)
   const mockGetCurrentUser = vi.mocked(session.getCurrentUser)
 
   beforeEach(() => {
@@ -26,9 +35,8 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: 'Test User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{ group_id: 'group-456' }],
-        rowCount: 1
+      mockFindUnique.mockResolvedValue({
+        groupId: 'group-456'
       } as any)
 
       const response = await GET()
@@ -58,9 +66,8 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: 'New User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{ group_id: null }],
-        rowCount: 1
+      mockFindUnique.mockResolvedValue({
+        groupId: null
       } as any)
 
       const response = await GET()
@@ -85,9 +92,8 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: 'Test User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{ group_id: 'group-456' }],
-        rowCount: 1
+      mockFindUnique.mockResolvedValue({
+        groupId: 'group-456'
       } as any)
 
       const response = await GET()
@@ -102,17 +108,14 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
   })
 
   describe('Boundary Cases', () => {
-    it('BND-001: DBクエリ結果が空配列の場合、groupIdをnullで返す', async () => {
+    it('BND-001: DBクエリ結果がnullの場合、groupIdをnullで返す', async () => {
       mockGetCurrentUser.mockResolvedValue({
         id: 'user-999',
         email: 'orphan@example.com',
         name: 'Orphan User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [],
-        rowCount: 0
-      } as any)
+      mockFindUnique.mockResolvedValue(null)
 
       const response = await GET()
       const data = await response.json()
@@ -129,9 +132,8 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: '田中 太郎'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{ group_id: 'group-abc' }],
-        rowCount: 1
+      mockFindUnique.mockResolvedValue({
+        groupId: 'group-abc'
       } as any)
 
       const response = await GET()
@@ -148,9 +150,8 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: 'Plus User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{ group_id: null }],
-        rowCount: 1
+      mockFindUnique.mockResolvedValue({
+        groupId: null
       } as any)
 
       const response = await GET()
@@ -212,24 +213,21 @@ describe('L-AS-001, L-AS-004, L-SC-001: GET /api/me', () => {
         name: 'Test User'
       })
 
-      mockQuery.mockRejectedValue(new Error('Database connection failed'))
+      mockFindUnique.mockRejectedValue(new Error('Database connection failed'))
 
       await expect(GET()).rejects.toThrow('Database connection failed')
     })
   })
 
   describe('Gray Cases', () => {
-    it('GRAY-001: DBクエリ結果のgroup_idがundefinedの場合、nullとして扱う', async () => {
+    it('GRAY-001: DBクエリ結果のgroupIdがundefinedの場合、nullとして扱う', async () => {
       mockGetCurrentUser.mockResolvedValue({
         id: 'user-undef',
         email: 'undef@example.com',
         name: 'Undefined Group User'
       })
 
-      mockQuery.mockResolvedValue({
-        rows: [{}],
-        rowCount: 1
-      } as any)
+      mockFindUnique.mockResolvedValue({} as any)
 
       const response = await GET()
       const data = await response.json()

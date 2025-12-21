@@ -1,14 +1,14 @@
-import { query } from './db'
+import prisma from './prisma'
 import { CACHE_DURATIONS, CACHE_TAGS, cachedFetch } from './cache'
 
 export const getUserGroupId = async (userId: string): Promise<string | null> => {
   return cachedFetch(
     async () => {
-      const result = await query<{ group_id: string | null }>(
-        'SELECT group_id FROM users WHERE id = $1',
-        [userId]
-      )
-      return result.rows[0]?.group_id || null
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { groupId: true }
+      })
+      return user?.groupId || null
     },
     ['user-group', userId],
     {
