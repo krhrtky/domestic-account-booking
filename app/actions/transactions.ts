@@ -4,13 +4,29 @@ import { parseCSV } from '@/lib/csv-parser'
 import { z } from 'zod'
 import { ExpenseType, PayerType } from '@/lib/types'
 import prisma from '@/lib/prisma'
-import { PayerType as PrismaPayerType, ExpenseType as PrismaExpenseType } from '@prisma/client'
 import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS, CACHE_DURATIONS, cachedFetch } from '@/lib/cache'
 import { checkRateLimit } from '@/lib/rate-limiter'
 import { Decimal } from '@prisma/client/runtime/library'
+
+// Type for transaction row from Prisma query
+interface TransactionRow {
+  id: string
+  groupId: string
+  userId: string
+  date: Date
+  amount: Decimal
+  description: string
+  payerType: string
+  expenseType: string
+  sourceFileName: string | null
+  uploadedBy: string | null
+  payerUserId: string | null
+  createdAt: Date
+  updatedAt: Date
+}
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -75,7 +91,7 @@ export async function uploadCSV(
   })
 
   const usersByName = new Map<string, string>()
-  groupUsers.forEach(u => {
+  groupUsers.forEach((u: { id: string; name: string }) => {
     usersByName.set(u.name.toLowerCase(), u.id)
   })
 
@@ -99,8 +115,8 @@ export async function uploadCSV(
           date: new Date(t.date),
           amount: new Decimal(t.amount),
           description: t.description,
-          payerType: rowPayerType as PrismaPayerType,
-          expenseType: 'Household' as PrismaExpenseType,
+          payerType: rowPayerType,
+          expenseType: 'Household' as const,
           sourceFileName: t.source_file_name,
           payerUserId
         }
@@ -189,11 +205,11 @@ export async function getTransactions(filters?: {
       }
 
       if (expenseType) {
-        where.expenseType = expenseType as PrismaExpenseType
+        where.expenseType = expenseType
       }
 
       if (payerType) {
-        where.payerType = payerType as PrismaPayerType
+        where.payerType = payerType
       }
 
       try {
@@ -223,7 +239,7 @@ export async function getTransactions(filters?: {
           return `${year}-${month}-${day}`
         }
 
-        const transactions = results.map(row => ({
+        const transactions = results.map((row: TransactionRow) => ({
           id: row.id,
           group_id: row.groupId,
           user_id: row.userId,
@@ -291,7 +307,7 @@ export async function updateTransactionExpenseType(
         groupId
       },
       data: {
-        expenseType: expenseType as PrismaExpenseType
+        expenseType: expenseType
       }
     })
 
@@ -442,7 +458,7 @@ export async function getSettlementData(targetMonth: string): Promise<
         return `${year}-${month}-${day}`
       }
 
-      const transactions = transactionsResult.map(row => ({
+      const transactions = transactionsResult.map((row: TransactionRow) => ({
         id: row.id,
         group_id: row.groupId,
         user_id: row.userId,

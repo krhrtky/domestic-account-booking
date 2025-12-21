@@ -1,6 +1,10 @@
-import { PrismaClient, PayerType, ExpenseType } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { Decimal } from '@prisma/client/runtime/library'
+
+// Local type definitions matching database constraints
+type PayerType = 'UserA' | 'UserB' | 'Common'
+type ExpenseType = 'Household' | 'Personal'
 
 const prisma = new PrismaClient()
 
@@ -89,7 +93,7 @@ async function seed() {
   const passwordHashB = await bcrypt.hash(TEST_USERS.userB.password, 12)
 
   // Create auth users and application users in transaction
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx: typeof prisma) => {
     // Create auth users
     const authUserA = await tx.authUser.create({
       data: {

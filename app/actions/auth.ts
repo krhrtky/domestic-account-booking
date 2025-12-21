@@ -59,7 +59,7 @@ export async function signUp(formData: FormData) {
     const passwordHash = await bcrypt.hash(password, 12)
 
     // Create auth user and application user in a transaction
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: typeof prisma) => {
       const authUser = await tx.authUser.create({
         data: {
           email: normalizedEmail,

@@ -42,7 +42,7 @@ export async function createGroup(data: {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
       const group = await tx.group.create({
         data: {
           name: parsed.data.name,
@@ -151,7 +151,7 @@ export async function acceptInvitation(token: string) {
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: typeof prisma) => {
       await tx.user.update({
         where: { id: user.id },
         data: { groupId: invite.groupId }
