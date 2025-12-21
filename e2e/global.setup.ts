@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, FullConfig } from '@playwright/test'
-import { createTestUser, cleanupTestData, getAuthUserByEmail } from './utils/test-helpers'
+import { createTestUser, createTestGroup, cleanupTestData, getAuthUserByEmail } from './utils/test-helpers'
 import path from 'path'
 import fs from 'fs'
 
@@ -94,6 +94,13 @@ async function globalSetup(config: FullConfig) {
     })
 
     console.log(`✓ Test user created: ${testUser.email} (ID: ${testUser.id})`)
+
+    if (!testUser.id) {
+      throw new Error('Test user ID is undefined')
+    }
+
+    const groupId = await createTestGroup(testUser.id)
+    console.log(`✓ Test group created for user (Group ID: ${groupId})`)
 
     const browsers = (process.env.CI ? ['chromium'] : ['chromium', 'firefox', 'webkit']) as Array<'chromium' | 'firefox' | 'webkit'>
     for (const browser of browsers) {

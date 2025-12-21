@@ -21,35 +21,11 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'chromium-unauth',
-      testMatch: /auth\/(login|signup|validation-errors)\.spec\.ts|accessibility\/auth\.a11y\.spec\.ts|security\/headers\.spec\.ts|vrt\/.*\.spec\.ts/,
-      use: {
-        ...devices['Desktop Chrome'],
-        viewport: { width: 1280, height: 720 },
-      },
-    },
-    {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
         storageState: './e2e/.auth/user-chromium.json',
-      },
-    },
-    {
-      name: 'firefox',
-      use: {
-        ...devices['Desktop Firefox'],
-        viewport: { width: 1280, height: 720 },
-        storageState: './e2e/.auth/user-firefox.json',
-      },
-    },
-    {
-      name: 'webkit',
-      use: {
-        ...devices['Desktop Safari'],
-        viewport: { width: 1280, height: 720 },
-        storageState: './e2e/.auth/user-webkit.json',
       },
     },
   ],

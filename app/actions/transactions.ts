@@ -15,7 +15,8 @@ import { Decimal } from '@prisma/client/runtime/library'
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
   fileName: z.string().min(1).max(255),
-  payerType: z.enum(['UserA', 'UserB', 'Common'])
+  payerType: z.enum(['UserA', 'UserB', 'Common']),
+  payerTypes: z.array(z.enum(['UserA', 'UserB', 'Common'])).optional()
 })
 
 const UpdateExpenseTypeSchema = z.object({
@@ -34,7 +35,8 @@ const GetTransactionsSchema = z.object({
 export async function uploadCSV(
   csvContent: string,
   fileName: string,
-  payerType: PayerType
+  payerType: PayerType,
+  payerTypes?: PayerType[]
 ) {
   const user = await requireAuth()
 
@@ -50,7 +52,7 @@ export async function uploadCSV(
     }
   }
 
-  const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType })
+  const parsed = UploadCSVSchema.safeParse({ csvContent, fileName, payerType, payerTypes })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
@@ -66,18 +68,43 @@ export async function uploadCSV(
     return { error: parseResult.errors.join(', ') }
   }
 
+  // Get group users for payer_name matching
+  const groupUsers = await prisma.user.findMany({
+    where: { groupId },
+    select: { id: true, name: true }
+  })
+
+  const usersByName = new Map<string, string>()
+  groupUsers.forEach(u => {
+    usersByName.set(u.name.toLowerCase(), u.id)
+  })
+
   try {
     const transactions = await prisma.transaction.createMany({
-      data: parseResult.data.map(t => ({
-        groupId,
-        userId: user.id,
-        date: new Date(t.date),
-        amount: new Decimal(t.amount),
-        description: t.description,
-        payerType: payerType as PrismaPayerType,
-        expenseType: 'Household' as PrismaExpenseType,
-        sourceFileName: t.source_file_name
-      }))
+      data: parseResult.data.map((t, index) => {
+        const rowPayerType = payerTypes?.[index] ?? payerType
+        let payerUserId: string | null = null
+
+        // Determine payer_user_id from payer_name if available
+        if (rowPayerType !== 'Common' && t.payer_name) {
+          const foundUserId = usersByName.get(t.payer_name.toLowerCase())
+          if (foundUserId) {
+            payerUserId = foundUserId
+          }
+        }
+
+        return {
+          groupId,
+          userId: user.id,
+          date: new Date(t.date),
+          amount: new Decimal(t.amount),
+          description: t.description,
+          payerType: rowPayerType as PrismaPayerType,
+          expenseType: 'Household' as PrismaExpenseType,
+          sourceFileName: t.source_file_name,
+          payerUserId
+        }
+      })
     })
 
     revalidateTag(CACHE_TAGS.transactions(groupId))
@@ -98,7 +125,17 @@ export async function getTransactions(filters?: {
 }): Promise<
   | { error: { payerType?: string[]; month?: string[]; expenseType?: string[]; page?: string[]; pageSize?: string[] } }
   | { error: string }
-  | { success: true; transactions: any[]; pagination: { totalCount: number; totalPages: number; currentPage: number; pageSize: number } }
+  | {
+      success: true;
+      transactions: any[];
+      pagination: { totalCount: number; totalPages: number; currentPage: number; pageSize: number };
+      group: {
+        user_a_id: string;
+        user_a_name: string;
+        user_b_id: string | null;
+        user_b_name: string | null;
+      };
+    }
 > {
   const user = await requireAuth()
 
@@ -123,6 +160,19 @@ export async function getTransactions(filters?: {
 
   return cachedFetch(
     async () => {
+      // Get group data with user info
+      const groupData = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: {
+          userA: { select: { id: true, name: true } },
+          userB: { select: { id: true, name: true } }
+        }
+      })
+
+      if (!groupData) {
+        return { error: 'グループが見つかりません' }
+      }
+
       // Build where clause
       const where: any = { groupId }
 
@@ -197,6 +247,12 @@ export async function getTransactions(filters?: {
             totalPages,
             currentPage: safePage,
             pageSize
+          },
+          group: {
+            user_a_id: groupData.userAId,
+            user_a_name: groupData.userA?.name || 'User A',
+            user_b_id: groupData.userBId,
+            user_b_name: groupData.userB?.name || null
           }
         }
       } catch (error) {
@@ -271,6 +327,61 @@ export async function deleteTransaction(transactionId: string) {
     return { success: true }
   } catch (error) {
     return { error: '取引の削除に失敗しました' }
+  }
+}
+
+const UpdatePayerSchema = z.object({
+  transactionId: z.string().uuid(),
+  payerUserId: z.string().uuid().nullable()
+})
+
+export async function updateTransactionPayer(
+  transactionId: string,
+  payerUserId?: string | null
+): Promise<{ success: true } | { error: string | Record<string, string[]> }> {
+  const user = await requireAuth()
+
+  const parsed = UpdatePayerSchema.safeParse({ transactionId, payerUserId: payerUserId ?? null })
+  if (!parsed.success) {
+    return { error: parsed.error.flatten().fieldErrors }
+  }
+
+  const groupId = await getUserGroupId(user.id)
+
+  if (!groupId) {
+    return { error: 'グループに所属していません' }
+  }
+
+  // Verify that the payer user belongs to the same group
+  if (payerUserId) {
+    const payerUser = await prisma.user.findFirst({
+      where: {
+        id: payerUserId,
+        groupId
+      }
+    })
+    if (!payerUser) {
+      return { error: 'この支払い元を設定する権限がありません' }
+    }
+  }
+
+  try {
+    await prisma.transaction.updateMany({
+      where: {
+        id: transactionId,
+        groupId
+      },
+      data: {
+        payerUserId: payerUserId ?? null
+      }
+    })
+
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
+
+    return { success: true }
+  } catch (error) {
+    return { error: '支払い元の更新に失敗しました' }
   }
 }
 

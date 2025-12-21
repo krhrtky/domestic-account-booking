@@ -1,8 +1,6 @@
 import Link from 'next/link'
 import SettlementDashboard from '@/components/settlement/SettlementDashboard'
 import { getCurrentUser } from '@/lib/session'
-import { redirect } from 'next/navigation'
-import LogoutButton from '@/components/auth/LogoutButton'
 
 function getGreeting(): string {
   const hour = new Date().getHours()
@@ -14,12 +12,8 @@ function getGreeting(): string {
 export default async function DashboardPage() {
   const user = await getCurrentUser()
 
-  if (!user) {
-    redirect('/login')
-  }
-
   return (
-    <div className="min-h-screen bg-pattern relative">
+    <div className="bg-pattern relative">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -right-32 w-96 h-96 bg-brand-primary/[0.02] rounded-full blur-3xl" />
         <div className="absolute top-1/2 -left-32 w-80 h-80 bg-brand-accent/[0.03] rounded-full blur-3xl" />
@@ -28,7 +22,7 @@ export default async function DashboardPage() {
 
       <div className="relative max-w-4xl mx-auto px-4 py-8 md:px-6 md:py-12 space-y-8">
         <header
-          className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 opacity-0 animate-fade-in"
+          className="opacity-0 animate-fade-in"
           style={{ animationFillMode: 'forwards' }}
         >
           <div className="space-y-1">
@@ -36,10 +30,9 @@ export default async function DashboardPage() {
               {getGreeting()}
             </p>
             <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 tracking-tight">
-              {user.name || user.email}
+              {user?.name || user?.email}
             </h1>
           </div>
-          <LogoutButton />
         </header>
 
         <div

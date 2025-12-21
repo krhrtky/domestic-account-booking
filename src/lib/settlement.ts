@@ -40,15 +40,30 @@ export const calculateSettlement = (
     typeof val === 'string' ? parseFloat(val) : val
 
   const paidByA = householdTransactions
-    .filter((t) => t.payer_type === 'UserA')
+    .filter((t) => {
+      if (t.payer_user_id) {
+        return t.payer_user_id === group.user_a_id
+      }
+      return t.payer_type === 'UserA'
+    })
     .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const paidByB = householdTransactions
-    .filter((t) => t.payer_type === 'UserB')
+    .filter((t) => {
+      if (t.payer_user_id) {
+        return t.payer_user_id === group.user_b_id
+      }
+      return t.payer_type === 'UserB'
+    })
     .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const paidByCommon = householdTransactions
-    .filter((t) => t.payer_type === 'Common')
+    .filter((t) => {
+      if (t.payer_user_id) {
+        return false
+      }
+      return t.payer_type === 'Common'
+    })
     .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const totalHousehold = paidByA + paidByB

@@ -1,13 +1,24 @@
 'use client'
 
 import { ParsedTransaction } from '@/lib/csv-parser'
+import { PayerType } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 
 interface TransactionPreviewProps {
   transactions: ParsedTransaction[]
+  payerTypes: PayerType[]
+  onPayerChange: (index: number, payerType: PayerType) => void
+  userAName?: string
+  userBName?: string
 }
 
-export default function TransactionPreview({ transactions }: TransactionPreviewProps) {
+export default function TransactionPreview({
+  transactions,
+  payerTypes,
+  onPayerChange,
+  userAName = 'ユーザーA',
+  userBName = 'ユーザーB'
+}: TransactionPreviewProps) {
   const previewLimit = 10
   const displayTransactions = transactions.slice(0, previewLimit)
   const hasMore = transactions.length > previewLimit
@@ -15,7 +26,7 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
   return (
     <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
       <h2 className="text-xl font-bold text-neutral-900 mb-4">
-        Preview ({transactions.length} transactions)
+        データプレビュー ({transactions.length} 件)
       </h2>
 
       <div className="overflow-x-auto">
@@ -23,13 +34,16 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
           <thead className="bg-neutral-50">
             <tr>
               <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
-                Date
+                日付
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
-                Description
+                摘要
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
+                支払元
               </th>
               <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500">
-                Amount
+                金額
               </th>
             </tr>
           </thead>
@@ -38,6 +52,17 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
               <tr key={idx} className="border-b border-neutral-200">
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.date}</td>
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.description}</td>
+                <td className="px-4 py-2">
+                  <select
+                    value={payerTypes[idx] || 'UserA'}
+                    onChange={(e) => onPayerChange(idx, e.target.value as PayerType)}
+                    className="text-sm px-2 py-1 border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-brand-primary"
+                  >
+                    <option value="UserA">{userAName}</option>
+                    <option value="UserB">{userBName}</option>
+                    <option value="Common">共通</option>
+                  </select>
+                </td>
                 <td className="px-4 py-2 text-sm text-right text-neutral-700">
                   {formatCurrency(t.amount)}
                 </td>
@@ -49,7 +74,7 @@ export default function TransactionPreview({ transactions }: TransactionPreviewP
 
       {hasMore && (
         <p className="mt-4 text-sm text-neutral-500">
-          ... and {transactions.length - previewLimit} more
+          他 {transactions.length - previewLimit} 件（インポート時に全件処理されます）
         </p>
       )}
     </div>

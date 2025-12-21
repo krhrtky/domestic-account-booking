@@ -151,10 +151,11 @@ export const insertTransaction = async (transaction: {
   amount: number
   expenseType: string
   payerType?: 'UserA' | 'UserB' | 'Common'
+  payerUserId?: string | null
 }) => {
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, payer_user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
     [
       transaction.userId,
       transaction.groupId,
@@ -163,6 +164,7 @@ export const insertTransaction = async (transaction: {
       transaction.amount,
       transaction.payerType || 'UserA',
       transaction.expenseType,
+      transaction.payerUserId ?? null,
     ]
   )
   return result.rows[0]
@@ -210,6 +212,7 @@ export const getTransactionById = async (transactionId: string) => {
     amount: number
     payer_type: string
     expense_type: string
+    payer_user_id: string | null
   }>('SELECT * FROM transactions WHERE id = $1', [transactionId])
   return result.rows[0] || null
 }
@@ -258,6 +261,50 @@ export const acceptInvitationDirectly = async (
     }
 
     await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export interface CreateGroupOptions {
+  name?: string
+  ratioA?: number
+  ratioB?: number
+}
+
+export const createTestGroup = async (
+  userId: string,
+  options: CreateGroupOptions = {}
+): Promise<string> => {
+  const { name = 'Test Group', ratioA = 50, ratioB = 50 } = options
+
+  if (ratioA + ratioB !== 100) {
+    throw new Error(`Ratio sum must be 100, got ${ratioA + ratioB}`)
+  }
+
+  const client = await pool.connect()
+
+  try {
+    await client.query('BEGIN')
+
+    const groupResult = await client.query<{ id: string }>(
+      `INSERT INTO groups (name, ratio_a, ratio_b, user_a_id)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [name, ratioA, ratioB, userId]
+    )
+    const groupId = groupResult.rows[0].id
+
+    await client.query(
+      'UPDATE users SET group_id = $1 WHERE id = $2',
+      [groupId, userId]
+    )
+
+    await client.query('COMMIT')
+
+    return groupId
   } catch (error) {
     await client.query('ROLLBACK')
     throw error

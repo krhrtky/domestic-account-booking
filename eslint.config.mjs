@@ -19,6 +19,7 @@ const config = [...nextConfig, {
     'test-results/**',
     'next-env.d.ts',
     '.vitest/**',
+    'storybook-static/**',
   ],
 }, ...storybook.configs["flat/recommended"]];
 

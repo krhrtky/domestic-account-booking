@@ -327,4 +327,156 @@ describe('calculateSettlement', () => {
       expect(result.balance_a).toBe(6700)
     })
   })
+
+  describe('L-BR-002: payer_user_id priority logic', () => {
+    it('payer_user_id takes priority over payer_type when set', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test - payer_type=UserA but payer_user_id=user-b',
+          payer_type: 'UserA',
+          payer_user_id: 'user-b',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_b_household).toBe(10000)
+      expect(result.paid_by_a_household).toBe(0)
+    })
+
+    it('falls back to payer_type when payer_user_id is NULL', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test - payer_user_id is null',
+          payer_type: 'UserA',
+          payer_user_id: null,
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_a_household).toBe(10000)
+    })
+
+    it('falls back to payer_type when payer_user_id is undefined', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test - payer_user_id is undefined',
+          payer_type: 'UserB',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_b_household).toBe(10000)
+      expect(result.paid_by_a_household).toBe(0)
+    })
+
+    it('Common payer_type is excluded when payer_user_id is set', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test - payer_type=Common but payer_user_id=user-a',
+          payer_type: 'Common',
+          payer_user_id: 'user-a',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_a_household).toBe(10000)
+      expect(result.paid_by_common).toBe(0)
+    })
+
+    it('Common payer_type without payer_user_id is tracked as common', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'Test - payer_type=Common, no payer_user_id',
+          payer_type: 'Common',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_common).toBe(10000)
+      expect(result.total_household).toBe(0)
+    })
+
+    it('mixed transactions with and without payer_user_id are calculated correctly', () => {
+      const transactions: Transaction[] = [
+        {
+          id: '1',
+          group_id: 'group-1',
+          date: '2025-01-10',
+          amount: 10000,
+          description: 'UserA via payer_user_id',
+          payer_type: 'UserB',
+          payer_user_id: 'user-a',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-10T00:00:00Z',
+          updated_at: '2025-01-10T00:00:00Z',
+        },
+        {
+          id: '2',
+          group_id: 'group-1',
+          date: '2025-01-11',
+          amount: 20000,
+          description: 'UserB via payer_type fallback',
+          payer_type: 'UserB',
+          user_id: 'user-b',
+          expense_type: 'Household',
+          created_at: '2025-01-11T00:00:00Z',
+          updated_at: '2025-01-11T00:00:00Z',
+        },
+        {
+          id: '3',
+          group_id: 'group-1',
+          date: '2025-01-12',
+          amount: 5000,
+          description: 'Common via payer_type',
+          payer_type: 'Common',
+          user_id: 'user-a',
+          expense_type: 'Household',
+          created_at: '2025-01-12T00:00:00Z',
+          updated_at: '2025-01-12T00:00:00Z',
+        },
+      ]
+      const result = calculateSettlement(transactions, mockGroup, '2025-01')
+      expect(result.paid_by_a_household).toBe(10000)
+      expect(result.paid_by_b_household).toBe(20000)
+      expect(result.paid_by_common).toBe(5000)
+      expect(result.total_household).toBe(30000)
+      expect(result.balance_a).toBe(-5000)
+    })
+  })
 })

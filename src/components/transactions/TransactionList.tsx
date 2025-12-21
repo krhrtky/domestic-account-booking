@@ -13,6 +13,10 @@ interface Pagination {
 
 interface TransactionListProps {
   transactions: Transaction[]
+  groupUserAId: string
+  groupUserBId?: string | null
+  userAName: string
+  userBName?: string | null
   onUpdate: () => void
   pagination: Pagination | null
   onPageChange: (page: number) => void
@@ -21,6 +25,10 @@ interface TransactionListProps {
 
 export default function TransactionList({
   transactions,
+  groupUserAId,
+  groupUserBId,
+  userAName,
+  userBName,
   onUpdate,
   pagination,
   onPageChange,
@@ -73,6 +81,10 @@ export default function TransactionList({
                 <TransactionRow
                   key={transaction.id}
                   transaction={transaction}
+                  groupUserAId={groupUserAId}
+                  groupUserBId={groupUserBId}
+                  userAName={userAName}
+                  userBName={userBName}
                   onUpdate={onUpdate}
                 />
               ))}

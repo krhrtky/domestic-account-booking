@@ -115,10 +115,10 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
@@ -162,10 +162,10 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
@@ -207,10 +207,10 @@ test.describe('L-SC-002, L-TA-001: インジェクション攻撃シナリオ (A
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 

@@ -20,6 +20,146 @@ const GetTransactionsSchema = z.object({
   limit: z.number().int().min(1).max(100).optional()
 })
 
+describe('L-BR-002: Payer name matching logic', () => {
+  describe('Typical Cases', () => {
+    it('matches exact name case-insensitively', () => {
+      const usersByName = new Map([
+        ['alice', 'user-a-id'],
+        ['bob', 'user-b-id']
+      ])
+
+      const payerName = 'Alice'
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+
+      expect(foundUserId).toBe('user-a-id')
+    })
+
+    it('returns undefined when name does not match', () => {
+      const usersByName = new Map([
+        ['alice', 'user-a-id'],
+        ['bob', 'user-b-id']
+      ])
+
+      const payerName = 'Charlie'
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+
+      expect(foundUserId).toBeUndefined()
+    })
+  })
+
+  describe('Boundary Cases', () => {
+    it('handles empty payer_name', () => {
+      const usersByName = new Map([
+        ['alice', 'user-a-id']
+      ])
+
+      const payerName = ''
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+
+      expect(foundUserId).toBeUndefined()
+    })
+
+    it('handles whitespace-only payer_name', () => {
+      const usersByName = new Map([
+        ['alice', 'user-a-id']
+      ])
+
+      const payerName = '   '.trim()
+      const foundUserId = payerName ? usersByName.get(payerName.toLowerCase()) : undefined
+
+      expect(foundUserId).toBeUndefined()
+    })
+  })
+
+  describe('Gray Cases', () => {
+    it('handles Japanese names case-insensitively', () => {
+      const usersByName = new Map([
+        ['田中太郎', 'user-a-id']
+      ])
+
+      const payerName = '田中太郎'
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+
+      expect(foundUserId).toBe('user-a-id')
+    })
+
+    it('does not match partial names', () => {
+      const usersByName = new Map([
+        ['alice smith', 'user-a-id']
+      ])
+
+      const payerName = 'alice'
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+
+      expect(foundUserId).toBeUndefined()
+    })
+  })
+})
+
+describe('L-BR-006: CSV Upload with payer_user_id logic', () => {
+  type PayerType = 'UserA' | 'UserB' | 'Common'
+
+  function applyPayerLogic(
+    payerType: PayerType,
+    payerName: string | undefined,
+    usersByName: Map<string, string>
+  ): string | null {
+    let payerUserId: string | null = null
+    if (payerType !== 'Common' && payerName) {
+      const foundUserId = usersByName.get(payerName.toLowerCase())
+      if (foundUserId) {
+        payerUserId = foundUserId
+      }
+    }
+    return payerUserId
+  }
+
+  describe('Typical Cases', () => {
+    it('sets payer_user_id when name matches and payer_type is not Common', () => {
+      const usersByName = new Map([['alice', 'user-a-id']])
+      const result = applyPayerLogic('UserA', 'Alice', usersByName)
+      expect(result).toBe('user-a-id')
+    })
+
+    it('leaves payer_user_id as NULL when name does not match', () => {
+      const usersByName = new Map([['alice', 'user-a-id']])
+      const result = applyPayerLogic('UserA', 'Charlie', usersByName)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('Boundary Cases - L-BR-002: Common口座強制NULL', () => {
+    it('forces payer_user_id to NULL when payer_type is Common', () => {
+      const usersByName = new Map([['alice', 'user-a-id']])
+      const result = applyPayerLogic('Common', 'Alice', usersByName)
+      expect(result).toBeNull()
+    })
+
+    it('forces payer_user_id to NULL even when name matches', () => {
+      const usersByName = new Map([
+        ['alice', 'user-a-id'],
+        ['bob', 'user-b-id']
+      ])
+      const result = applyPayerLogic('Common', 'Bob', usersByName)
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('Gray Cases', () => {
+    it('handles empty payer_name with UserA payer_type', () => {
+      const usersByName = new Map([['alice', 'user-a-id']])
+      const result = applyPayerLogic('UserA', '', usersByName)
+      expect(result).toBeNull()
+    })
+
+    it('handles undefined payer_name', () => {
+      const usersByName = new Map([['alice', 'user-a-id']])
+      const result = applyPayerLogic('UserA', undefined, usersByName)
+      expect(result).toBeNull()
+    })
+  })
+})
+
 describe('Transaction validation schemas', () => {
   describe('UploadCSVSchema', () => {
     it('should validate valid CSV upload data', () => {

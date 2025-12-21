@@ -43,8 +43,11 @@
     "test:storybook": "test-storybook",
     "test:storybook:vrt": "STORYBOOK_VRT=true test-storybook",
     "test:storybook:vrt:update": "STORYBOOK_VRT=true test-storybook --updateSnapshot",
+    "migrate": "node --env-file=.env.local node_modules/.bin/tsx scripts/run-migrations.ts",
+    "migrate:e2e": "node --env-file=.env.local.e2e node_modules/.bin/tsx scripts/run-migrations.ts",
     "seed": "node --env-file=.env.local node_modules/.bin/tsx scripts/seed-local.ts",
-    "seed:e2e": "node --env-file=.env.local.e2e node_modules/.bin/tsx scripts/seed-local.ts"
+    "seed:e2e": "node --env-file=.env.local.e2e node_modules/.bin/tsx scripts/seed-local.ts",
+    "check:expressions": "node_modules/.bin/tsx scripts/check-prohibited-expressions.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

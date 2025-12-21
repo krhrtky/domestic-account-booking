@@ -49,10 +49,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
@@ -72,10 +72,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
@@ -101,10 +101,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       
       await page.waitForTimeout(5000)
@@ -129,10 +129,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
@@ -167,10 +167,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       
       await page.waitForTimeout(5000)
@@ -204,10 +204,10 @@ test.describe('L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]')
       await fileInput.setInputFiles(csvPath)
 
-      const payerSelect = page.locator('select[name="payerType"]')
+      const payerSelect = page.locator('select[name="defaultPayerType"]')
       await payerSelect.selectOption('UserA')
 
-      const uploadButton = page.locator('button:has-text("CSVをアップロード")')
+      const uploadButton = page.locator('button:has-text("インポート実行")')
       await uploadButton.click()
       await page.waitForTimeout(2000)
 
