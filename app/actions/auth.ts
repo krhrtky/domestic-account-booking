@@ -5,7 +5,7 @@ import { checkRateLimit, resetRateLimit } from '@/lib/rate-limiter'
 import { getClientIP } from '@/lib/get-client-ip'
 import { headers } from 'next/headers'
 import bcrypt from 'bcryptjs'
-import { query, getClient } from '@/lib/db'
+import prisma from '@/lib/prisma'
 
 const SignUpSchema = z.object({
   name: z.string().min(1, '名前を入力してください').max(100),
@@ -46,43 +46,39 @@ export async function signUp(formData: FormData) {
     }
   }
 
-  const client = await getClient()
-
   try {
-    await client.query('BEGIN')
+    // Check if user already exists
+    const existingUser = await prisma.authUser.findUnique({
+      where: { email: normalizedEmail }
+    })
 
-    const existingUser = await client.query(
-      'SELECT id FROM custom_auth.users WHERE email = $1',
-      [normalizedEmail]
-    )
-
-    if (existingUser.rows.length > 0) {
-      await client.query('ROLLBACK')
+    if (existingUser) {
       return { error: 'このメールアドレスは既に登録されています' }
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    const authResult = await client.query<{ id: string }>(
-      'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
-      [normalizedEmail, passwordHash]
-    )
+    // Create auth user and application user in a transaction
+    await prisma.$transaction(async (tx: typeof prisma) => {
+      const authUser = await tx.authUser.create({
+        data: {
+          email: normalizedEmail,
+          passwordHash
+        }
+      })
 
-    const userId = authResult.rows[0].id
-
-    await client.query(
-      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)',
-      [userId, name, normalizedEmail]
-    )
-
-    await client.query('COMMIT')
+      await tx.user.create({
+        data: {
+          id: authUser.id,
+          name,
+          email: normalizedEmail
+        }
+      })
+    })
 
     return { success: true }
   } catch (error) {
-    await client.query('ROLLBACK')
     return { error: 'アカウントの作成に失敗しました' }
-  } finally {
-    client.release()
   }
 }
 
@@ -111,24 +107,22 @@ export async function logIn(formData: FormData) {
     }
   }
 
-  const result = await query<{ id: string; password_hash: string }>(
-    'SELECT id, password_hash FROM custom_auth.users WHERE email = $1',
-    [normalizedEmail]
-  )
+  const authUser = await prisma.authUser.findUnique({
+    where: { email: normalizedEmail }
+  })
 
-  if (result.rows.length === 0) {
+  if (!authUser) {
     return { error: 'メールアドレスまたはパスワードが正しくありません' }
   }
 
-  const user = result.rows[0]
-  const isValid = await bcrypt.compare(password, user.password_hash)
+  const isValid = await bcrypt.compare(password, authUser.passwordHash)
 
   if (!isValid) {
     return { error: 'メールアドレスまたはパスワードが正しくありません' }
   }
 
   resetRateLimit(normalizedEmail, 'login')
-  return { success: true, userId: user.id }
+  return { success: true, userId: authUser.id }
 }
 
 export async function logOut() {

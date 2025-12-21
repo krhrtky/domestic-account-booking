@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "custom_auth"]
+}
+
+// Authentication schema - separate from application users
+model AuthUser {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  user User?
+
+  @@map("users")
+  @@schema("custom_auth")
+}
+
+// Application users
+model User {
+  id        String   @id @db.Uuid
+  name      String
+  email     String   @unique
+  groupId   String?  @map("group_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Auth relation
+  authUser AuthUser @relation(fields: [id], references: [id], onDelete: Cascade)
+
+  // Group relation
+  group Group? @relation("UserGroup", fields: [groupId], references: [id], onDelete: SetNull)
+
+  // Groups where this user is user_a
+  groupsAsUserA Group[] @relation("GroupUserA")
+
+  // Groups where this user is user_b
+  groupsAsUserB Group[] @relation("GroupUserB")
+
+  // Transactions created by this user
+  transactions Transaction[] @relation("TransactionUser")
+
+  // Transactions uploaded by this user
+  uploadedTransactions Transaction[] @relation("TransactionUploader")
+
+  // Transactions where this user is the payer
+  paidTransactions Transaction[] @relation("TransactionPayer")
+
+  // Invitations sent by this user
+  invitations Invitation[]
+
+  @@map("users")
+  @@schema("public")
+}
+
+// Household groups
+model Group {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String   @default("Household")
+  ratioA    Int      @default(50) @map("ratio_a")
+  ratioB    Int      @default(50) @map("ratio_b")
+  userAId   String   @map("user_a_id") @db.Uuid
+  userBId   String?  @map("user_b_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // User relations
+  userA User  @relation("GroupUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User? @relation("GroupUserB", fields: [userBId], references: [id], onDelete: SetNull)
+
+  // Members of this group
+  members User[] @relation("UserGroup")
+
+  // Transactions in this group
+  transactions Transaction[]
+
+  // Invitations for this group
+  invitations Invitation[]
+
+  @@map("groups")
+  @@schema("public")
+}
+
+// Payer type enum matching PostgreSQL CHECK constraint
+enum PayerType {
+  UserA
+  UserB
+  Common
+}
+
+// Expense type enum matching PostgreSQL CHECK constraint
+enum ExpenseType {
+  Household
+  Personal
+}
+
+// Financial transactions
+model Transaction {
+  id             String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  groupId        String      @map("group_id") @db.Uuid
+  userId         String      @map("user_id") @db.Uuid
+  date           DateTime    @db.Date
+  amount         Decimal     @db.Decimal(12, 2)
+  description    String
+  payerType      PayerType   @map("payer_type")
+  expenseType    ExpenseType @default(Household) @map("expense_type")
+  sourceFileName String?     @map("source_file_name")
+  uploadedBy     String?     @map("uploaded_by") @db.Uuid
+  payerUserId    String?     @map("payer_user_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Group relation
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // User who created this transaction
+  user User @relation("TransactionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  // User who uploaded this transaction (for CSV imports)
+  uploader User? @relation("TransactionUploader", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  // User who is the actual payer
+  payer User? @relation("TransactionPayer", fields: [payerUserId], references: [id], onDelete: SetNull)
+
+  @@index([groupId], map: "idx_transactions_group")
+  @@index([userId], map: "idx_transactions_user")
+  @@index([date], map: "idx_transactions_date")
+  @@index([expenseType], map: "idx_transactions_expense_type")
+  @@map("transactions")
+  @@schema("public")
+}
+
+// Partner invitations
+model Invitation {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  groupId     String    @map("group_id") @db.Uuid
+  inviterId   String    @map("inviter_id") @db.Uuid
+  inviteeEmail String   @map("invitee_email")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz()
+  usedAt      DateTime? @map("used_at") @db.Timestamptz()
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Group relation
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // User who sent the invitation
+  inviter User @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([groupId], map: "idx_invitations_group")
+  @@index([inviteeEmail], map: "idx_invitations_email")
+  @@map("invitations")
+  @@schema("public")
+}

@@ -1,7 +1,7 @@
 'use server'
 
 import { z } from 'zod'
-import { query, getClient } from '@/lib/db'
+import prisma from '@/lib/prisma'
 import { requireAuth, getCurrentUser } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
@@ -28,49 +28,45 @@ export async function createGroup(data: {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const existingUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const existingUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { groupId: true }
+  })
 
-  if (existingUserResult.rows.length === 0) {
+  if (!existingUser) {
     return { error: 'User not found' }
   }
 
-  if (existingUserResult.rows[0].group_id) {
+  if (existingUser.groupId) {
     return { error: 'User already belongs to a group' }
   }
 
-  const client = await getClient()
-
   try {
-    await client.query('BEGIN')
+    const result = await prisma.$transaction(async (tx: typeof prisma) => {
+      const group = await tx.group.create({
+        data: {
+          name: parsed.data.name,
+          ratioA: parsed.data.ratio_a,
+          ratioB: parsed.data.ratio_b,
+          userAId: user.id
+        }
+      })
 
-    const groupResult = await client.query<{ id: string }>(
-      `INSERT INTO groups (name, ratio_a, ratio_b, user_a_id)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [parsed.data.name, parsed.data.ratio_a, parsed.data.ratio_b, user.id]
-    )
+      await tx.user.update({
+        where: { id: user.id },
+        data: { groupId: group.id }
+      })
 
-    const groupId = groupResult.rows[0].id
+      return group
+    })
 
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [groupId, user.id]
-    )
-
-    await client.query('COMMIT')
-
-    revalidateTag(CACHE_TAGS.group(groupId))
+    revalidateTag(CACHE_TAGS.group(result.id))
     revalidateTag(CACHE_TAGS.user(user.id))
 
-    return { success: true, group_id: groupId }
+    return { success: true, group_id: result.id }
   } catch (error) {
-    await client.query('ROLLBACK')
     console.error('Group creation error:', error)
     return { error: 'Failed to create group' }
-  } finally {
-    client.release()
   }
 }
 
@@ -93,35 +89,37 @@ export async function invitePartner(email: string) {
     return { error: 'User is not in a group' }
   }
 
-  const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
-    'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
-    [groupId]
-  )
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { userAId: true, userBId: true }
+  })
 
-  if (groupResult.rows.length === 0) {
+  if (!group) {
     return { error: 'Group not found' }
   }
 
-  const group = groupResult.rows[0]
-
-  if (group.user_b_id) {
+  if (group.userBId) {
     return { error: 'Group already has two members' }
   }
 
-  if (group.user_a_id !== user.id) {
+  if (group.userAId !== user.id) {
     return { error: 'Only group creator can invite partners' }
   }
 
   const inviteToken = crypto.randomUUID()
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${inviteToken}`
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
   try {
-    await query(
-      `INSERT INTO invitations (id, group_id, inviter_id, invitee_email, expires_at)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [inviteToken, groupId, user.id, normalizedEmail, expiresAt]
-    )
+    await prisma.invitation.create({
+      data: {
+        id: inviteToken,
+        groupId,
+        inviterId: user.id,
+        inviteeEmail: normalizedEmail,
+        expiresAt
+      }
+    })
 
     return { success: true, invite_url: inviteUrl }
   } catch (error) {
@@ -135,60 +133,47 @@ export async function acceptInvitation(token: string) {
     return { error: 'Please log in to accept this invitation' }
   }
 
-  const inviteResult = await query<{
-    group_id: string
-    used_at: string | null
-    expires_at: string
-  }>(
-    'SELECT group_id, used_at, expires_at FROM invitations WHERE id = $1',
-    [token]
-  )
+  const invite = await prisma.invitation.findUnique({
+    where: { id: token },
+    select: { groupId: true, usedAt: true, expiresAt: true }
+  })
 
-  if (inviteResult.rows.length === 0) {
+  if (!invite) {
     return { error: 'Invalid or expired invitation' }
   }
 
-  const invite = inviteResult.rows[0]
-
-  if (invite.used_at) {
+  if (invite.usedAt) {
     return { error: 'Invitation already used' }
   }
 
-  if (new Date(invite.expires_at) < new Date()) {
+  if (invite.expiresAt < new Date()) {
     return { error: 'Invitation expired' }
   }
 
-  const client = await getClient()
-
   try {
-    await client.query('BEGIN')
+    await prisma.$transaction(async (tx: typeof prisma) => {
+      await tx.user.update({
+        where: { id: user.id },
+        data: { groupId: invite.groupId }
+      })
 
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [invite.group_id, user.id]
-    )
+      await tx.group.update({
+        where: { id: invite.groupId },
+        data: { userBId: user.id }
+      })
 
-    await client.query(
-      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
-      [user.id, invite.group_id]
-    )
+      await tx.invitation.update({
+        where: { id: token },
+        data: { usedAt: new Date() }
+      })
+    })
 
-    await client.query(
-      'UPDATE invitations SET used_at = $1 WHERE id = $2',
-      [new Date().toISOString(), token]
-    )
-
-    await client.query('COMMIT')
-
-    revalidateTag(CACHE_TAGS.group(invite.group_id))
+    revalidateTag(CACHE_TAGS.group(invite.groupId))
     revalidateTag(CACHE_TAGS.user(user.id))
 
     return { success: true }
   } catch (error) {
-    await client.query('ROLLBACK')
     return { error: 'Failed to accept invitation' }
-  } finally {
-    client.release()
   }
 }
 
@@ -215,10 +200,13 @@ export async function updateRatio(ratioA: number, ratioB: number) {
   }
 
   try {
-    await query(
-      'UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3',
-      [parsed.data.ratio_a, parsed.data.ratio_b, groupId]
-    )
+    await prisma.group.update({
+      where: { id: groupId },
+      data: {
+        ratioA: parsed.data.ratio_a,
+        ratioB: parsed.data.ratio_b
+      }
+    })
 
     revalidateTag(CACHE_TAGS.group(groupId))
 
@@ -231,59 +219,49 @@ export async function updateRatio(ratioA: number, ratioB: number) {
 export async function getCurrentGroup() {
   const user = await requireAuth()
 
-  const result = await query<{
-    group_id: string | null
-    group_name: string
-    ratio_a: number
-    ratio_b: number
-    user_a_id: string
-    user_a_name: string
-    user_a_email: string
-    user_b_id: string | null
-    user_b_name: string | null
-    user_b_email: string | null
-  }>(
-    `SELECT
-      u.group_id,
-      g.name as group_name,
-      g.ratio_a,
-      g.ratio_b,
-      ua.id as user_a_id,
-      ua.name as user_a_name,
-      ua.email as user_a_email,
-      ub.id as user_b_id,
-      ub.name as user_b_name,
-      ub.email as user_b_email
-    FROM users u
-    INNER JOIN groups g ON u.group_id = g.id
-    INNER JOIN users ua ON g.user_a_id = ua.id
-    LEFT JOIN users ub ON g.user_b_id = ub.id
-    WHERE u.id = $1`,
-    [user.id]
-  )
+  const result = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      groupId: true,
+      group: {
+        select: {
+          id: true,
+          name: true,
+          ratioA: true,
+          ratioB: true,
+          userA: {
+            select: { id: true, name: true, email: true }
+          },
+          userB: {
+            select: { id: true, name: true, email: true }
+          }
+        }
+      }
+    }
+  })
 
-  if (result.rows.length === 0) {
+  if (!result?.group) {
     return { error: 'No group found' }
   }
 
-  const row = result.rows[0]
+  const group = result.group
 
   return {
     success: true,
     group: {
-      id: row.group_id!,
-      name: row.group_name,
-      ratio_a: row.ratio_a,
-      ratio_b: row.ratio_b,
+      id: group.id,
+      name: group.name,
+      ratio_a: group.ratioA,
+      ratio_b: group.ratioB,
       user_a: {
-        id: row.user_a_id,
-        name: row.user_a_name,
-        email: row.user_a_email
+        id: group.userA.id,
+        name: group.userA.name,
+        email: group.userA.email
       },
-      user_b: row.user_b_id ? {
-        id: row.user_b_id,
-        name: row.user_b_name!,
-        email: row.user_b_email!
+      user_b: group.userB ? {
+        id: group.userB.id,
+        name: group.userB.name,
+        email: group.userB.email
       } : null
     }
   }

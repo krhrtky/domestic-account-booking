@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getCurrentUser } from '@/lib/session'
-import { query } from '@/lib/db'
+import prisma from '@/lib/prisma'
 
 const getSecurityHeaders = (requestId: string, responseTime: number) => ({
   'Content-Type': 'application/json; charset=utf-8',
@@ -35,12 +35,12 @@ export async function GET() {
     )
   }
 
-  const result = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const userData = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { groupId: true }
+  })
 
-  const groupId = result.rows[0]?.group_id || null
+  const groupId = userData?.groupId || null
   const responseTime = Date.now() - startTime
 
   return NextResponse.json(

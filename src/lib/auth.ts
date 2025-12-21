@@ -1,7 +1,7 @@
 import type { NextAuthOptions, User } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
-import { query } from '@/lib/db'
+import prisma from '@/lib/prisma'
 
 interface AuthUser extends User {
   id: string
@@ -22,31 +22,29 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const result = await query<{ id: string; email: string; password_hash: string }>(
-          'SELECT au.id, au.email, au.password_hash FROM custom_auth.users au WHERE au.email = $1',
-          [credentials.email.toLowerCase()]
-        )
+        const authUser = await prisma.authUser.findUnique({
+          where: { email: credentials.email.toLowerCase() }
+        })
 
-        if (result.rows.length === 0) {
+        if (!authUser) {
           return null
         }
 
-        const user = result.rows[0]
-        const isValid = await bcrypt.compare(credentials.password, user.password_hash)
+        const isValid = await bcrypt.compare(credentials.password, authUser.passwordHash)
 
         if (!isValid) {
           return null
         }
 
-        const userProfile = await query<{ name: string }>(
-          'SELECT name FROM users WHERE id = $1',
-          [user.id]
-        )
+        const userProfile = await prisma.user.findUnique({
+          where: { id: authUser.id },
+          select: { name: true }
+        })
 
         return {
-          id: user.id,
-          email: user.email,
-          name: userProfile.rows[0]?.name || user.email
+          id: authUser.id,
+          email: authUser.email,
+          name: userProfile?.name || authUser.email
         } as AuthUser
       }
     })
