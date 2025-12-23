@@ -1,4 +1,20 @@
 import { defineConfig, devices } from '@playwright/test'
+import fs from 'fs'
+import path from 'path'
+
+const envPath = path.resolve(__dirname, '.env.local.e2e')
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf-8')
+  envContent.split('\n').forEach(line => {
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith('#')) {
+      const [key, ...valueParts] = trimmed.split('=')
+      if (key && valueParts.length > 0) {
+        process.env[key.trim()] = valueParts.join('=').trim()
+      }
+    }
+  })
+}
 
 export default defineConfig({
   testDir: './e2e',
@@ -33,7 +49,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 120000,
     env: {
       DATABASE_URL: process.env.DATABASE_URL || '',

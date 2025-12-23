@@ -21,7 +21,7 @@ test.describe('Sign Up Flow', () => {
     test.skip(browserName === 'webkit', 'Webkit has React controlled input issues with signup form')
     await page.goto('/signup')
 
-    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '新規登録' })).toBeVisible()
 
     const nameInput = page.locator('input[name="name"]')
     const emailInput = page.locator('input[name="email"]')
@@ -50,7 +50,7 @@ test.describe('Sign Up Flow', () => {
       page.waitForURL('/dashboard', { timeout: 15000 }),
       submitButton.click(),
     ])
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/(おはようございます|こんにちは|こんばんは)/)).toBeVisible()
 
     const authUser = await getAuthUserByEmail(testEmail)
     expect(authUser).toBeDefined()
@@ -97,6 +97,6 @@ test.describe('Sign Up Flow', () => {
     await page.click('a[href="/login"]')
 
     await expect(page).toHaveURL(/\/login/)
-    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible()
   })
 })

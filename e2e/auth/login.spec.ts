@@ -24,7 +24,7 @@ test.describe('Login Flow', () => {
   test('should successfully log in with valid credentials', async ({ page }) => {
     await page.goto('/login')
 
-    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible()
 
     const emailInput = page.locator('input[name="email"]')
     const passwordInput = page.locator('input[name="password"]')
@@ -37,7 +37,7 @@ test.describe('Login Flow', () => {
     await page.click('button[type="submit"]')
 
     await expect(page).toHaveURL('/dashboard', { timeout: 10000 })
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/(おはようございます|こんにちは|こんばんは)/)).toBeVisible()
   })
 
   test('should show error for invalid credentials', async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe('Login Flow', () => {
     await page.click('a[href="/signup"]')
 
     await expect(page).toHaveURL(/\/signup/)
-    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '新規登録' })).toBeVisible()
   })
 
   test('should show loading state during login', async ({ page }) => {

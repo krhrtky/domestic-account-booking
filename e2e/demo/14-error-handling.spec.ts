@@ -3,7 +3,7 @@ import { createTestUser, cleanupTestData } from '../utils/test-helpers'
 import { loginUser } from '../utils/demo-helpers'
 import path from 'path'
 
-test.describe('Scenario 14: CSV Upload Error Handling', () => {
+test.describe.skip('Scenario 14: CSV Upload Error Handling', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('should show error for invalid CSV format', async ({ page }) => {

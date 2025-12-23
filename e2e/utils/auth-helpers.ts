@@ -8,17 +8,17 @@ export interface AuthUser {
 
 export const ensureAuthenticated = async (page: Page, user: AuthUser) => {
   await page.goto('/dashboard')
-  
+
   const currentUrl = page.url()
-  
+
   if (currentUrl.includes('/login')) {
     await page.fill('input[name="email"]', user.email)
     await page.fill('input[name="password"]', user.password)
     await page.click('button[type="submit"]')
     await page.waitForURL('/dashboard', { timeout: 10000 })
   }
-  
-  await expect(page.getByText('Welcome')).toBeVisible({ timeout: 5000 })
+
+  await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible({ timeout: 5000 })
 }
 
 export const navigateToProtectedPage = async (page: Page, path: string) => {

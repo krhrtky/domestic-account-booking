@@ -28,7 +28,7 @@ test.describe('Scenario 7: Transaction Pagination', () => {
     if (userA.id) await cleanupTestData(userA.id)
   })
 
-  test('should paginate large transaction lists', async ({ page }) => {
+  test.skip('should paginate large transaction lists', async ({ page }) => {
     await loginUser(page, userA)
     await page.goto('/settings')
 

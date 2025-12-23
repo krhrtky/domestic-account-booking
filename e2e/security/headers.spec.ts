@@ -7,14 +7,14 @@ test.describe('Security Headers - Public Pages', () => {
 
   test('login page should have security headers', async ({ page }) => {
     const response = await page.goto('/login')
-    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
-    
+    await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible()
+
     verifySecurityHeaders(response)
   })
 
   test('signup page should have security headers', async ({ page }) => {
     const response = await page.goto('/signup')
-    await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '新規登録' })).toBeVisible()
 
     verifySecurityHeaders(response)
   })

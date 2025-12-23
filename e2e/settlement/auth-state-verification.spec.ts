@@ -10,28 +10,28 @@ test.describe('Authentication State Verification', () => {
 
   test('should access protected pages without login', async ({ page }) => {
     await navigateToProtectedPage(page, '/dashboard')
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible()
   })
 
   test('should navigate to settings without re-authentication', async ({ page }) => {
     await navigateToProtectedPage(page, '/settings')
-    await expect(page.locator('input[name="groupName"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'グループ設定' })).toBeVisible()
   })
 
   test('should maintain session across multiple page navigations', async ({ page }) => {
     await navigateToProtectedPage(page, '/dashboard')
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible()
 
     await navigateToProtectedPage(page, '/settings')
-    await expect(page.locator('input[name="groupName"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'グループ設定' })).toBeVisible()
 
     await navigateToProtectedPage(page, '/dashboard')
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible()
   })
 
   test('should verify auth state with ensureAuthenticated helper', async ({ page }) => {
     await ensureAuthenticated(page, TEST_USER)
     await expect(page).toHaveURL('/dashboard')
-    await expect(page.getByText('Welcome')).toBeVisible()
+    await expect(page.getByText(/おはようございます|こんにちは|こんばんは/)).toBeVisible()
   })
 })

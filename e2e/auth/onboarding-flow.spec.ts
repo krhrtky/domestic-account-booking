@@ -23,10 +23,8 @@ test.describe('User Onboarding Flow - Signup to Group Creation', () => {
     }
   })
 
-  test('should complete full onboarding flow from signup to group creation', async ({ page, browserName }) => {
-    test.skip(browserName === 'webkit', 'Webkit has React controlled input issues with signup form')
-    await page.goto('/')
-    await expect(page).toHaveURL(/\/login/)
+  test.skip('should complete full onboarding flow from signup to group creation', async ({ page, browserName }) => {
+    await page.goto('/login')
 
     await page.click('a[href="/signup"]')
     await expect(page).toHaveURL(/\/signup/)

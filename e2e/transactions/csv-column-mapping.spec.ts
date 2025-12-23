@@ -76,8 +76,7 @@ test.describe('CSV Column Mapping', () => {
 
     await expect(page.getByRole('heading', { name: '列マッピングの確認' })).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByText(/機密情報を含む可能性のある列を除外しました/)).toBeVisible()
-    await expect(page.getByText('カード番号')).toBeVisible()
+    await expect(page.getByText('機密情報を含む可能性のある列を除外しました: カード番号')).toBeVisible()
   })
 
   test('UC-005: Error when required column is missing', async ({ page }) => {
@@ -135,7 +134,7 @@ test.describe('CSV Column Mapping', () => {
 
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByRole('columnheader', { name: 'Payer' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: '支払者(CSV)' })).toBeVisible()
     await expect(page.getByText('Alice')).toBeVisible()
     await expect(page.getByText('Bob')).toBeVisible()
   })
@@ -159,7 +158,7 @@ test.describe('CSV Column Mapping', () => {
 
     await expect(page.getByRole('heading', { name: 'データプレビュー' })).toBeVisible({ timeout: 5000 })
 
-    await expect(page.getByRole('columnheader', { name: 'Payer' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: '支払者(CSV)' })).toBeVisible()
     await expect(page.getByText('—').first()).toBeVisible()
   })
 

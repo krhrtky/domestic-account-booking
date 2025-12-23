@@ -8,7 +8,7 @@ test.describe('Auth Pages Accessibility', () => {
     await page.goto('/login')
 
     await page.waitForLoadState('networkidle')
-    await expect(page.getByRole('heading', { name: 'Log In' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible()
 
     const results = await runAxeTest(page)
     expectNoViolations(results)

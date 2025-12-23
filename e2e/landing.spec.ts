@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 
+test.use({ storageState: { cookies: [], origins: [] } })
+
 test.describe('Landing Page', () => {
   test.describe('AC-NAV-001: App name and tagline', () => {
     test('displays app name and tagline', async ({ page }) => {
@@ -43,8 +45,8 @@ test.describe('Landing Page', () => {
     test('uses allowed expressions only', async ({ page }) => {
       await page.goto('/')
 
-      const bodyText = await page.locator('body').textContent()
-      expect(bodyText).toMatch(/参考値としてご利用|専門家にご相談/)
+      await expect(page.getByText(/参考値としてご利用ください/).first()).toBeVisible()
+      await expect(page.getByText(/税務や法務については専門家にご相談/).first()).toBeVisible()
     })
   })
 

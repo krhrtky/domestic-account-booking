@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { Settlement } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 
@@ -10,6 +11,7 @@ interface SettlementSummaryProps {
 }
 
 export default function SettlementSummary({ settlement, userAName, userBName }: SettlementSummaryProps) {
+  const [showBreakdown, setShowBreakdown] = useState(false)
 
   const getPaymentInstruction = () => {
     if (settlement.balance_a > 0) {
@@ -197,6 +199,73 @@ export default function SettlementSummary({ settlement, userAName, userBName }: 
             </div>
           </div>
         </div>
+
+        <div className="divider-gradient" />
+
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowBreakdown(!showBreakdown)}
+            className="px-6 py-2.5 rounded-lg bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary font-medium transition-colors duration-200 flex items-center gap-2"
+          >
+            {showBreakdown ? (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                詳細を閉じる
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                詳細を見る
+              </>
+            )}
+          </button>
+        </div>
+
+        {showBreakdown && (
+          <div data-testid="breakdown-panel" className="mt-4 bg-gradient-to-br from-neutral-50 to-neutral-100 rounded-xl p-6 border border-neutral-200">
+            <h4 className="text-lg font-bold text-neutral-800 mb-6 flex items-center gap-2">
+              <svg className="w-5 h-5 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              精算の内訳
+            </h4>
+
+            <div className="space-y-6">
+              <div>
+                <p className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">支払合計</p>
+                <div className="space-y-2">
+                  <div data-testid="paid-by-a-total" className="flex items-center justify-between bg-white rounded-lg p-4 border border-neutral-200">
+                    <span className="text-sm font-medium text-neutral-700">{userAName}</span>
+                    <span className="text-lg font-bold text-neutral-900">{formatCurrency(settlement.paid_by_a_household)}</span>
+                  </div>
+                  <div data-testid="paid-by-b-total" className="flex items-center justify-between bg-white rounded-lg p-4 border border-neutral-200">
+                    <span className="text-sm font-medium text-neutral-700">{userBName || 'ユーザーB'}</span>
+                    <span className="text-lg font-bold text-neutral-900">{formatCurrency(settlement.paid_by_b_household)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="divider-gradient" />
+
+              <div data-testid="calculation-formula">
+                <p className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">計算式</p>
+                <div className="bg-white rounded-lg p-4 border border-neutral-200">
+                  <code className="text-sm text-neutral-800 block leading-relaxed">
+                    Balance = {formatCurrency(settlement.paid_by_a_household)} - (({formatCurrency(settlement.paid_by_a_household)} + {formatCurrency(settlement.paid_by_b_household)}) × {settlement.ratio_a}%)
+                    <br />
+                    <span className="text-brand-primary font-semibold">
+                      = {formatCurrency(settlement.balance_a)}
+                    </span>
+                  </code>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

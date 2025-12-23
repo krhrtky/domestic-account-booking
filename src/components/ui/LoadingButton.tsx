@@ -63,14 +63,13 @@ export default function LoadingButton({
       className={`${baseStyles} ${variantStyles} ${className}`}
       {...props}
     >
-      <span
-        className={`
-          inline-flex items-center gap-2 transition-all duration-200
-          ${isLoading ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}
-        `}
-      >
-        {children}
-      </span>
+      {!isLoading && (
+        <span
+          className="inline-flex items-center gap-2 transition-all duration-200"
+        >
+          {children}
+        </span>
+      )}
 
       {isLoading && (
         <span className="absolute inset-0 flex items-center justify-center gap-2 animate-fade-in">

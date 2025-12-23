@@ -43,7 +43,7 @@ export default function TransactionList({
           </svg>
         </div>
         <p className="text-neutral-500 font-medium">取引データがありません</p>
-        <p className="text-sm text-neutral-400 mt-1">CSVファイルをアップロードして取引を追加してください</p>
+        <p className="text-sm text-neutral-600 mt-1">CSVファイルをアップロードして取引を追加してください</p>
       </div>
     )
   }

@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Navigation Component', () => {
+  test.use({
+    storageState: './e2e/.auth/user-chromium.json'
+  })
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')

@@ -1,3 +1,3 @@
-日付,金額,摘要
+date,amount,description
 2025-01-18,5000,=HYPERLINK("http://evil.com","クリック")
 2025-01-19,6000,正常な摘要

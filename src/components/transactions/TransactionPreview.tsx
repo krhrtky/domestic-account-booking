@@ -40,6 +40,9 @@ export default function TransactionPreview({
                 摘要
               </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
+                支払者(CSV)
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500">
                 支払元
               </th>
               <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500">
@@ -52,6 +55,9 @@ export default function TransactionPreview({
               <tr key={idx} className="border-b border-neutral-200">
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.date}</td>
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.description}</td>
+                <td className="px-4 py-2 text-sm text-neutral-700">
+                  {t.payer_name || '—'}
+                </td>
                 <td className="px-4 py-2">
                   <select
                     value={payerTypes[idx] || 'UserA'}

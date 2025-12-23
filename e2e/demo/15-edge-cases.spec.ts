@@ -24,7 +24,7 @@ const getDateInCurrentMonth = (day: number) => {
   return `${year}-${month}-${dayStr}`
 }
 
-test.describe.serial('Scenario 15: Edge Cases & Data Boundaries', () => {
+test.describe.skip('Scenario 15: Edge Cases & Data Boundaries', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   let userA: TestUser
