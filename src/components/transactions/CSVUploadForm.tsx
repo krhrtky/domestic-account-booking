@@ -7,6 +7,7 @@ import { getCurrentGroup } from '@/app/actions/group'
 import { PayerType, ColumnMapping } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { parseCSV, ParsedTransaction } from '@/lib/csv-parser'
+import { readFileWithEncoding, EncodingType } from '@/lib/encoding'
 import ColumnMappingForm from './ColumnMappingForm'
 import TransactionPreview from './TransactionPreview'
 
@@ -34,6 +35,7 @@ export default function CSVUploadForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [sensitiveWarning, setSensitiveWarning] = useState<string | null>(null)
+  const [detectedEncoding, setDetectedEncoding] = useState<EncodingType | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -66,12 +68,14 @@ export default function CSVUploadForm() {
     setFile(selectedFile)
     setError(null)
     setSensitiveWarning(null)
+    setDetectedEncoding(null)
     setIsProcessing(true)
     setIsLoading(true)
 
     try {
-      const content = await selectedFile.text()
+      const { content, encoding } = await readFileWithEncoding(selectedFile)
       setCsvContent(content)
+      setDetectedEncoding(encoding)
 
       const result = await detectCSVHeaders(content)
 
@@ -212,6 +216,11 @@ export default function CSVUploadForm() {
         <>
           <div>
             <h2 className="text-lg font-semibold text-neutral-900 mb-4">列マッピングの確認</h2>
+            {detectedEncoding && detectedEncoding !== 'utf-8' && (
+              <div className="mb-4 text-sm text-neutral-600 bg-neutral-100 px-3 py-2 rounded-lg">
+                検出された文字コード: {detectedEncoding === 'utf-8-bom' ? 'UTF-8 (BOM付き)' : detectedEncoding === 'shift-jis' ? 'Shift-JIS' : detectedEncoding === 'euc-jp' ? 'EUC-JP' : detectedEncoding}
+              </div>
+            )}
             <ColumnMappingForm
               headers={headers}
               suggestedMapping={suggestedMapping || columnMapping}

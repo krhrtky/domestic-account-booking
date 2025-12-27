@@ -31,6 +31,9 @@ const SENSITIVE_COLUMN_PATTERNS: RegExp[] = [
   /pin/i,
   /cvv/i,
   /cvc/i,
+  /会員番号/i,
+  /member.?number/i,
+  /残高/i,
 ]
 
 const FORMULA_PREFIXES = ['=', '+', '-', '@']
@@ -70,28 +73,69 @@ const sanitizeCSVField = (value: string): string => {
 }
 
 const detectDateColumn = (headers: string[]): number => {
-  const datePatterns = ['date', '日付', '利用日', 'Date']
+  const datePatterns = [
+    'date',
+    '日付',
+    '利用日',
+    'ご利用日',
+    'データ処理日',
+    '取引日',
+    'お取引日',
+    '引落日',
+    '発生日',
+  ]
   return headers.findIndex((h) =>
     datePatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
   )
 }
 
 const detectDescriptionColumn = (headers: string[]): number => {
-  const descPatterns = ['description', '摘要', '内容', '店名', '商品名', '利用先', 'Description']
+  const descPatterns = [
+    'description',
+    '摘要',
+    '内容',
+    '店名',
+    '商品名',
+    '利用先',
+    'ご利用内容',
+    '摘要内容',
+    'お取引内容',
+    'ご利用店名',
+  ]
   return headers.findIndex((h) =>
     descPatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
   )
 }
 
 const detectAmountColumn = (headers: string[]): number => {
-  const amountPatterns = ['amount', '金額', 'Amount']
+  const amountPatterns = [
+    'amount',
+    '金額',
+    'ご利用金額',
+    '支払金額',
+    '利用金額',
+    'お支払金額',
+    '預かり金額',
+    '引出金額',
+    '預入金額',
+  ]
   return headers.findIndex((h) =>
     amountPatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
   )
 }
 
 const detectPayerColumn = (headers: string[]): number => {
-  const payerPatterns = ['payer', '支払者', '支払い者', 'User', 'ユーザー', '名前']
+  const payerPatterns = [
+    'payer',
+    '支払者',
+    '支払い者',
+    'User',
+    'ユーザー',
+    '名前',
+    'カード会員様名',
+    'ご利用者名',
+    '会員名',
+  ]
   return headers.findIndex((h) =>
     payerPatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
   )

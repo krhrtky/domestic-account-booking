@@ -76,6 +76,36 @@ describe('parseCSV', () => {
     }
   })
 
+  describe('AC-CARD-006: Negative amount handling', () => {
+    it('converts negative amounts to positive', async () => {
+      const csvContent = `ご利用日,ご利用金額,ご利用内容
+2025-01-15,-10000,クレジット払い
+2025-01-16,-5500,ショッピング`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data[0].amount).toBe(10000)
+        expect(result.data[1].amount).toBe(5500)
+      }
+    })
+
+    it('handles mixed positive and negative amounts', async () => {
+      const csvContent = `日付,金額,摘要
+2025-01-15,-3000,支払い
+2025-01-16,2000,返金`
+
+      const result = await parseCSV(csvContent, 'test.csv')
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data[0].amount).toBe(3000)
+        expect(result.data[1].amount).toBe(2000)
+      }
+    })
+  })
+
   it('skips empty rows', async () => {
     const csvContent = `Date,Description,Amount
 2025-01-15,Payment,5000
@@ -391,6 +421,62 @@ describe('L-BR-006: Column Mapping', () => {
       }
     })
 
+    describe('AC-BANK-001: Bank statement format', () => {
+      it('detects 日付 column from bank statement', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `日付,金額,摘要
+2025-01-15,5400,スーパー`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.suggestedMapping.dateColumn).toBe('日付')
+        }
+      })
+    })
+
+    describe('AC-CARD-001: Credit card format', () => {
+      it('detects ご利用日 column as date', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `ご利用日,ご利用金額,ご利用内容
+2025-01-15,5400,スーパー`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.suggestedMapping.dateColumn).toBe('ご利用日')
+          expect(result.suggestedMapping.amountColumn).toBe('ご利用金額')
+          expect(result.suggestedMapping.descriptionColumn).toBe('ご利用内容')
+        }
+      })
+
+      it('detects お取引日 and お取引内容 columns', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `お取引日,お支払金額,お取引内容
+2025-01-15,5400,カフェ`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.suggestedMapping.dateColumn).toBe('お取引日')
+          expect(result.suggestedMapping.amountColumn).toBe('お支払金額')
+          expect(result.suggestedMapping.descriptionColumn).toBe('お取引内容')
+        }
+      })
+
+      it('detects カード会員様名 as payer column', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `ご利用日,ご利用金額,ご利用内容,カード会員様名
+2025-01-15,5400,スーパー,山田太郎`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.suggestedMapping.payerColumn).toBe('カード会員様名')
+        }
+      })
+    })
+
     it('uses custom column mapping when provided', async () => {
       const csvContent = `利用日,ご利用金額,ご利用先名
 2025-01-15,5400,スーパー
@@ -478,6 +564,47 @@ describe('L-BR-006: Column Mapping', () => {
         expect(result.excludedHeaders).toContain('カード番号')
         expect(result.headers).not.toContain('カード番号')
       }
+    })
+
+    describe('AC-PII-001: 会員番号 exclusion', () => {
+      it('excludes 会員番号 column with warning', async () => {
+        const csvContent = `日付,金額,摘要,会員番号
+2025-01-15,5400,テスト,1234567890`
+
+        const result = await parseCSV(csvContent, 'test.csv')
+
+        expect(result.success).toBe(true)
+        if (result.success) {
+          expect(result.warnings).toBeDefined()
+          expect(result.warnings?.[0]).toContain('会員番号')
+        }
+      })
+
+      it('excludes member number column (English pattern)', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `Date,Amount,Description,MemberNumber
+2025-01-15,5400,Test,1234567890`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.excludedHeaders).toContain('MemberNumber')
+          expect(result.headers).not.toContain('MemberNumber')
+        }
+      })
+
+      it('excludes 残高 column', async () => {
+        const { detectHeaders } = await import('./csv-parser')
+        const csvContent = `日付,金額,摘要,残高
+2025-01-15,5400,テスト,100000`
+
+        const result = detectHeaders(csvContent)
+
+        if ('headers' in result) {
+          expect(result.excludedHeaders).toContain('残高')
+          expect(result.headers).not.toContain('残高')
+        }
+      })
     })
 
     it('excludes sensitive account number column', async () => {
