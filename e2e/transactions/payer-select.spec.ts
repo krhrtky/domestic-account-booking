@@ -69,19 +69,21 @@ test.describe('AC-9: Payer Select - Change individual payer', () => {
     const testRow = page.locator('tr', { hasText: 'Test Payer Change' })
     const payerSelect = testRow.locator('[data-testid="payer-select"]')
 
-    await expect(payerSelect).toHaveValue('')
+    await expect(payerSelect).toHaveValue(userA.id!)
 
     await payerSelect.selectOption({ label: 'Payer User B' })
     await page.waitForTimeout(500)
 
     const updatedTransaction = await getTransactionById(transactionId)
     expect(updatedTransaction?.payer_user_id).toBe(userB.id)
+    expect(updatedTransaction?.payer_type).toBe('UserB')
 
-    await payerSelect.selectOption({ label: 'デフォルト' })
+    await payerSelect.selectOption({ label: '共通口座' })
     await page.waitForTimeout(500)
 
-    const revertedTransaction = await getTransactionById(transactionId)
-    expect(revertedTransaction?.payer_user_id).toBeNull()
+    const commonTransaction = await getTransactionById(transactionId)
+    expect(commonTransaction?.payer_user_id).toBeNull()
+    expect(commonTransaction?.payer_type).toBe('Common')
   })
 })
 
@@ -133,10 +135,11 @@ test.describe('AC-4: CSV without payer column defaults to payer_type', () => {
     const testRow = page.locator('tr', { hasText: 'CSV Import No Payer' })
     const payerSelect = testRow.locator('[data-testid="payer-select"]')
 
-    await expect(payerSelect).toHaveValue('')
+    await expect(payerSelect).toHaveValue(userA.id!)
 
     const transaction = await getTransactionById(inserted.id)
     expect(transaction?.payer_user_id).toBeNull()
+    expect(transaction?.payer_type).toBe('UserA')
   })
 })
 

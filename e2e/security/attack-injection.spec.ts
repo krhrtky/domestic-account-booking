@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createTestUser, cleanupTestData, TestUser, insertTransaction, createTestGroup } from '../utils/test-helpers'
+import { createTestUser, cleanupTestData, TestUser, insertTransaction, createTestGroup, getUserByEmail } from '../utils/test-helpers'
 import { loginUser } from '../utils/demo-helpers'
 import path from 'path'
 

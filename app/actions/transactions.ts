@@ -352,16 +352,18 @@ export async function deleteTransaction(transactionId: string) {
 
 const UpdatePayerSchema = z.object({
   transactionId: z.string().uuid(),
-  payerUserId: z.string().uuid().nullable()
+  payerUserId: z.string().uuid().nullable(),
+  payerType: z.enum(['UserA', 'UserB', 'Common'])
 })
 
 export async function updateTransactionPayer(
   transactionId: string,
-  payerUserId?: string | null
+  payerUserId: string | null,
+  payerType: PayerType
 ): Promise<{ success: true } | { error: string | Record<string, string[]> }> {
   const user = await requireAuth()
 
-  const parsed = UpdatePayerSchema.safeParse({ transactionId, payerUserId: payerUserId ?? null })
+  const parsed = UpdatePayerSchema.safeParse({ transactionId, payerUserId, payerType })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
@@ -384,8 +386,8 @@ export async function updateTransactionPayer(
 
   try {
     await query(
-      'UPDATE transactions SET payer_user_id = $1 WHERE id = $2 AND group_id = $3',
-      [payerUserId ?? null, transactionId, groupId]
+      'UPDATE transactions SET payer_user_id = $1, payer_type = $2 WHERE id = $3 AND group_id = $4',
+      [payerUserId, payerType, transactionId, groupId]
     )
 
     revalidateTag(CACHE_TAGS.transactions(groupId))

@@ -63,6 +63,7 @@ export default function TransactionRow({ transaction, groupUserAId, groupUserBId
           <PayerSelect
             transactionId={transaction.id}
             currentPayerUserId={transaction.payer_user_id}
+            currentPayerType={transaction.payer_type}
             groupUserAId={groupUserAId}
             groupUserBId={groupUserBId}
             userAName={userAName}
