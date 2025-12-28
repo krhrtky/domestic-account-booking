@@ -20,16 +20,10 @@ export default function HeroSection() {
           明細はいつでも確認できるので、お互いに納得できる家計管理が実現できます。
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Link
-            href="/signup"
-            className="w-full sm:w-auto px-8 py-4 bg-white text-brand-primary rounded-lg font-semibold text-lg hover:bg-white/90 transition-colors shadow-lg hover:shadow-xl"
-          >
-            無料で始める
-          </Link>
+        <div className="flex justify-center items-center">
           <Link
             href="/login"
-            className="w-full sm:w-auto px-8 py-4 bg-white/10 text-white rounded-lg font-semibold text-lg hover:bg-white/20 transition-colors border-2 border-white/30"
+            className="w-full sm:w-auto px-8 py-4 bg-white text-brand-primary rounded-lg font-semibold text-lg hover:bg-white/90 transition-colors shadow-lg hover:shadow-xl"
           >
             ログイン
           </Link>

@@ -1,5 +1,4 @@
 import { LoginForm } from '@/components/auth/LoginForm'
-import Link from 'next/link'
 import { Suspense } from 'react'
 
 function LoginFormFallback() {
@@ -118,24 +117,6 @@ export default function LoginPage() {
           <Suspense fallback={<LoginFormFallback />}>
             <LoginForm />
           </Suspense>
-
-          <div
-            className="divider-elegant opacity-0 animate-fade-in"
-            style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}
-          />
-
-          <p
-            className="text-center text-sm text-neutral-600 opacity-0 animate-fade-in-up"
-            style={{ animationDelay: '0.45s', animationFillMode: 'forwards' }}
-          >
-            アカウントをお持ちでない方は{' '}
-            <Link
-              href="/signup"
-              className="link-primary"
-            >
-              新規登録
-            </Link>
-          </p>
         </div>
 
         <p

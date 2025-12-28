@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { query, getClient } from '@/lib/db'
-import { requireAuth, getCurrentUser } from '@/lib/session'
+import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS } from '@/lib/cache'
@@ -69,124 +69,6 @@ export async function createGroup(data: {
     await client.query('ROLLBACK')
     console.error('Group creation error:', error)
     return { error: 'Failed to create group' }
-  } finally {
-    client.release()
-  }
-}
-
-const InviteSchema = z.object({
-  email: z.string().email()
-})
-
-export async function invitePartner(email: string) {
-  const parsed = InviteSchema.safeParse({ email })
-  if (!parsed.success) {
-    return { error: parsed.error.flatten().fieldErrors }
-  }
-  const normalizedEmail = parsed.data.email.toLowerCase()
-
-  const user = await requireAuth()
-
-  const groupId = await getUserGroupId(user.id)
-
-  if (!groupId) {
-    return { error: 'User is not in a group' }
-  }
-
-  const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
-    'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
-    [groupId]
-  )
-
-  if (groupResult.rows.length === 0) {
-    return { error: 'Group not found' }
-  }
-
-  const group = groupResult.rows[0]
-
-  if (group.user_b_id) {
-    return { error: 'Group already has two members' }
-  }
-
-  if (group.user_a_id !== user.id) {
-    return { error: 'Only group creator can invite partners' }
-  }
-
-  const inviteToken = crypto.randomUUID()
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${inviteToken}`
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  try {
-    await query(
-      `INSERT INTO invitations (id, group_id, inviter_id, invitee_email, expires_at)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [inviteToken, groupId, user.id, normalizedEmail, expiresAt]
-    )
-
-    return { success: true, invite_url: inviteUrl }
-  } catch (error) {
-    return { error: 'Failed to create invitation' }
-  }
-}
-
-export async function acceptInvitation(token: string) {
-  const user = await getCurrentUser()
-  if (!user) {
-    return { error: 'Please log in to accept this invitation' }
-  }
-
-  const inviteResult = await query<{
-    group_id: string
-    used_at: string | null
-    expires_at: string
-  }>(
-    'SELECT group_id, used_at, expires_at FROM invitations WHERE id = $1',
-    [token]
-  )
-
-  if (inviteResult.rows.length === 0) {
-    return { error: 'Invalid or expired invitation' }
-  }
-
-  const invite = inviteResult.rows[0]
-
-  if (invite.used_at) {
-    return { error: 'Invitation already used' }
-  }
-
-  if (new Date(invite.expires_at) < new Date()) {
-    return { error: 'Invitation expired' }
-  }
-
-  const client = await getClient()
-
-  try {
-    await client.query('BEGIN')
-
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [invite.group_id, user.id]
-    )
-
-    await client.query(
-      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
-      [user.id, invite.group_id]
-    )
-
-    await client.query(
-      'UPDATE invitations SET used_at = $1 WHERE id = $2',
-      [new Date().toISOString(), token]
-    )
-
-    await client.query('COMMIT')
-
-    revalidateTag(CACHE_TAGS.group(invite.group_id))
-    revalidateTag(CACHE_TAGS.user(user.id))
-
-    return { success: true }
-  } catch (error) {
-    await client.query('ROLLBACK')
-    return { error: 'Failed to accept invitation' }
   } finally {
     client.release()
   }

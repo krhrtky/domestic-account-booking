@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server'
 
 export default withAuth(
   function middleware(req) {
-    const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
-                       req.nextUrl.pathname.startsWith('/signup')
-    const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
+    const isAuthPage = req.nextUrl.pathname.startsWith('/login')
     const isHomePage = req.nextUrl.pathname === '/'
 
     if (req.nextauth.token && isAuthPage) {
@@ -21,13 +19,11 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ req, token }) => {
-        const isAuthPage = req.nextUrl.pathname.startsWith('/login') ||
-                          req.nextUrl.pathname.startsWith('/signup')
-        const isInvitePage = req.nextUrl.pathname.startsWith('/invite/')
+        const isAuthPage = req.nextUrl.pathname.startsWith('/login')
         const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth')
         const isHomePage = req.nextUrl.pathname === '/'
 
-        if (isAuthPage || isInvitePage || isApiAuth || isHomePage) {
+        if (isAuthPage || isApiAuth || isHomePage) {
           return true
         }
 

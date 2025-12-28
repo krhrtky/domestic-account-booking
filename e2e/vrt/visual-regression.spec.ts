@@ -15,14 +15,6 @@ test.describe('L-CX-002: Visual Regression Tests', () => {
     await expect(form).toHaveScreenshot('login-form.png')
   })
 
-  test('signup page visual appearance', async ({ page }) => {
-    await page.goto('/signup')
-    await expect(page).toHaveScreenshot('signup-page.png', {
-      fullPage: true,
-      maxDiffPixelRatio: 0.01,
-    })
-  })
-
   test('error message styling', async ({ page }) => {
     await page.goto('/login')
     await page.fill('input[name="email"]', 'invalid')

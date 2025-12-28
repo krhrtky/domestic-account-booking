@@ -2,89 +2,13 @@
 
 import { z } from 'zod'
 import { checkRateLimit, resetRateLimit } from '@/lib/rate-limiter'
-import { getClientIP } from '@/lib/get-client-ip'
-import { headers } from 'next/headers'
 import bcrypt from 'bcryptjs'
-import { query, getClient } from '@/lib/db'
-
-const SignUpSchema = z.object({
-  name: z.string().min(1, '名前を入力してください').max(100),
-  email: z.string().email('有効なメールアドレスを入力してください'),
-  password: z.string().min(8, 'パスワードは8文字以上で入力してください')
-})
+import { query } from '@/lib/db'
 
 const LogInSchema = z.object({
   email: z.string().email('有効なメールアドレスを入力してください'),
   password: z.string().min(1, 'パスワードを入力してください')
 })
-
-export async function signUp(formData: FormData) {
-  const parsed = SignUpSchema.safeParse({
-    name: formData.get('name'),
-    email: formData.get('email'),
-    password: formData.get('password')
-  })
-
-  if (!parsed.success) {
-    return { error: parsed.error.flatten().fieldErrors }
-  }
-
-  const { name, email, password } = parsed.data
-  const normalizedEmail = email.toLowerCase()
-
-  const headersList = await headers()
-  const clientIP = getClientIP(headersList)
-  // L-SC-004: Signup rate limit - 3 attempts per 1 hour (per IP)
-  const rateLimitResult = checkRateLimit(clientIP, {
-    maxAttempts: 3,
-    windowMs: 60 * 60 * 1000
-  }, 'signup')
-
-  if (!rateLimitResult.allowed) {
-    return {
-      error: `アカウント作成の試行回数が上限を超えました。${rateLimitResult.retryAfter}秒後に再試行してください。`
-    }
-  }
-
-  const client = await getClient()
-
-  try {
-    await client.query('BEGIN')
-
-    const existingUser = await client.query(
-      'SELECT id FROM custom_auth.users WHERE email = $1',
-      [normalizedEmail]
-    )
-
-    if (existingUser.rows.length > 0) {
-      await client.query('ROLLBACK')
-      return { error: 'このメールアドレスは既に登録されています' }
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12)
-
-    const authResult = await client.query<{ id: string }>(
-      'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
-      [normalizedEmail, passwordHash]
-    )
-
-    const userId = authResult.rows[0].id
-
-    await client.query(
-      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)',
-      [userId, name, normalizedEmail]
-    )
-
-    await client.query('COMMIT')
-
-    return { success: true }
-  } catch (error) {
-    await client.query('ROLLBACK')
-    return { error: 'アカウントの作成に失敗しました' }
-  } finally {
-    client.release()
-  }
-}
 
 export async function logIn(formData: FormData) {
   const parsed = LogInSchema.safeParse({

@@ -6,6 +6,19 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
+export const DEMO_USERS = {
+  userA: {
+    email: process.env.SEED_USER_A_EMAIL || 'demo-a@example.com',
+    password: process.env.SEED_USER_A_PASSWORD || 'Password123!',
+    name: process.env.SEED_USER_A_NAME || 'デモユーザーA',
+  },
+  userB: {
+    email: process.env.SEED_USER_B_EMAIL || 'demo-b@example.com',
+    password: process.env.SEED_USER_B_PASSWORD || 'Password123!',
+    name: process.env.SEED_USER_B_NAME || 'デモユーザーB',
+  },
+}
+
 export interface DemoGroup {
   id: string
   name: string

@@ -51,16 +51,12 @@ test.describe('Landing Page', () => {
   })
 
   test.describe('AC-NAV-011: CTA buttons', () => {
-    test('displays signup and login CTAs', async ({ page }) => {
+    test('displays login CTA', async ({ page }) => {
       await page.goto('/')
-      
-      const signupButton = page.getByRole('link', { name: '無料で始める' })
+
       const loginButton = page.getByRole('link', { name: 'ログイン' })
-      
-      await expect(signupButton).toBeVisible()
+
       await expect(loginButton).toBeVisible()
-      
-      await expect(signupButton).toHaveAttribute('href', '/signup')
       await expect(loginButton).toHaveAttribute('href', '/login')
     })
   })
@@ -106,7 +102,7 @@ test.describe('Landing Page', () => {
       await page.goto('/')
 
       await expect(page.getByRole('heading', { name: '家計精算アプリ', level: 1 })).toBeVisible()
-      await expect(page.getByRole('link', { name: '無料で始める' })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'ログイン' })).toBeVisible()
     })
   })
 })

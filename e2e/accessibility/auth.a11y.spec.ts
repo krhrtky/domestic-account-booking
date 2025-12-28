@@ -14,13 +14,4 @@ test.describe('Auth Pages Accessibility', () => {
     expectNoViolations(results)
   })
 
-  test('signup page should have no accessibility violations', async ({ page }) => {
-    await page.goto('/signup')
-
-    await page.waitForLoadState('networkidle')
-    await expect(page.getByRole('heading')).toBeVisible({ timeout: 10000 })
-
-    const results = await runAxeTest(page)
-    expectNoViolations(results)
-  })
 })

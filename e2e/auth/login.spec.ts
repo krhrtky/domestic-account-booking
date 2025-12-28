@@ -57,15 +57,6 @@ test.describe('Login Flow', () => {
     await expect(errorToast).toBeVisible({ timeout: 5000 })
   })
 
-  test('should navigate to signup page', async ({ page }) => {
-    await page.goto('/login')
-
-    await page.click('a[href="/signup"]')
-
-    await expect(page).toHaveURL(/\/signup/)
-    await expect(page.getByRole('heading', { name: '新規登録' })).toBeVisible()
-  })
-
   test('should show loading state during login', async ({ page }) => {
     await page.goto('/login')
 

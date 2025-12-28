@@ -1,6 +1,5 @@
 import { getCurrentGroup } from '@/app/actions/group'
 import { GroupSettings } from '@/components/group/GroupSettings'
-import { InvitePartner } from '@/components/group/InvitePartner'
 import { CreateGroupForm } from '@/components/group/CreateGroupForm'
 import Link from 'next/link'
 
@@ -92,15 +91,6 @@ export default async function SettingsPage() {
         >
           <GroupSettings group={group} />
         </div>
-
-        {!group.user_b && (
-          <div
-            className="opacity-0 animate-fade-in-up"
-            style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
-          >
-            <InvitePartner />
-          </div>
-        )}
       </div>
     </div>
   )
