@@ -45,7 +45,7 @@ domestic-account-booking/
 npm install
 ```
 
-### 2. Environment Variables (Optional for now)
+### 2. Environment Variables
 
 Copy the example environment file:
 
@@ -53,9 +53,38 @@ Copy the example environment file:
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` with your Supabase credentials (once you create a Supabase project).
+Edit `.env.local` with your database credentials and user settings.
 
-### 3. Run Development Server
+### 3. Create Users
+
+This app uses pre-seeded users (no signup functionality). Run the seed script to create users:
+
+```bash
+npx ts-node scripts/seed-local.ts
+```
+
+Default credentials (can be customized via environment variables):
+
+| User | Email | Password |
+|------|-------|----------|
+| User A | demo-a@example.com | Password123! |
+| User B | demo-b@example.com | Password123! |
+
+To customize users, set these environment variables before running the seed script:
+
+```bash
+SEED_USER_A_EMAIL=your-email-a@example.com
+SEED_USER_A_PASSWORD=YourPassword123!
+SEED_USER_A_NAME=ユーザーA
+
+SEED_USER_B_EMAIL=your-email-b@example.com
+SEED_USER_B_PASSWORD=YourPassword123!
+SEED_USER_B_NAME=ユーザーB
+```
+
+The seed script is idempotent - running it multiple times will not create duplicate users.
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
@@ -168,37 +197,15 @@ Supported date formats:
 - [x] Basic project structure
 - [x] Environment configuration template
 
-### Pending (DA-3 onwards)
+### Completed (Additional)
 
-- [ ] Supabase database setup
-- [ ] Authentication flows (signup/login)
-- [ ] File upload API endpoint
-- [ ] Transaction list UI component
-- [ ] Settlement dashboard UI
-- [ ] Group settings page
-- [ ] Integration tests
-- [ ] E2E testing with real CSV files
-
-## Next Steps
-
-1. **Create Supabase Project**
-   - Sign up at https://supabase.com
-   - Create new project
-   - Copy connection strings to `.env.local`
-
-2. **Run Database Schema**
-   - Execute SQL from SPEC.md Section 3.1 in Supabase SQL Editor
-   - Configure Row-Level Security (RLS) policies
-
-3. **Implement UI Components**
-   - CSV upload interface
-   - Transaction list with filtering
-   - Settlement dashboard
-
-4. **Add Authentication**
-   - Supabase Auth integration
-   - User registration/login flows
-   - Protected routes
+- [x] Supabase database setup with migrations
+- [x] Custom authentication (login with pre-seeded users)
+- [x] CSV upload with column mapping
+- [x] Transaction list UI with filters
+- [x] Settlement dashboard UI
+- [x] Group settings page
+- [x] E2E testing with Playwright
 
 ## License
 
