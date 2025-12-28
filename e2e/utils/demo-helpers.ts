@@ -19,7 +19,7 @@ export interface DemoTransaction {
   date: string
   amount: number
   description: string
-  payer_type: 'UserA' | 'UserB' | 'Common'
+  payer_type: 'UserA' | 'UserB'
   expense_type: 'Household' | 'Personal'
 }
 

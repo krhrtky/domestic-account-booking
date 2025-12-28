@@ -128,7 +128,7 @@ export const getTransactionsByGroupId = async (groupId: string) => {
     date: Date
     description: string
     amount: number
-    payer_type: 'UserA' | 'UserB' | 'Common'
+    payer_type: 'UserA' | 'UserB'
     expense_type: 'Household' | 'Personal'
     source_file_name?: string
     uploaded_by?: string
@@ -150,21 +150,28 @@ export const insertTransaction = async (transaction: {
   description: string
   amount: number
   expenseType: string
-  payerType?: 'UserA' | 'UserB' | 'Common'
+  payerType?: 'UserA' | 'UserB'
   payerUserId?: string | null
+  actualPayerType?: 'UserA' | 'UserB'
+  actualPayerUserId?: string | null
 }) => {
+  const payerType = transaction.payerType || 'UserA'
+  const actualPayerType = transaction.actualPayerType ?? payerType
+  const actualPayerUserId = transaction.actualPayerUserId ?? transaction.payerUserId ?? null
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, payer_user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, payer_user_id, actual_payer_type, actual_payer_user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
     [
       transaction.userId,
       transaction.groupId,
       transaction.date,
       transaction.description,
       transaction.amount,
-      transaction.payerType || 'UserA',
+      payerType,
       transaction.expenseType,
       transaction.payerUserId ?? null,
+      actualPayerType,
+      actualPayerUserId,
     ]
   )
   return result.rows[0]
@@ -178,7 +185,8 @@ export const insertTransactions = async (
     description: string
     amount: number
     expenseType: string
-    payerType?: 'UserA' | 'UserB' | 'Common'
+    payerType?: 'UserA' | 'UserB'
+    actualPayerType?: 'UserA' | 'UserB'
   }>
 ) => {
   if (transactions.length === 0) return []
@@ -187,15 +195,17 @@ export const insertTransactions = async (
   const placeholders: string[] = []
 
   transactions.forEach((t, i) => {
-    const offset = i * 7
+    const offset = i * 9
+    const payerType = t.payerType || 'UserA'
+    const actualPayerType = t.actualPayerType ?? payerType
     placeholders.push(
-      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`
+      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`
     )
-    values.push(t.userId, t.groupId, t.date, t.description, t.amount, t.payerType || 'UserA', t.expenseType)
+    values.push(t.userId, t.groupId, t.date, t.description, t.amount, payerType, t.expenseType, actualPayerType, null)
   })
 
   const result = await pool.query<{ id: string }>(
-    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type)
+    `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, actual_payer_type, actual_payer_user_id)
      VALUES ${placeholders.join(', ')} RETURNING id`,
     values
   )
@@ -213,6 +223,8 @@ export const getTransactionById = async (transactionId: string) => {
     payer_type: string
     expense_type: string
     payer_user_id: string | null
+    actual_payer_type: string
+    actual_payer_user_id: string | null
   }>('SELECT * FROM transactions WHERE id = $1', [transactionId])
   return result.rows[0] || null
 }

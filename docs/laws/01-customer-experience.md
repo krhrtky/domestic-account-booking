@@ -20,7 +20,6 @@ Balance_A = PaidBy_A^{Household} - ((PaidBy_A^{Household} + PaidBy_B^{Household}
 
 - `Balance_A > 0`: BはAに `Balance_A` を支払う
 - `Balance_A < 0`: AはBに `|Balance_A|` を支払う
-- `Common`（共通口座）からの支払いは計算から除外する
 
 ### 禁止事項
 
@@ -61,11 +60,10 @@ describe('L-CX-001: 精算金額の正確性', () => {
   });
 
   describe('エッジケース', () => {
-    it('共通口座からの支払いは計算から除外される', () => {
+    it('同額支払いの場合はバランスがゼロになる', () => {
       const result = calculateSettlement({
         paidByA: 5000,
         paidByB: 5000,
-        paidByCommon: 10000,
         ratioA: 50,
         ratioB: 50,
       });

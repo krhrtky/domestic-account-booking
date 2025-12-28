@@ -75,15 +75,10 @@ test.describe('AC-9: Payer Select - Change individual payer', () => {
     await page.waitForTimeout(500)
 
     const updatedTransaction = await getTransactionById(transactionId)
-    expect(updatedTransaction?.payer_user_id).toBe(userB.id)
-    expect(updatedTransaction?.payer_type).toBe('UserB')
-
-    await payerSelect.selectOption({ label: '共通口座' })
-    await page.waitForTimeout(500)
-
-    const commonTransaction = await getTransactionById(transactionId)
-    expect(commonTransaction?.payer_user_id).toBeNull()
-    expect(commonTransaction?.payer_type).toBe('Common')
+    expect(updatedTransaction?.actual_payer_user_id).toBe(userB.id)
+    expect(updatedTransaction?.actual_payer_type).toBe('UserB')
+    expect(updatedTransaction?.payer_type).toBe('UserA')
+    expect(updatedTransaction?.payer_user_id).toBeNull()
   })
 })
 
@@ -140,10 +135,12 @@ test.describe('AC-4: CSV without payer column defaults to payer_type', () => {
     const transaction = await getTransactionById(inserted.id)
     expect(transaction?.payer_user_id).toBeNull()
     expect(transaction?.payer_type).toBe('UserA')
+    expect(transaction?.actual_payer_user_id).toBeNull()
+    expect(transaction?.actual_payer_type).toBe('UserA')
   })
 })
 
-test.describe('L-BR-002: payer_user_id priority in settlement', () => {
+test.describe('L-BR-002: actual_payer_user_id priority in settlement', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   let userA: TestUser
@@ -169,7 +166,7 @@ test.describe('L-BR-002: payer_user_id priority in settlement', () => {
     if (userB.id) await cleanupTestData(userB.id)
   })
 
-  test('should use payer_user_id for settlement calculation', async ({ page }) => {
+  test('should use actual_payer_user_id for settlement calculation', async ({ page }) => {
     await loginUser(page, userA)
     await page.goto('/settings')
 
@@ -187,11 +184,13 @@ test.describe('L-BR-002: payer_user_id priority in settlement', () => {
       userId: userA.id!,
       groupId: groupId,
       date: '2025-12-15',
-      description: 'UserA paid via payer_user_id',
+      description: 'UserA paid via actual_payer_user_id',
       amount: 10000,
       expenseType: 'Household',
       payerType: 'UserB',
-      payerUserId: userA.id!,
+      payerUserId: null,
+      actualPayerType: 'UserA',
+      actualPayerUserId: userA.id!,
     })
 
     await insertTransactionDb({
@@ -203,6 +202,8 @@ test.describe('L-BR-002: payer_user_id priority in settlement', () => {
       expenseType: 'Household',
       payerType: 'UserB',
       payerUserId: null,
+      actualPayerType: 'UserB',
+      actualPayerUserId: null,
     })
 
     await page.goto('/dashboard?month=2025-12')

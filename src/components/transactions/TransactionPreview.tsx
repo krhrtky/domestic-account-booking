@@ -66,7 +66,6 @@ export default function TransactionPreview({
                   >
                     <option value="UserA">{userAName}</option>
                     <option value="UserB">{userBName}</option>
-                    <option value="Common">共通</option>
                   </select>
                 </td>
                 <td className="px-4 py-2 text-sm text-right text-neutral-700">

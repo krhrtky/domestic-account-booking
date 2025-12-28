@@ -41,28 +41,19 @@ export const calculateSettlement = (
 
   const paidByA = householdTransactions
     .filter((t) => {
-      if (t.payer_user_id) {
-        return t.payer_user_id === group.user_a_id
+      if (t.actual_payer_user_id) {
+        return t.actual_payer_user_id === group.user_a_id
       }
-      return t.payer_type === 'UserA'
+      return t.actual_payer_type === 'UserA'
     })
     .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const paidByB = householdTransactions
     .filter((t) => {
-      if (t.payer_user_id) {
-        return t.payer_user_id === group.user_b_id
+      if (t.actual_payer_user_id) {
+        return t.actual_payer_user_id === group.user_b_id
       }
-      return t.payer_type === 'UserB'
-    })
-    .reduce((sum, t) => sum + toNumber(t.amount), 0)
-
-  const paidByCommon = householdTransactions
-    .filter((t) => {
-      if (t.payer_user_id) {
-        return false
-      }
-      return t.payer_type === 'Common'
+      return t.actual_payer_type === 'UserB'
     })
     .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
@@ -76,7 +67,6 @@ export const calculateSettlement = (
     total_household: totalHousehold,
     paid_by_a_household: paidByA,
     paid_by_b_household: paidByB,
-    paid_by_common: paidByCommon,
     balance_a: balanceA,
     ratio_a: group.ratio_a,
     ratio_b: group.ratio_b,

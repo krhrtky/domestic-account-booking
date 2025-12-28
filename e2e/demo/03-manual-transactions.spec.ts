@@ -47,7 +47,7 @@ test.describe('Scenario 3: Manual Transaction Entry', () => {
     await transactionRow.waitFor({ state: 'visible', timeout: 5000 })
     await expect(transactionRow.locator('[data-testid="transaction-description"]')).toContainText('Grocery Shopping')
     await expect(transactionRow.locator('[data-testid="transaction-amount"]')).toContainText('5,000')
-    await expect(transactionRow.locator('[data-testid="transaction-payer"]')).toContainText('UserA')
+    await expect(transactionRow.locator('[data-testid="transaction-payer"]')).toContainText('Test User A')
     await expect(transactionRow.locator('[data-testid="expense-type-toggle"]')).toContainText('Household')
   })
 })

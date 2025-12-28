@@ -99,33 +99,18 @@ export default function SettlementSummary({ settlement, userAName, userBName }: 
             <span className="w-1 h-1 rounded-full bg-brand-accent" />
             支出概要
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="group bg-gradient-to-br from-brand-primary/5 to-brand-accent/5 rounded-xl p-5 border border-brand-primary/10 hover:border-brand-primary/20 transition-colors duration-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-neutral-600">家計の支出合計</p>
+          <div className="group bg-gradient-to-br from-brand-primary/5 to-brand-accent/5 rounded-xl p-5 border border-brand-primary/10 hover:border-brand-primary/20 transition-colors duration-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-brand-primary/10 flex items-center justify-center">
+                <svg className="w-4 h-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
               </div>
-              <p className="text-2xl font-bold text-neutral-900">
-                {formatCurrency(settlement.total_household)}
-              </p>
+              <p className="text-sm font-medium text-neutral-600">家計の支出合計</p>
             </div>
-            <div className="group bg-neutral-50 rounded-xl p-5 border border-neutral-200 hover:border-neutral-300 transition-colors duration-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-neutral-200 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-neutral-600">共通口座からの支払い</p>
-              </div>
-              <p className="text-2xl font-bold text-neutral-900">
-                {formatCurrency(settlement.paid_by_common)}
-              </p>
-            </div>
+            <p className="text-2xl font-bold text-neutral-900">
+              {formatCurrency(settlement.total_household)}
+            </p>
           </div>
         </div>
 

@@ -65,7 +65,6 @@ export default function TransactionFilters({
           <option value="">All</option>
           <option value="UserA">User A</option>
           <option value="UserB">User B</option>
-          <option value="Common">Common</option>
         </select>
       </div>
     </div>

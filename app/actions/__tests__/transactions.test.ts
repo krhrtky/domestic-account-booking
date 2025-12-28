@@ -4,7 +4,7 @@ import { z } from 'zod'
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
   fileName: z.string().min(1).max(255),
-  payerType: z.enum(['UserA', 'UserB', 'Common'])
+  payerType: z.enum(['UserA', 'UserB'])
 })
 
 const UpdateExpenseTypeSchema = z.object({
@@ -15,13 +15,13 @@ const UpdateExpenseTypeSchema = z.object({
 const UpdatePayerSchema = z.object({
   transactionId: z.string().uuid(),
   payerUserId: z.string().uuid().nullable(),
-  payerType: z.enum(['UserA', 'UserB', 'Common'])
+  payerType: z.enum(['UserA', 'UserB'])
 })
 
 const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
-  payerType: z.enum(['UserA', 'UserB', 'Common']).optional(),
+  payerType: z.enum(['UserA', 'UserB']).optional(),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(100).optional()
 })
@@ -103,15 +103,12 @@ describe('L-BR-002: Payer name matching logic', () => {
 })
 
 describe('L-BR-006: CSV Upload with payer_user_id logic', () => {
-  type PayerType = 'UserA' | 'UserB' | 'Common'
-
   function applyPayerLogic(
-    payerType: PayerType,
     payerName: string | undefined,
     usersByName: Map<string, string>
   ): string | null {
     let payerUserId: string | null = null
-    if (payerType !== 'Common' && payerName) {
+    if (payerName) {
       const foundUserId = usersByName.get(payerName.toLowerCase())
       if (foundUserId) {
         payerUserId = foundUserId
@@ -121,46 +118,29 @@ describe('L-BR-006: CSV Upload with payer_user_id logic', () => {
   }
 
   describe('Typical Cases', () => {
-    it('sets payer_user_id when name matches and payer_type is not Common', () => {
+    it('sets payer_user_id when name matches', () => {
       const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('UserA', 'Alice', usersByName)
+      const result = applyPayerLogic('Alice', usersByName)
       expect(result).toBe('user-a-id')
     })
 
     it('leaves payer_user_id as NULL when name does not match', () => {
       const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('UserA', 'Charlie', usersByName)
+      const result = applyPayerLogic('Charlie', usersByName)
       expect(result).toBeNull()
     })
   })
 
-  describe('Boundary Cases - L-BR-002: Common口座強制NULL', () => {
-    it('forces payer_user_id to NULL when payer_type is Common', () => {
-      const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('Common', 'Alice', usersByName)
-      expect(result).toBeNull()
-    })
-
-    it('forces payer_user_id to NULL even when name matches', () => {
-      const usersByName = new Map([
-        ['alice', 'user-a-id'],
-        ['bob', 'user-b-id']
-      ])
-      const result = applyPayerLogic('Common', 'Bob', usersByName)
-      expect(result).toBeNull()
-    })
-  })
-
-  describe('Gray Cases', () => {
+  describe('Boundary Cases', () => {
     it('handles empty payer_name with UserA payer_type', () => {
       const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('UserA', '', usersByName)
+      const result = applyPayerLogic('', usersByName)
       expect(result).toBeNull()
     })
 
     it('handles undefined payer_name', () => {
       const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('UserA', undefined, usersByName)
+      const result = applyPayerLogic(undefined, usersByName)
       expect(result).toBeNull()
     })
   })
@@ -342,15 +322,6 @@ describe('Transaction validation schemas', () => {
         }
         expect(UpdatePayerSchema.safeParse(valid).success).toBe(true)
       })
-
-      it('should validate Common payer type with null payerUserId', () => {
-        const valid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerUserId: null,
-          payerType: 'Common' as const
-        }
-        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true)
-      })
     })
 
     describe('Boundary Cases', () => {
@@ -412,9 +383,8 @@ describe('Transaction validation schemas', () => {
 })
 
 describe('L-BR-002: PayerSelect value determination logic', () => {
-  type PayerType = 'UserA' | 'UserB' | 'Common'
+  type PayerType = 'UserA' | 'UserB'
 
-  const COMMON_VALUE = 'common'
   const groupUserAId = 'user-a-id-123'
   const groupUserBId = 'user-b-id-456'
 
@@ -424,9 +394,6 @@ describe('L-BR-002: PayerSelect value determination logic', () => {
     groupUserAId: string,
     groupUserBId: string | null
   ): string {
-    if (currentPayerType === 'Common') {
-      return COMMON_VALUE
-    }
     if (currentPayerUserId) {
       return currentPayerUserId
     }
@@ -450,11 +417,6 @@ describe('L-BR-002: PayerSelect value determination logic', () => {
       expect(result).toBe(groupUserBId)
     })
 
-    it('returns COMMON_VALUE when payerType is Common', () => {
-      const result = getCurrentValue('Common', null, groupUserAId, groupUserBId)
-      expect(result).toBe(COMMON_VALUE)
-    })
-
     it('returns payerUserId when it is set', () => {
       const customUserId = 'custom-user-id'
       const result = getCurrentValue('UserA', customUserId, groupUserAId, groupUserBId)
@@ -463,11 +425,6 @@ describe('L-BR-002: PayerSelect value determination logic', () => {
   })
 
   describe('Boundary Cases', () => {
-    it('returns COMMON_VALUE even when payerUserId is set (Common takes priority)', () => {
-      const result = getCurrentValue('Common', 'some-user-id', groupUserAId, groupUserBId)
-      expect(result).toBe(COMMON_VALUE)
-    })
-
     it('returns groupUserAId when UserB but groupUserBId is null', () => {
       const result = getCurrentValue('UserB', null, groupUserAId, null)
       expect(result).toBe(groupUserAId)
@@ -488,9 +445,8 @@ describe('L-BR-002: PayerSelect value determination logic', () => {
 })
 
 describe('L-BR-002: PayerSelect change handler logic', () => {
-  type PayerType = 'UserA' | 'UserB' | 'Common'
+  type PayerType = 'UserA' | 'UserB'
 
-  const COMMON_VALUE = 'common'
   const groupUserAId = 'user-a-id-123'
   const groupUserBId = 'user-b-id-456'
 
@@ -499,9 +455,6 @@ describe('L-BR-002: PayerSelect change handler logic', () => {
     groupUserAId: string,
     groupUserBId: string | null
   ): { payerUserId: string | null; payerType: PayerType } {
-    if (value === COMMON_VALUE) {
-      return { payerUserId: null, payerType: 'Common' }
-    }
     if (value === groupUserAId) {
       return { payerUserId: groupUserAId, payerType: 'UserA' }
     }
@@ -521,11 +474,6 @@ describe('L-BR-002: PayerSelect change handler logic', () => {
       const result = determinePayerFromValue(groupUserBId, groupUserAId, groupUserBId)
       expect(result).toEqual({ payerUserId: groupUserBId, payerType: 'UserB' })
     })
-
-    it('selects Common correctly', () => {
-      const result = determinePayerFromValue(COMMON_VALUE, groupUserAId, groupUserBId)
-      expect(result).toEqual({ payerUserId: null, payerType: 'Common' })
-    })
   })
 
   describe('Boundary Cases', () => {
@@ -534,20 +482,9 @@ describe('L-BR-002: PayerSelect change handler logic', () => {
       const result = determinePayerFromValue(unknownValue, groupUserAId, groupUserBId)
       expect(result).toEqual({ payerUserId: unknownValue, payerType: 'UserA' })
     })
-
-    it('handles null groupUserBId correctly', () => {
-      const result = determinePayerFromValue(COMMON_VALUE, groupUserAId, null)
-      expect(result).toEqual({ payerUserId: null, payerType: 'Common' })
-    })
   })
 
   describe('ISSUE-3: payer_type updates with selection', () => {
-    it('sets payer_type to Common when selecting Common option', () => {
-      const result = determinePayerFromValue(COMMON_VALUE, groupUserAId, groupUserBId)
-      expect(result.payerType).toBe('Common')
-      expect(result.payerUserId).toBeNull()
-    })
-
     it('sets payer_type to UserB when selecting UserB option', () => {
       const result = determinePayerFromValue(groupUserBId, groupUserAId, groupUserBId)
       expect(result.payerType).toBe('UserB')

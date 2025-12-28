@@ -1,14 +1,14 @@
 'use client'
 
-import { updateTransactionPayer } from '@/app/actions/transactions'
+import { updateTransactionActualPayer } from '@/app/actions/transactions'
 import { useState, useRef } from 'react'
 import { toast } from '@/lib/hooks/useToast'
 import { PayerType } from '@/lib/types'
 
 interface PayerSelectProps {
   transactionId: string
-  currentPayerUserId?: string | null
-  currentPayerType: PayerType
+  currentActualPayerUserId?: string | null
+  currentActualPayerType: PayerType
   groupUserAId: string
   groupUserBId?: string | null
   userAName: string
@@ -16,12 +16,10 @@ interface PayerSelectProps {
   onUpdate: () => void
 }
 
-const COMMON_VALUE = 'common'
-
 export default function PayerSelect({
   transactionId,
-  currentPayerUserId,
-  currentPayerType,
+  currentActualPayerUserId,
+  currentActualPayerType,
   groupUserAId,
   groupUserBId,
   userAName,
@@ -32,16 +30,13 @@ export default function PayerSelect({
   const selectRef = useRef<HTMLSelectElement>(null)
 
   const getCurrentValue = (): string => {
-    if (currentPayerType === 'Common') {
-      return COMMON_VALUE
+    if (currentActualPayerUserId) {
+      return currentActualPayerUserId
     }
-    if (currentPayerUserId) {
-      return currentPayerUserId
-    }
-    if (currentPayerType === 'UserA') {
+    if (currentActualPayerType === 'UserA') {
       return groupUserAId
     }
-    if (currentPayerType === 'UserB' && groupUserBId) {
+    if (currentActualPayerType === 'UserB' && groupUserBId) {
       return groupUserBId
     }
     return groupUserAId
@@ -51,25 +46,22 @@ export default function PayerSelect({
     const value = e.target.value
     const previousValue = getCurrentValue()
 
-    let payerUserId: string | null
-    let payerType: PayerType
+    let actualPayerUserId: string | null
+    let actualPayerType: PayerType
 
-    if (value === COMMON_VALUE) {
-      payerUserId = null
-      payerType = 'Common'
-    } else if (value === groupUserAId) {
-      payerUserId = groupUserAId
-      payerType = 'UserA'
+    if (value === groupUserAId) {
+      actualPayerUserId = groupUserAId
+      actualPayerType = 'UserA'
     } else if (value === groupUserBId) {
-      payerUserId = groupUserBId
-      payerType = 'UserB'
+      actualPayerUserId = groupUserBId
+      actualPayerType = 'UserB'
     } else {
-      payerUserId = value
-      payerType = 'UserA'
+      actualPayerUserId = value
+      actualPayerType = 'UserA'
     }
 
     setIsUpdating(true)
-    const result = await updateTransactionPayer(transactionId, payerUserId, payerType)
+    const result = await updateTransactionActualPayer(transactionId, actualPayerUserId, actualPayerType)
     setIsUpdating(false)
 
     if ('success' in result && result.success) {
@@ -98,7 +90,6 @@ export default function PayerSelect({
       {groupUserBId && userBName && (
         <option value={groupUserBId}>{userBName}</option>
       )}
-      <option value={COMMON_VALUE}>共通口座</option>
     </select>
   )
 }

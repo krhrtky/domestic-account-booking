@@ -1,4 +1,4 @@
-export type PayerType = 'UserA' | 'UserB' | 'Common';
+export type PayerType = 'UserA' | 'UserB';
 export type ExpenseType = 'Household' | 'Personal';
 
 export interface Transaction {
@@ -10,6 +10,8 @@ export interface Transaction {
   description: string;
   payer_type: PayerType;
   payer_user_id?: string | null;
+  actual_payer_type: PayerType;
+  actual_payer_user_id?: string | null;
   expense_type: ExpenseType;
   source_file_name?: string;
   uploaded_by?: string;
@@ -33,7 +35,6 @@ export interface Settlement {
   total_household: number;
   paid_by_a_household: number;
   paid_by_b_household: number;
-  paid_by_common: number;
   balance_a: number;
   ratio_a: number;
   ratio_b: number;

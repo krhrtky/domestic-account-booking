@@ -273,7 +273,6 @@ export default function CSVUploadForm() {
             >
               <option value="UserA">{groupInfo?.userAName ?? 'ユーザーA'}</option>
               <option value="UserB">{groupInfo?.userBName ?? 'ユーザーB'}</option>
-              <option value="Common">共通</option>
             </select>
             <p className="text-xs text-neutral-500 mt-1">
               全ての明細に同じ支払元を設定します。個別に変更も可能です。

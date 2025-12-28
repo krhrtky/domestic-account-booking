@@ -79,10 +79,10 @@ export const SETTLEMENT_DATASET = {
   gray: [
     {
       id: 'GRY-001',
-      name: '共通口座からの支払いがある場合',
-      input: { paidByA: 5000, paidByB: 5000, paidByCommon: 10000, ratioA: 50, ratioB: 50 },
+      name: '同額支払いの場合',
+      input: { paidByA: 5000, paidByB: 5000, ratioA: 50, ratioB: 50 },
       expected: { balanceA: 0, direction: 'SETTLED' },
-      note: 'Common口座は計算から除外される仕様',
+      note: '同額支払い時はバランスがゼロになる',
     },
   ],
 

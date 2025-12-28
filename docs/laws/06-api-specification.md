@@ -149,7 +149,7 @@ describe('L-AS-001: レスポンス標準フォーマット', () => {
 | amount | number | 0以上、整数 | 金額は0以上の整数を入力してください |
 | date | string | ISO8601形式 | 日付はYYYY-MM-DD形式で入力してください |
 | description | string | 1-200文字 | 摘要は1〜200文字で入力してください |
-| payerType | enum | UserA/UserB/Common | 支払元を選択してください |
+| payerType | enum | UserA/UserB | 支払元を選択してください |
 | expenseType | enum | Household/Personal | 支出タイプを選択してください |
 | ratioA | number | 0-100、整数 | 負担割合は0〜100の整数で入力してください |
 | ratioB | number | 0-100、ratioA+ratioB=100 | 負担割合の合計は100%である必要があります |
@@ -175,7 +175,7 @@ export const TransactionSchema = z.object({
     .min(1, { message: '摘要を入力してください' })
     .max(200, { message: '摘要は200文字以内で入力してください' }),
 
-  payerType: z.enum(['UserA', 'UserB', 'Common'], {
+  payerType: z.enum(['UserA', 'UserB'], {
     errorMap: () => ({ message: '支払元を選択してください' }),
   }),
 
@@ -290,7 +290,7 @@ describe('L-AS-002: 入力バリデーション', () => {
  * - page: number (default: 1)
  * - limit: number (default: 20, max: 100)
  * - month: string (YYYY-MM形式)
- * - payerType: 'UserA' | 'UserB' | 'Common'
+ * - payerType: 'UserA' | 'UserB'
  * - expenseType: 'Household' | 'Personal'
  *
  * レスポンス:
@@ -304,7 +304,7 @@ describe('L-AS-002: 入力バリデーション', () => {
  * リクエスト:
  * - Content-Type: multipart/form-data
  * - file: CSVファイル (max 5MB)
- * - payerType: 'UserA' | 'UserB' | 'Common'
+ * - payerType: 'UserA' | 'UserB'
  *
  * レスポンス:
  * - 201: SuccessResponse<{ imported: number, skipped: number, warnings: string[] }>
@@ -327,7 +327,6 @@ describe('L-AS-002: 入力バリデーション', () => {
  *   totalHousehold: number,
  *   paidByA: number,
  *   paidByB: number,
- *   paidByCommon: number,
  *   ratioA: number,
  *   ratioB: number,
  *   balanceA: number,

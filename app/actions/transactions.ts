@@ -13,8 +13,8 @@ import { checkRateLimit } from '@/lib/rate-limiter'
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
   fileName: z.string().min(1).max(255),
-  payerType: z.enum(['UserA', 'UserB', 'Common']),
-  payerTypes: z.array(z.enum(['UserA', 'UserB', 'Common'])).optional()
+  payerType: z.enum(['UserA', 'UserB']),
+  payerTypes: z.array(z.enum(['UserA', 'UserB'])).optional()
 })
 
 const UpdateExpenseTypeSchema = z.object({
@@ -25,7 +25,7 @@ const UpdateExpenseTypeSchema = z.object({
 const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
-  payerType: z.enum(['UserA', 'UserB', 'Common']).optional(),
+  payerType: z.enum(['UserA', 'UserB']).optional(),
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(10).max(50).optional()
 })
@@ -87,14 +87,14 @@ export async function uploadCSV(
   })
 
   const values = parseResult.data.map((t, index) => {
-    const offset = index * 9
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`
+    const offset = index * 11
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11})`
   }).join(', ')
 
   const params = parseResult.data.flatMap((t, index) => {
     const rowPayerType = payerTypes?.[index] ?? payerType
     let payerUserId: string | null = null
-    if (rowPayerType !== 'Common' && t.payer_name) {
+    if (t.payer_name) {
       const foundUserId = usersByName.get(t.payer_name.toLowerCase())
       if (foundUserId) {
         payerUserId = foundUserId
@@ -110,6 +110,8 @@ export async function uploadCSV(
       rowPayerType,
       'Household' as ExpenseType,
       t.source_file_name,
+      payerUserId,
+      rowPayerType,
       payerUserId
     ]
   })
@@ -117,7 +119,7 @@ export async function uploadCSV(
   try {
     const result = await query(
       `INSERT INTO transactions
-        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name, payer_user_id)
+        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name, payer_user_id, actual_payer_type, actual_payer_user_id)
        VALUES ${values}
        RETURNING id`,
       params
@@ -350,20 +352,20 @@ export async function deleteTransaction(transactionId: string) {
   }
 }
 
-const UpdatePayerSchema = z.object({
+const UpdateActualPayerSchema = z.object({
   transactionId: z.string().uuid(),
-  payerUserId: z.string().uuid().nullable(),
-  payerType: z.enum(['UserA', 'UserB', 'Common'])
+  actualPayerUserId: z.string().uuid().nullable(),
+  actualPayerType: z.enum(['UserA', 'UserB'])
 })
 
-export async function updateTransactionPayer(
+export async function updateTransactionActualPayer(
   transactionId: string,
-  payerUserId: string | null,
-  payerType: PayerType
+  actualPayerUserId: string | null,
+  actualPayerType: PayerType
 ): Promise<{ success: true } | { error: string | Record<string, string[]> }> {
   const user = await requireAuth()
 
-  const parsed = UpdatePayerSchema.safeParse({ transactionId, payerUserId, payerType })
+  const parsed = UpdateActualPayerSchema.safeParse({ transactionId, actualPayerUserId, actualPayerType })
   if (!parsed.success) {
     return { error: parsed.error.flatten().fieldErrors }
   }
@@ -374,10 +376,10 @@ export async function updateTransactionPayer(
     return { error: 'グループに所属していません' }
   }
 
-  if (payerUserId) {
+  if (actualPayerUserId) {
     const userCheck = await query<{ id: string }>(
       'SELECT id FROM users WHERE id = $1 AND group_id = $2',
-      [payerUserId, groupId]
+      [actualPayerUserId, groupId]
     )
     if (userCheck.rows.length === 0) {
       return { error: 'この支払い元を設定する権限がありません' }
@@ -386,8 +388,8 @@ export async function updateTransactionPayer(
 
   try {
     await query(
-      'UPDATE transactions SET payer_user_id = $1, payer_type = $2 WHERE id = $3 AND group_id = $4',
-      [payerUserId, payerType, transactionId, groupId]
+      'UPDATE transactions SET actual_payer_user_id = $1, actual_payer_type = $2 WHERE id = $3 AND group_id = $4',
+      [actualPayerUserId, actualPayerType, transactionId, groupId]
     )
 
     revalidateTag(CACHE_TAGS.transactions(groupId))

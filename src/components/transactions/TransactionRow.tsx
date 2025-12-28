@@ -16,12 +16,6 @@ interface TransactionRowProps {
   onUpdate: () => void
 }
 
-const payerStyles: Record<string, { bg: string; text: string; border: string }> = {
-  UserA: { bg: 'bg-brand-primary/10', text: 'text-brand-primary', border: 'border-brand-primary/20' },
-  UserB: { bg: 'bg-brand-accent/10', text: 'text-brand-accent', border: 'border-brand-accent/20' },
-  Common: { bg: 'bg-neutral-100', text: 'text-neutral-600', border: 'border-neutral-200' },
-}
-
 export default function TransactionRow({ transaction, groupUserAId, groupUserBId, userAName, userBName, onUpdate }: TransactionRowProps) {
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -37,7 +31,7 @@ export default function TransactionRow({ transaction, groupUserAId, groupUserBId
     }
   }
 
-  const payer = payerStyles[transaction.payer_type] || payerStyles.Common
+  const effectivePayerType = transaction.actual_payer_type ?? transaction.payer_type
 
   return (
     <tr
@@ -57,13 +51,10 @@ export default function TransactionRow({ transaction, groupUserAId, groupUserBId
       </td>
       <td className="px-4 py-4 text-sm" data-testid="transaction-payer">
         <div className="flex flex-col gap-1">
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold border ${payer.bg} ${payer.text} ${payer.border}`}>
-            {transaction.payer_type}
-          </span>
           <PayerSelect
             transactionId={transaction.id}
-            currentPayerUserId={transaction.payer_user_id}
-            currentPayerType={transaction.payer_type}
+            currentActualPayerUserId={transaction.actual_payer_user_id ?? transaction.payer_user_id}
+            currentActualPayerType={effectivePayerType}
             groupUserAId={groupUserAId}
             groupUserBId={groupUserBId}
             userAName={userAName}
