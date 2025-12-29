@@ -22,8 +22,8 @@ const GetTransactionsSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
   expenseType: z.enum(['Household', 'Personal']).optional(),
   payerType: z.enum(['UserA', 'UserB']).optional(),
-  cursor: z.string().optional(),
-  limit: z.number().int().min(1).max(100).optional()
+  page: z.number().int().min(1).optional(),
+  pageSize: z.number().int().min(10).max(50).optional()
 })
 
 describe('L-BR-002: Payer name matching logic', () => {
@@ -270,23 +270,23 @@ describe('Transaction validation schemas', () => {
       expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
     })
 
-    it('should reject limit below minimum', () => {
+    it('should reject pageSize below minimum', () => {
       const invalid = {
-        limit: 0
+        pageSize: 9
       }
       expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
     })
 
-    it('should reject limit above maximum', () => {
+    it('should reject pageSize above maximum', () => {
       const invalid = {
-        limit: 101
+        pageSize: 51
       }
       expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
     })
 
-    it('should reject non-integer limit', () => {
+    it('should reject non-integer pageSize', () => {
       const invalid = {
-        limit: 50.5
+        pageSize: 25.5
       }
       expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
     })
@@ -296,8 +296,8 @@ describe('Transaction validation schemas', () => {
         month: '2024-01',
         expenseType: 'Household' as const,
         payerType: 'UserA' as const,
-        cursor: '2024-01-15|123e4567-e89b-12d3-a456-426614174000',
-        limit: 50
+        page: 2,
+        pageSize: 20
       }
       expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
     })

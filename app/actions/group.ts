@@ -1,11 +1,13 @@
 'use server'
 
 import { z } from 'zod'
-import { query, getClient } from '@/lib/db'
+import { db } from '@/db/client'
+import { users, groups } from '@/db/schema'
 import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS } from '@/lib/cache'
+import { eq, and } from 'drizzle-orm'
 
 const CreateGroupSchema = z.object({
   name: z.string().min(1).max(100).default('Household'),
@@ -28,49 +30,49 @@ export async function createGroup(data: {
     return { error: parsed.error.flatten().fieldErrors }
   }
 
-  const existingUserResult = await query<{ group_id: string | null }>(
-    'SELECT group_id FROM users WHERE id = $1',
-    [user.id]
-  )
+  const existingUser = await db
+    .select({ groupId: users.groupId })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .limit(1)
 
-  if (existingUserResult.rows.length === 0) {
+  if (existingUser.length === 0) {
     return { error: 'User not found' }
   }
 
-  if (existingUserResult.rows[0].group_id) {
+  if (existingUser[0].groupId) {
     return { error: 'User already belongs to a group' }
   }
 
-  const client = await getClient()
-
   try {
-    await client.query('BEGIN')
+    const result = await db.transaction(async (tx) => {
+      const [newGroup] = await tx
+        .insert(groups)
+        .values({
+          name: parsed.data.name,
+          ratioA: parsed.data.ratio_a,
+          ratioB: parsed.data.ratio_b,
+          userAId: user.id,
+        })
+        .returning({ id: groups.id })
 
-    const groupResult = await client.query<{ id: string }>(
-      `INSERT INTO groups (name, ratio_a, ratio_b, user_a_id)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [parsed.data.name, parsed.data.ratio_a, parsed.data.ratio_b, user.id]
-    )
+      const groupId = newGroup.id
 
-    const groupId = groupResult.rows[0].id
+      await tx
+        .update(users)
+        .set({ groupId })
+        .where(eq(users.id, user.id))
 
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [groupId, user.id]
-    )
+      return groupId
+    })
 
-    await client.query('COMMIT')
-
-    revalidateTag(CACHE_TAGS.group(groupId))
+    revalidateTag(CACHE_TAGS.group(result))
     revalidateTag(CACHE_TAGS.user(user.id))
 
-    return { success: true, group_id: groupId }
+    return { success: true, group_id: result }
   } catch (error) {
-    await client.query('ROLLBACK')
     console.error('Group creation error:', error)
     return { error: 'Failed to create group' }
-  } finally {
-    client.release()
   }
 }
 
@@ -97,10 +99,13 @@ export async function updateRatio(ratioA: number, ratioB: number) {
   }
 
   try {
-    await query(
-      'UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3',
-      [parsed.data.ratio_a, parsed.data.ratio_b, groupId]
-    )
+    await db
+      .update(groups)
+      .set({
+        ratioA: parsed.data.ratio_a,
+        ratioB: parsed.data.ratio_b,
+      })
+      .where(eq(groups.id, groupId))
 
     revalidateTag(CACHE_TAGS.group(groupId))
 
@@ -113,60 +118,59 @@ export async function updateRatio(ratioA: number, ratioB: number) {
 export async function getCurrentGroup() {
   const user = await requireAuth()
 
-  const result = await query<{
-    group_id: string | null
-    group_name: string
-    ratio_a: number
-    ratio_b: number
-    user_a_id: string
-    user_a_name: string
-    user_a_email: string
-    user_b_id: string | null
-    user_b_name: string | null
-    user_b_email: string | null
-  }>(
-    `SELECT
-      u.group_id,
-      g.name as group_name,
-      g.ratio_a,
-      g.ratio_b,
-      ua.id as user_a_id,
-      ua.name as user_a_name,
-      ua.email as user_a_email,
-      ub.id as user_b_id,
-      ub.name as user_b_name,
-      ub.email as user_b_email
-    FROM users u
-    INNER JOIN groups g ON u.group_id = g.id
-    INNER JOIN users ua ON g.user_a_id = ua.id
-    LEFT JOIN users ub ON g.user_b_id = ub.id
-    WHERE u.id = $1`,
-    [user.id]
-  )
+  const result = await db
+    .select({
+      groupId: users.groupId,
+      groupName: groups.name,
+      ratioA: groups.ratioA,
+      ratioB: groups.ratioB,
+      userAId: groups.userAId,
+      userAName: users.name,
+      userAEmail: users.email,
+    })
+    .from(users)
+    .innerJoin(groups, eq(users.groupId, groups.id))
+    .where(eq(users.id, user.id))
+    .limit(1)
 
-  if (result.rows.length === 0) {
+  if (result.length === 0) {
     return { error: 'No group found' }
   }
 
-  const row = result.rows[0]
+  const row = result[0]
+
+  const userBData = row.groupId ? await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
+    .from(users)
+    .innerJoin(groups, eq(users.groupId, groups.id))
+    .where(and(
+      eq(users.groupId, row.groupId),
+      eq(groups.userBId, users.id)
+    ))
+    .limit(1)
+    : []
 
   return {
     success: true,
     group: {
-      id: row.group_id!,
-      name: row.group_name,
-      ratio_a: row.ratio_a,
-      ratio_b: row.ratio_b,
+      id: row.groupId!,
+      name: row.groupName,
+      ratio_a: row.ratioA,
+      ratio_b: row.ratioB,
       user_a: {
-        id: row.user_a_id,
-        name: row.user_a_name,
-        email: row.user_a_email
+        id: row.userAId,
+        name: row.userAName,
+        email: row.userAEmail,
       },
-      user_b: row.user_b_id ? {
-        id: row.user_b_id,
-        name: row.user_b_name!,
-        email: row.user_b_email!
-      } : null
+      user_b: userBData.length > 0 ? {
+        id: userBData[0].id,
+        name: userBData[0].name,
+        email: userBData[0].email,
+      } : null,
     }
   }
 }

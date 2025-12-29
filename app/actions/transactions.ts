@@ -3,12 +3,14 @@
 import { parseCSV } from '@/lib/csv-parser'
 import { z } from 'zod'
 import { ExpenseType, PayerType } from '@/lib/types'
-import { query } from '@/lib/db'
+import { db } from '@/db/client'
+import { users, groups, transactions as transactionsTable } from '@/db/schema'
 import { requireAuth } from '@/lib/session'
 import { getUserGroupId } from '@/lib/db-cache'
 import { revalidateTag } from 'next/cache'
 import { CACHE_TAGS, CACHE_DURATIONS, cachedFetch } from '@/lib/cache'
 import { checkRateLimit } from '@/lib/rate-limiter'
+import { eq, and, gte, lt, sql, desc } from 'drizzle-orm'
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
@@ -65,33 +67,35 @@ export async function uploadCSV(
     return { error: parseResult.errors.join(', ') }
   }
 
-  const groupResult = await query<{ user_a_id: string; user_b_id: string | null }>(
-    'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
-    [groupId]
-  )
+  const groupResult = await db
+    .select({
+      user_a_id: groups.userAId,
+      user_b_id: groups.userBId,
+    })
+    .from(groups)
+    .where(eq(groups.id, groupId))
+    .limit(1)
 
-  if (groupResult.rows.length === 0) {
+  if (groupResult.length === 0) {
     return { error: 'グループが見つかりません' }
   }
 
-  const group = groupResult.rows[0]
+  const group = groupResult[0]
 
-  const usersResult = await query<{ id: string; name: string }>(
-    'SELECT id, name FROM users WHERE group_id = $1',
-    [groupId]
-  )
+  const usersResult = await db
+    .select({
+      id: users.id,
+      name: users.name,
+    })
+    .from(users)
+    .where(eq(users.groupId, groupId))
 
   const usersByName = new Map<string, string>()
-  usersResult.rows.forEach(u => {
+  usersResult.forEach(u => {
     usersByName.set(u.name.toLowerCase(), u.id)
   })
 
-  const values = parseResult.data.map((t, index) => {
-    const offset = index * 11
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11})`
-  }).join(', ')
-
-  const params = parseResult.data.flatMap((t, index) => {
+  const transactionsToInsert = parseResult.data.map((t, index) => {
     const rowPayerType = payerTypes?.[index] ?? payerType
     let payerUserId: string | null = null
     if (t.payer_name) {
@@ -101,34 +105,31 @@ export async function uploadCSV(
       }
     }
 
-    return [
+    return {
       groupId,
-      user.id,
-      t.date,
-      t.amount,
-      t.description,
-      rowPayerType,
-      'Household' as ExpenseType,
-      t.source_file_name,
+      userId: user.id,
+      date: t.date,
+      amount: String(t.amount),
+      description: t.description,
+      payerType: rowPayerType,
+      expenseType: 'Household' as ExpenseType,
+      sourceFileName: t.source_file_name,
       payerUserId,
-      rowPayerType,
-      payerUserId
-    ]
+      actualPayerType: rowPayerType,
+      actualPayerUserId: payerUserId
+    }
   })
 
   try {
-    const result = await query(
-      `INSERT INTO transactions
-        (group_id, user_id, date, amount, description, payer_type, expense_type, source_file_name, payer_user_id, actual_payer_type, actual_payer_user_id)
-       VALUES ${values}
-       RETURNING id`,
-      params
-    )
+    const result = await db
+      .insert(transactionsTable)
+      .values(transactionsToInsert)
+      .returning({ id: transactionsTable.id })
 
     revalidateTag(CACHE_TAGS.transactions(groupId))
     revalidateTag(CACHE_TAGS.settlementAll(groupId))
 
-    return { success: true, count: result.rows.length }
+    return { success: true, count: result.length }
   } catch (error) {
     return { error: '取引の保存に失敗しました' }
   }
@@ -178,31 +179,33 @@ export async function getTransactions(filters?: {
 
   return cachedFetch(
     async () => {
-      const groupResult = await query<{
-        user_a_id: string;
-        user_b_id: string | null;
-      }>(
-        'SELECT user_a_id, user_b_id FROM groups WHERE id = $1',
-        [groupId]
-      )
+      const groupResult = await db
+        .select({
+          user_a_id: groups.userAId,
+          user_b_id: groups.userBId,
+        })
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1)
 
-      if (groupResult.rows.length === 0) {
+      if (groupResult.length === 0) {
         return { error: 'グループが見つかりません' }
       }
 
-      const groupData = groupResult.rows[0]
+      const groupData = groupResult[0]
 
-      const usersResult = await query<{ id: string; name: string }>(
-        'SELECT id, name FROM users WHERE group_id = $1',
-        [groupId]
-      )
+      const usersResult = await db
+        .select({
+          id: users.id,
+          name: users.name,
+        })
+        .from(users)
+        .where(eq(users.groupId, groupId))
 
-      const userAData = usersResult.rows.find(u => u.id === groupData.user_a_id)
-      const userBData = usersResult.rows.find(u => u.id === groupData.user_b_id)
+      const userAData = usersResult.find(u => u.id === groupData.user_a_id)
+      const userBData = usersResult.find(u => u.id === groupData.user_b_id)
 
-      const conditions: string[] = ['group_id = $1']
-      const params: (string | number)[] = [groupId]
-      let paramIndex = 2
+      const conditions = [eq(transactionsTable.groupId, groupId)]
 
       if (month) {
         const year = month.substring(0, 4)
@@ -215,36 +218,25 @@ export async function getTransactions(filters?: {
           ? String(parseInt(year, 10) + 1)
           : year
 
-        conditions.push(`date >= $${paramIndex}`)
-        params.push(`${year}-${monthStr}-01`)
-        paramIndex++
-
-        conditions.push(`date < $${paramIndex}`)
-        params.push(`${nextYear}-${nextMonth}-01`)
-        paramIndex++
+        conditions.push(gte(transactionsTable.date, `${year}-${monthStr}-01`))
+        conditions.push(lt(transactionsTable.date, `${nextYear}-${nextMonth}-01`))
       }
 
       if (expenseType) {
-        conditions.push(`expense_type = $${paramIndex}`)
-        params.push(expenseType)
-        paramIndex++
+        conditions.push(eq(transactionsTable.expenseType, expenseType))
       }
 
       if (payerType) {
-        conditions.push(`payer_type = $${paramIndex}`)
-        params.push(payerType)
-        paramIndex++
+        conditions.push(eq(transactionsTable.payerType, payerType))
       }
 
-      const whereClause = conditions.join(' AND ')
-
       try {
-        const countResult = await query(
-          `SELECT COUNT(*) as total FROM transactions WHERE ${whereClause}`,
-          params
-        )
+        const countResult = await db
+          .select({ total: sql<number>`count(*)` })
+          .from(transactionsTable)
+          .where(and(...conditions))
 
-        const totalCount = parseInt(countResult.rows[0].total, 10)
+        const totalCount = Number(countResult[0].total)
         if (isNaN(totalCount)) {
           return { error: '件数の取得に失敗しました' }
         }
@@ -252,20 +244,20 @@ export async function getTransactions(filters?: {
         const safePage = Math.min(page, totalPages)
         const offset = (safePage - 1) * pageSize
 
-        const result = await query(
-          `SELECT * FROM transactions
-           WHERE ${whereClause}
-           ORDER BY date DESC, id DESC
-           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-          [...params, pageSize, offset]
-        )
+        const result = await db
+          .select()
+          .from(transactionsTable)
+          .where(and(...conditions))
+          .orderBy(desc(transactionsTable.date), desc(transactionsTable.id))
+          .limit(pageSize)
+          .offset(offset)
 
-        const transactions = result.rows.map(row => ({
+        const transactions = result.map(row => ({
           ...row,
-          date: row.date instanceof Date ? row.date.toISOString().split('T')[0] : row.date,
+          date: typeof row.date === 'string' ? row.date : row.date,
           amount: typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount,
-          created_at: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
-          updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at
+          created_at: row.createdAt,
+          updated_at: row.updatedAt
         }))
 
         return {
@@ -314,10 +306,15 @@ export async function updateTransactionExpenseType(
   }
 
   try {
-    await query(
-      'UPDATE transactions SET expense_type = $1 WHERE id = $2 AND group_id = $3',
-      [expenseType, transactionId, groupId]
-    )
+    await db
+      .update(transactionsTable)
+      .set({ expenseType })
+      .where(
+        and(
+          eq(transactionsTable.id, transactionId),
+          eq(transactionsTable.groupId, groupId)
+        )
+      )
 
     revalidateTag(CACHE_TAGS.transactions(groupId))
     revalidateTag(CACHE_TAGS.settlementAll(groupId))
@@ -338,10 +335,14 @@ export async function deleteTransaction(transactionId: string) {
   }
 
   try {
-    await query(
-      'DELETE FROM transactions WHERE id = $1 AND group_id = $2',
-      [transactionId, groupId]
-    )
+    await db
+      .delete(transactionsTable)
+      .where(
+        and(
+          eq(transactionsTable.id, transactionId),
+          eq(transactionsTable.groupId, groupId)
+        )
+      )
 
     revalidateTag(CACHE_TAGS.transactions(groupId))
     revalidateTag(CACHE_TAGS.settlementAll(groupId))
@@ -377,20 +378,35 @@ export async function updateTransactionActualPayer(
   }
 
   if (actualPayerUserId) {
-    const userCheck = await query<{ id: string }>(
-      'SELECT id FROM users WHERE id = $1 AND group_id = $2',
-      [actualPayerUserId, groupId]
-    )
-    if (userCheck.rows.length === 0) {
+    const userCheck = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        and(
+          eq(users.id, actualPayerUserId),
+          eq(users.groupId, groupId)
+        )
+      )
+      .limit(1)
+
+    if (userCheck.length === 0) {
       return { error: 'この支払い元を設定する権限がありません' }
     }
   }
 
   try {
-    await query(
-      'UPDATE transactions SET actual_payer_user_id = $1, actual_payer_type = $2 WHERE id = $3 AND group_id = $4',
-      [actualPayerUserId, actualPayerType, transactionId, groupId]
-    )
+    await db
+      .update(transactionsTable)
+      .set({
+        actualPayerUserId,
+        actualPayerType
+      })
+      .where(
+        and(
+          eq(transactionsTable.id, transactionId),
+          eq(transactionsTable.groupId, groupId)
+        )
+      )
 
     revalidateTag(CACHE_TAGS.transactions(groupId))
     revalidateTag(CACHE_TAGS.settlementAll(groupId))
@@ -424,16 +440,17 @@ export async function getSettlementData(targetMonth: string): Promise<
 
   return cachedFetch(
     async () => {
-      const groupResult = await query(
-        'SELECT * FROM groups WHERE id = $1',
-        [groupId]
-      )
+      const groupResult = await db
+        .select()
+        .from(groups)
+        .where(eq(groups.id, groupId))
+        .limit(1)
 
-      if (groupResult.rows.length === 0) {
+      if (groupResult.length === 0) {
         return { error: 'グループが見つかりません' }
       }
 
-      const group = groupResult.rows[0]
+      const group = groupResult[0]
 
       const year = targetMonth.substring(0, 4)
       const month = targetMonth.substring(5, 7)
@@ -445,13 +462,16 @@ export async function getSettlementData(targetMonth: string): Promise<
         ? String(parseInt(year, 10) + 1)
         : year
 
-      const transactionsResult = await query(
-        `SELECT * FROM transactions
-         WHERE group_id = $1
-           AND date >= $2
-           AND date < $3`,
-        [groupId, `${year}-${month}-01`, `${nextYear}-${nextMonth}-01`]
-      )
+      const transactionsResult = await db
+        .select()
+        .from(transactionsTable)
+        .where(
+          and(
+            eq(transactionsTable.groupId, groupId),
+            gte(transactionsTable.date, `${year}-${month}-01`),
+            lt(transactionsTable.date, `${nextYear}-${nextMonth}-01`)
+          )
+        )
 
       const formatLocalDate = (date: Date): string => {
         const year = date.getFullYear()
@@ -460,22 +480,47 @@ export async function getSettlementData(targetMonth: string): Promise<
         return `${year}-${month}-${day}`
       }
 
-      const transactions = transactionsResult.rows.map(row => ({
-        ...row,
-        date: row.date instanceof Date ? formatLocalDate(row.date) : row.date,
+      const transactions = transactionsResult.map(row => ({
+        id: row.id,
+        group_id: row.groupId,
+        user_id: row.userId,
+        date: typeof row.date === 'string' ? row.date : formatLocalDate(new Date(row.date)),
         amount: typeof row.amount === 'string' ? parseFloat(row.amount) : row.amount,
+        description: row.description,
+        payer_type: row.payerType as PayerType,
+        payer_user_id: row.payerUserId ?? null,
+        actual_payer_type: row.actualPayerType as PayerType,
+        actual_payer_user_id: row.actualPayerUserId ?? null,
+        expense_type: row.expenseType as ExpenseType,
+        source_file_name: row.sourceFileName ?? undefined,
+        uploaded_by: row.uploadedBy ?? undefined,
+        created_at: row.createdAt ?? '',
+        updated_at: row.updatedAt ?? '',
       }))
 
-      const usersResult = await query<{ id: string; name: string }>(
-        'SELECT id, name FROM users WHERE group_id = $1',
-        [groupId]
-      )
+      const usersResult = await db
+        .select({
+          id: users.id,
+          name: users.name,
+        })
+        .from(users)
+        .where(eq(users.groupId, groupId))
 
-      const userAData = usersResult.rows.find(u => u.id === group.user_a_id)
-      const userBData = usersResult.rows.find(u => u.id === group.user_b_id)
+      const userAData = usersResult.find(u => u.id === group.userAId)
+      const userBData = usersResult.find(u => u.id === group.userBId)
 
       const { calculateSettlement } = await import('@/lib/settlement')
-      const settlement = calculateSettlement(transactions, group, targetMonth)
+      const groupForSettlement = {
+        id: group.id,
+        name: group.name,
+        ratio_a: group.ratioA,
+        ratio_b: group.ratioB,
+        user_a_id: group.userAId,
+        user_b_id: group.userBId ?? undefined,
+        created_at: group.createdAt ?? '',
+        updated_at: group.updatedAt ?? '',
+      }
+      const settlement = calculateSettlement(transactions, groupForSettlement, targetMonth)
 
       return {
         success: true as const,
