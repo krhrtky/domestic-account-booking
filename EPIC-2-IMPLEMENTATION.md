@@ -1,5 +1,8 @@
 # Epic 2: CSV Data Ingestion UI - Implementation Summary
 
+> **⚠️ 廃止された文書**: この文書はSupabaseベースの古い実装記録です。
+> 現在はNextAuth.js + PostgreSQL (pg)に移行しています。
+
 ## Overview
 Epic 2 has been fully implemented following the SDA specification. All components, server actions, pages, and database schema are in place.
 

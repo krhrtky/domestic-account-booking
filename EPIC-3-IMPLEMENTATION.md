@@ -1,5 +1,8 @@
 # Epic 3: E2E Testing - Implementation Summary
 
+> **⚠️ 廃止された文書**: この文書はSupabaseベースの古い実装記録です。
+> 現在はNextAuth.js + PostgreSQL (pg)に移行しています。
+
 ## Overview
 Phase 3 E2E tests implemented using Playwright for authentication and settlement dashboard flows.
 

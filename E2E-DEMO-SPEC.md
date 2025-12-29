@@ -41,7 +41,7 @@
 12. Verify ratio sliders show correct values
 
 **Expected Results:**
-- User account created in Supabase auth.users
+- User account created in database
 - User profile created in users table
 - Group created with user_a_id set
 - user_b_id is null
@@ -401,7 +401,7 @@ Note: Common account's 20000 is already from shared pool, not part of individual
 11. Verify redirect to /login
 
 **Expected Results:**
-- Supabase SSR cookies maintain session
+- NextAuth session cookies maintain session
 - Middleware enforces authentication on protected routes
 - Logout clears session cookies
 - Unauthenticated access denied
@@ -595,7 +595,7 @@ Note: Common account's 20000 is already from shared pool, not part of individual
 - [ ] CSRF protection (Next.js default)
 - [ ] File upload size limited to 5MB
 - [ ] File type validated (CSV only)
-- [ ] Passwords hashed (Supabase Auth handles)
+- [ ] Passwords hashed (bcrypt)
 - [ ] Session tokens HTTP-only cookies
 - [ ] No sensitive data in client-side logs
 
@@ -728,7 +728,7 @@ date,description,amount
 ### Database Seed Script
 ```sql
 -- Run after migrations to create test data
--- Assumes test users created via Supabase Auth
+-- Assumes test users created via database seeding
 
 -- Insert test group
 INSERT INTO groups (id, name, ratio_a, ratio_b, user_a_id, user_b_id)
@@ -841,7 +841,7 @@ e2e/
 1. **Database Cleanup:** afterEach/afterAll hooks delete test users and associated data
 2. **Unique Identifiers:** Email addresses use timestamp + random string
 3. **Independent Tests:** No shared state between tests
-4. **Parallel Execution:** Tests run in parallel via Playwright workers (disabled in CI for Supabase rate limits)
+4. **Parallel Execution:** Tests run in parallel via Playwright workers
 
 ### Authentication Patterns
 ```typescript
@@ -853,13 +853,13 @@ await page.click('button[type="submit"]')
 await expect(page).toHaveURL('/dashboard')
 
 // Pattern 2: API-based login (for non-auth tests)
-// Create user via Supabase Admin API in beforeAll
+// Create user via database seeding in beforeAll
 // Use UI login once, then reuse session across tests in worker
 ```
 
 ### Data Setup Approach
 **Hybrid Strategy:**
-- **API-based:** User creation/deletion via Supabase Admin API (fast, reliable)
+- **API-based:** User creation/deletion via database seeding (fast, reliable)
 - **UI-based:** Group creation, transaction upload (validates full UX)
 - **SQL-based:** Bulk transaction inserts for pagination tests (performance)
 
@@ -913,9 +913,9 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: http://localhost:3000
       - uses: actions/upload-artifact@v3
         if: always()
         with:

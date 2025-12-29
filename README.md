@@ -11,8 +11,9 @@
 - **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
-- **Testing:** Vitest + Testing Library
-- **Database:** Supabase (PostgreSQL) - 未実装
+- **Testing:** Vitest + Testing Library + Playwright
+- **Database:** PostgreSQL (pg)
+- **Authentication:** NextAuth.js
 - **CSV Parsing:** PapaParse
 - **Validation:** Zod
 - **Date Handling:** date-fns
@@ -199,8 +200,8 @@ Supported date formats:
 
 ### Completed (Additional)
 
-- [x] Supabase database setup with migrations
-- [x] Custom authentication (login with pre-seeded users)
+- [x] PostgreSQL database setup with migrations
+- [x] Custom authentication with NextAuth.js (pre-seeded users)
 - [x] CSV upload with column mapping
 - [x] Transaction list UI with filters
 - [x] Settlement dashboard UI

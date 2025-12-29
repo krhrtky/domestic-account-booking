@@ -3,7 +3,7 @@
 ## Issues Fixed
 
 ### 1. Authentication Schema Mismatch (CRITICAL)
-**Problem**: Tests were trying to create users with `auth.users.password_hash` column, but Supabase uses `encrypted_password`.
+**Problem**: Tests were trying to create users with incorrect password hash column name.
 
 **Files Modified**:
 - `/Users/takuya.kurihara/workspace/domestic-account-booking/e2e/utils/test-helpers.ts`
@@ -79,7 +79,7 @@
 
 ## Migration Notes
 
-The fixes align the E2E test infrastructure with Supabase's actual authentication schema. No database migrations needed - the auth.users table already exists with the correct structure.
+The fixes align the E2E test infrastructure with the database authentication schema. No database migrations needed - the custom_auth.users table already exists with the correct structure.
 
 ## Testing
 

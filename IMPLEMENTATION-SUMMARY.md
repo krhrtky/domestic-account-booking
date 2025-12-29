@@ -1,5 +1,8 @@
 # Multi-browser E2E Testing & Auth Rate Limiting - Implementation Summary
 
+> **⚠️ 注意**: この文書には一部Supabaseベースの古い実装記録が含まれています。
+> 現在はNextAuth.js + PostgreSQL (pg)に移行しています。
+
 ## Overview
 Implemented multi-browser E2E testing support and authentication rate limiting as specified in the SDA requirements.
 

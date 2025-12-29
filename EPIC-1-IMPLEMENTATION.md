@@ -1,5 +1,8 @@
 # Epic 1: User & Group Management - Implementation Summary
 
+> **⚠️ 廃止された文書**: この文書はSupabaseベースの古い実装記録です。
+> 現在はNextAuth.js + PostgreSQL (pg)に移行しています。
+
 ## Implementation Date
 2025-12-07
 
