@@ -77,8 +77,8 @@ Drizzle Pushが失敗する場合、手動でSQLを実行：
 SQL Editorで以下を実行してテーブル作成を確認：
 
 ```sql
-SELECT table_name 
-FROM information_schema.tables 
+SELECT table_name
+FROM information_schema.tables
 WHERE table_schema = 'public' OR table_schema = 'custom_auth';
 ```
 
@@ -90,6 +90,25 @@ groups
 transactions
 invitations
 ```
+
+### 2.4 スキーマ検索パス設定（自動適用）
+
+アプリケーションは自動的に `search_path=custom_auth,public` を設定します（`src/db/client.ts`）。
+手動設定は不要ですが、検証は以下で可能です：
+
+```sql
+SHOW search_path;
+```
+
+**期待される出力:**
+```
+custom_auth, public
+```
+
+**重要:** このスキーマ設定により以下が実現されます（L-SC-001準拠）：
+- NextAuth認証テーブル（`custom_auth.users`）への安全なアクセス
+- アプリケーションテーブル（`public.*`）への通常アクセス
+- スキーマ間の分離によるセキュリティ強化
 
 ---
 
@@ -125,7 +144,7 @@ Vercelプロジェクト設定画面で"Environment Variables"に以下を追加
 
 | Key | Value | Environment |
 |-----|-------|-------------|
-| `DATABASE_URL` | `postgresql://user:password@ep-xxx...` | Production |
+| `DATABASE_URL` | `postgresql://user:password@ep-xxx...?sslmode=require` | Production |
 | `NEXTAUTH_SECRET` | ランダムな64文字以上の文字列 | Production |
 | `NEXTAUTH_URL` | `https://your-app.vercel.app` | Production |
 
@@ -134,10 +153,134 @@ Vercelプロジェクト設定画面で"Environment Variables"に以下を追加
 openssl rand -base64 64
 ```
 
+**DATABASE_URL注意事項:**
+- `?sslmode=require` パラメータを必ず含める（Neonの要件）
+- スキーマ設定（`search_path`）は不要（アプリケーションで自動設定）
+- 接続文字列にパスワードが含まれるため、環境変数のみに保存
+
 **セキュリティ注意（L-SC-003, L-SC-005準拠）:**
 - 環境変数は"Production"環境のみに設定
 - `DATABASE_URL`は絶対にソースコードに含めない
 - `NEXTAUTH_SECRET`は推測不可能なランダム文字列を使用
+- スキーマアクセスは `search_path=custom_auth,public` で制御（L-SC-001準拠）
+
+---
+
+## 環境変数設定のDO/DONT例
+
+### DO: 正しい設定例
+
+**1. DATABASE_URL - 完全な接続文字列を使用**
+```bash
+DATABASE_URL="postgresql://user:password@ep-xxx.ap-northeast-1.aws.neon.tech/dbname?sslmode=require"
+```
+- ホスト名、ポート、データベース名、パラメータを全て含める
+- `sslmode=require` パラメータは必須（Neon接続要件）
+- スキーマ設定（`search_path`）は不要（アプリケーションが自動設定）
+
+**2. NEXTAUTH_SECRET - 十分な長さとランダム性**
+```bash
+openssl rand -base64 64
+NEXTAUTH_SECRET="生成された64文字以上のランダム文字列"
+```
+- 最低64文字以上のランダム文字列
+- 英数字+記号を含む高エントロピー文字列
+
+**3. NEXTAUTH_URL - デプロイ先のURL**
+```bash
+NEXTAUTH_URL="https://your-app.vercel.app"
+```
+- HTTPSプロトコルを使用（本番環境）
+- ドメイン名のみ（パスなし）
+
+### DONT: 避けるべき設定例
+
+**1. DATABASE_URL - 不完全な設定**
+```bash
+DATABASE_URL="postgresql://localhost/mydb"
+```
+- ローカルホストでは本番動作しない
+- `sslmode=require` パラメータが欠落（Neon接続失敗）
+- 認証情報（user:password）が欠落
+
+**2. DATABASE_URL - 平文でコミット**
+```typescript
+// ❌ 絶対にやらないこと
+export const DATABASE_URL = "postgresql://user:password@..."
+const dbUrl = "postgresql://user:pass@host/db"
+```
+- ソースコードに直接記述は L-SC-003 違反
+- Gitにコミットすると永久に残る（削除しても履歴に残る）
+- 公開リポジトリの場合、即座に悪用される
+
+**3. DATABASE_URL - 不正なスキーマパラメータ**
+```bash
+DATABASE_URL="postgresql://user:password@host/db?search_path=public"
+```
+- `search_path` をURLパラメータで指定すると、アプリケーション設定と衝突
+- `custom_auth` スキーマにアクセスできず認証エラー
+
+**4. NEXTAUTH_SECRET - 弱いシークレット**
+```bash
+NEXTAUTH_SECRET="secret"
+NEXTAUTH_SECRET="password123"
+NEXTAUTH_SECRET="myapp"
+```
+- 短い文字列は推測可能（L-SC-005 違反）
+- 辞書攻撃で破られる
+- 最低64文字以上必須
+
+**5. NEXTAUTH_URL - 誤ったプロトコル・パス**
+```bash
+NEXTAUTH_URL="http://your-app.vercel.app"
+NEXTAUTH_URL="https://your-app.vercel.app/api/auth"
+```
+- HTTPは本番環境で使用不可（セキュリティリスク）
+- パス含めるとコールバックURLが不正になる
+
+**6. 環境変数をログ出力**
+```typescript
+// ❌ 絶対にやらないこと
+console.log('DATABASE_URL:', process.env.DATABASE_URL)
+logger.info({ databaseUrl: process.env.DATABASE_URL })
+```
+- ログに機密情報が残る（L-SC-003 違反）
+- CloudWatch/Vercel Logsに永続化される
+
+**7. クライアント側で環境変数を使用**
+```typescript
+// ❌ 絶対にやらないこと（Next.jsの場合）
+export const config = {
+  databaseUrl: process.env.DATABASE_URL  // サーバーサイドのみで使用可能
+}
+```
+- `NEXT_PUBLIC_` プレフィックスがない環境変数はクライアントで使用不可
+- クライアント側に露出すると情報漏洩
+
+### 環境変数設定チェックリスト
+
+デプロイ前に以下を確認してください：
+
+- [ ] `DATABASE_URL` が Vercel 環境変数に設定されている
+- [ ] `DATABASE_URL` に `sslmode=require` パラメータが含まれている
+- [ ] `DATABASE_URL` がソースコードに含まれていない（`git grep "postgresql://"` で確認）
+- [ ] `NEXTAUTH_SECRET` が64文字以上のランダム文字列である
+- [ ] `NEXTAUTH_SECRET` が `openssl rand -base64 64` で生成されている
+- [ ] `NEXTAUTH_URL` がデプロイ先のHTTPS URLである（例: `https://your-app.vercel.app`）
+- [ ] 環境変数が "Production" 環境にのみ設定されている
+- [ ] `.env` ファイルが `.gitignore` に含まれている
+- [ ] ログ出力に環境変数が含まれていない
+- [ ] エラーメッセージに接続文字列が含まれていない
+
+### 関連Laws
+
+本セクションの設定は以下のLawsに準拠します：
+
+- **L-SC-003**: 機密情報の保護 - 環境変数で機密情報を管理、ログに出力しない
+- **L-SC-001**: 認証・認可の厳格化 - スキーマアクセス制御（`search_path=custom_auth,public`）
+- **L-LC-001**: 個人情報の適切な取り扱い - 接続文字列にPII含めない
+
+詳細は [docs/laws/04-security.md](./docs/laws/04-security.md) および [docs/laws/03-legal-compliance.md](./docs/laws/03-legal-compliance.md) を参照してください。
 
 ### 3.4 デプロイ実行
 

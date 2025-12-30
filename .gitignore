@@ -50,3 +50,4 @@ dependency-report.html
 storybook-static
 
 *storybook.log
+.env.prd

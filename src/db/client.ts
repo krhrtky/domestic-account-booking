@@ -13,7 +13,10 @@ if (!connectionString) {
   )
 }
 
-const client = postgres(connectionString, {
+const connectionUrl = new URL(connectionString)
+connectionUrl.searchParams.set('options', 'search_path=custom_auth,public')
+
+const client = postgres(connectionUrl.toString(), {
   max: 20,
   idle_timeout: 30,
   connect_timeout: 2,

@@ -13,6 +13,9 @@ export const ErrorCodes = {
   CONFIG: {
     MISSING_DATABASE_URL: 'E_CONFIG_001',
   },
+  DB: {
+    CONNECTION_ERROR: 'E_DB_001',
+  },
   VALIDATION: {
     INVALID_INPUT: 'E_VALIDATION_001',
     INVALID_RATIO: 'E_VALIDATION_002',
