@@ -17,9 +17,6 @@ const client = postgres(connectionString, {
   max: 20,
   idle_timeout: 30,
   connect_timeout: 2,
-  connection: {
-    search_path: 'custom_auth,public',
-  },
 })
 
 export const db = drizzle(client, { schema })

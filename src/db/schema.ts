@@ -1,20 +1,18 @@
-import { pgTable, uuid, text, integer, numeric, date, timestamp, pgSchema, check, foreignKey, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, numeric, date, timestamp, check, foreignKey, index } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
-export const customAuth = pgSchema('custom_auth')
-
-export const customAuthUsers = customAuth.table('users', {
+export const authUsers = pgTable('auth_users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
 }, (table) => ({
-  emailIdx: index('idx_custom_auth_users_email').on(table.email),
+  emailIdx: index('idx_auth_users_email').on(table.email),
 }))
 
 export const users = pgTable('users', {
-  id: uuid('id').primaryKey().references(() => customAuthUsers.id, { onDelete: 'cascade' }),
+  id: uuid('id').primaryKey().references(() => authUsers.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
   groupId: uuid('group_id'),
@@ -82,9 +80,9 @@ export const transactions = pgTable('transactions', {
 }))
 
 export const usersRelations = relations(users, ({ one, many }) => ({
-  customAuthUser: one(customAuthUsers, {
+  authUser: one(authUsers, {
     fields: [users.id],
-    references: [customAuthUsers.id],
+    references: [authUsers.id],
   }),
   group: one(groups, {
     fields: [users.groupId],

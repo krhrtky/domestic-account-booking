@@ -1,11 +1,11 @@
 import { InferSelectModel, InferInsertModel } from 'drizzle-orm'
-import { users, groups, transactions, invitations, customAuthUsers } from './schema'
+import { users, groups, transactions, invitations, authUsers } from './schema'
 
 export type User = InferSelectModel<typeof users>
 export type NewUser = InferInsertModel<typeof users>
 
-export type CustomAuthUser = InferSelectModel<typeof customAuthUsers>
-export type NewCustomAuthUser = InferInsertModel<typeof customAuthUsers>
+export type AuthUser = InferSelectModel<typeof authUsers>
+export type NewAuthUser = InferInsertModel<typeof authUsers>
 
 export type Group = InferSelectModel<typeof groups>
 export type NewGroup = InferInsertModel<typeof groups>

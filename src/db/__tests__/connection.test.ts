@@ -12,52 +12,51 @@ describe.skipIf(!isDatabaseAvailable)('L-SC-001: Database Connection & Schema Ac
       expect(result.length).toBeGreaterThan(0)
     })
 
-    it('should have search_path configured', async () => {
+    it('should have default search_path configured', async () => {
       const { db } = await import('../client')
       const result = await db.execute(sql`SHOW search_path`)
       expect(result[0]?.search_path).toBeDefined()
-      expect(result[0]?.search_path).toContain('custom_auth')
       expect(result[0]?.search_path).toContain('public')
     })
   })
 
   describe('Boundary', () => {
-    it('should access custom_auth schema tables', async () => {
+    it('should access auth_users table', async () => {
       const { db } = await import('../client')
       const result = await db.execute(sql`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'custom_auth' 
-        AND table_name = 'users'
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'auth_users'
       `)
       expect(result.length).toBeGreaterThan(0)
-      expect(result[0]?.table_name).toBe('users')
+      expect(result[0]?.table_name).toBe('auth_users')
     })
 
-    it('should access public schema tables', async () => {
+    it('should access all public schema tables', async () => {
       const { db } = await import('../client')
       const result = await db.execute(sql`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name IN ('users', 'groups', 'transactions', 'invitations')
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name IN ('auth_users', 'users', 'groups', 'transactions', 'invitations')
       `)
-      expect(result.length).toBe(4)
+      expect(result.length).toBe(5)
     })
 
-    it('should prioritize custom_auth schema in search_path', async () => {
+    it('should use public schema as default', async () => {
       const { db } = await import('../client')
       const result = await db.execute(sql`
         SELECT current_schema()
       `)
-      expect(result[0]?.current_schema).toBeDefined()
+      expect(result[0]?.current_schema).toBe('public')
     })
   })
 
   describe('Attack', () => {
     it('should reject schema injection attempts', async () => {
       const { db } = await import('../client')
-      const maliciousSchema = "'; DROP SCHEMA custom_auth; --"
+      const maliciousSchema = "'; DROP SCHEMA public; --"
 
       await expect(async () => {
         await db.execute(sql.raw(`SELECT table_name FROM information_schema.tables WHERE table_schema = '${maliciousSchema}'`))
@@ -69,7 +68,7 @@ describe.skipIf(!isDatabaseAvailable)('L-SC-001: Database Connection & Schema Ac
       const result = await db.execute(sql`
         SELECT schema_name
         FROM information_schema.schemata
-        WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'public', 'custom_auth')
+        WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'public')
       `)
       expect(result.length).toBe(0)
     })
@@ -127,7 +126,7 @@ describe.skipIf(!isDatabaseAvailable)('L-CN-001: Database Credential Protection'
       const { db } = await import('../client')
       const result = await db.execute(sql`SELECT current_setting('search_path') as path`)
       expect(result[0]?.path).toBeDefined()
-      expect(result[0]?.path).toContain('custom_auth')
+      expect(result[0]?.path).toContain('public')
     })
   })
 })

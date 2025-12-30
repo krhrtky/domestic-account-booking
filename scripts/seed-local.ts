@@ -10,14 +10,6 @@ if (!databaseUrl) {
 
 const pool = new Pool({ connectionString: databaseUrl })
 
-pool.on('connect', async (client) => {
-  try {
-    await client.query("SET search_path TO custom_auth, public")
-  } catch (error) {
-    console.error('[Seed Script] Failed to set search_path:', error)
-    throw error
-  }
-})
 
 const TEST_USERS = {
   userA: {
@@ -55,14 +47,14 @@ async function checkExistingUsers(): Promise<{ userAId?: string; userBId?: strin
   const client = await pool.connect()
   try {
     const userAResult = await client.query<{ id: string; group_id: string | null }>(
-      `SELECT u.id, u.group_id FROM custom_auth.users au
+      `SELECT u.id, u.group_id FROM auth_users au
        JOIN users u ON au.id = u.id
        WHERE au.email = $1`,
       [TEST_USERS.userA.email]
     )
 
     const userBResult = await client.query<{ id: string; group_id: string | null }>(
-      `SELECT u.id, u.group_id FROM custom_auth.users au
+      `SELECT u.id, u.group_id FROM auth_users au
        JOIN users u ON au.id = u.id
        WHERE au.email = $1`,
       [TEST_USERS.userB.email]
@@ -109,7 +101,7 @@ async function seed() {
       const passwordHashA = await bcrypt.hash(TEST_USERS.userA.password, 12)
 
       const authResultA = await client.query<{ id: string }>(
-        'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+        'INSERT INTO auth_users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
         [TEST_USERS.userA.email, passwordHashA]
       )
       userAId = authResultA.rows[0].id
@@ -128,7 +120,7 @@ async function seed() {
       const passwordHashB = await bcrypt.hash(TEST_USERS.userB.password, 12)
 
       const authResultB = await client.query<{ id: string }>(
-        'INSERT INTO custom_auth.users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
+        'INSERT INTO auth_users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
         [TEST_USERS.userB.email, passwordHashB]
       )
       userBId = authResultB.rows[0].id

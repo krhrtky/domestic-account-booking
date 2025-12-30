@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { users, groups, transactions, customAuthUsers } from '../schema'
+import { users, groups, transactions, authUsers } from '../schema'
 
 describe('L-OC-001: Schema definitions', () => {
   it('defines users table with required fields', () => {
@@ -33,11 +33,11 @@ describe('L-OC-001: Schema definitions', () => {
     expect(transactions.expenseType).toBeDefined()
   })
 
-  it('defines custom auth users table', () => {
-    expect(customAuthUsers).toBeDefined()
-    expect(customAuthUsers.id).toBeDefined()
-    expect(customAuthUsers.email).toBeDefined()
-    expect(customAuthUsers.passwordHash).toBeDefined()
+  it('defines auth users table', () => {
+    expect(authUsers).toBeDefined()
+    expect(authUsers.id).toBeDefined()
+    expect(authUsers.email).toBeDefined()
+    expect(authUsers.passwordHash).toBeDefined()
   })
 })
 

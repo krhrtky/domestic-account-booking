@@ -36,7 +36,7 @@ export async function logIn(formData: FormData) {
   }
 
   const result = await query<{ id: string; password_hash: string }>(
-    'SELECT id, password_hash FROM custom_auth.users WHERE email = $1',
+    'SELECT id, password_hash FROM auth_users WHERE email = $1',
     [normalizedEmail]
   )
 
