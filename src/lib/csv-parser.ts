@@ -1,5 +1,5 @@
 import Papa from 'papaparse'
-import { ColumnMapping } from './types'
+import { ColumnMapping, ParsedTransaction as ClientParsedTransaction } from './types'
 
 export interface ParsedTransaction {
   date: string
@@ -354,4 +354,68 @@ export const parseCSV = async (
       },
     })
   })
+}
+
+export function parseCSVInBrowser(
+  csvContent: string,
+  headerMapping: Record<string, string>
+): ClientParsedTransaction[] {
+  const results = Papa.parse<Record<string, string>>(csvContent, {
+    header: true,
+    skipEmptyLines: true,
+  })
+
+  if (results.errors.length > 0 || !results.data || results.data.length === 0) {
+    return []
+  }
+
+  const dateCol = headerMapping['date']
+  const amountCol = headerMapping['amount']
+  const descCol = headerMapping['description']
+  const payerCol = headerMapping['payer']
+
+  if (!dateCol || !amountCol || !descCol) {
+    return []
+  }
+
+  return results.data
+    .map(row => {
+      try {
+        const dateStr = row[dateCol]
+        const amountStr = row[amountCol]
+        const descriptionRaw = row[descCol]
+        const payerRaw = payerCol ? row[payerCol] : ''
+
+        if (!dateStr || !amountStr || !descriptionRaw) {
+          return null
+        }
+
+        const date = normalizeDate(dateStr)
+        if (!date) {
+          return null
+        }
+
+        const amount = parseAmount(amountStr)
+        if (amount <= 0 || amount > 10_000_000) {
+          return null
+        }
+
+        const description = sanitizeCSVField(descriptionRaw)
+        if (description.length > 500) {
+          return null
+        }
+
+        const payer = sanitizeCSVField(payerRaw || '')
+
+        return {
+          date,
+          amount,
+          description,
+          payer,
+        }
+      } catch {
+        return null
+      }
+    })
+    .filter((t): t is ClientParsedTransaction => t !== null)
 }

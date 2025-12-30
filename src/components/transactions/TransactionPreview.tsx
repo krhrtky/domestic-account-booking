@@ -1,7 +1,6 @@
 'use client'
 
-import { ParsedTransaction } from '@/lib/csv-parser'
-import { PayerType } from '@/lib/types'
+import { ParsedTransaction, PayerType } from '@/lib/types'
 import { formatCurrency } from '@/lib/formatters'
 
 interface TransactionPreviewProps {
@@ -56,7 +55,7 @@ export default function TransactionPreview({
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.date}</td>
                 <td className="px-4 py-2 text-sm text-neutral-700">{t.description}</td>
                 <td className="px-4 py-2 text-sm text-neutral-700">
-                  {t.payer_name || '—'}
+                  {t.payer || '—'}
                 </td>
                 <td className="px-4 py-2">
                   <select

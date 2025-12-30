@@ -1,8 +1,8 @@
 'use server'
 
-import { parseCSV } from '@/lib/csv-parser'
+import { parseCSV, detectHeaders } from '@/lib/csv-parser'
 import { z } from 'zod'
-import { ExpenseType, PayerType } from '@/lib/types'
+import { ExpenseType, PayerType, ParsedTransaction as ClientParsedTransaction, UploadResult } from '@/lib/types'
 import { db } from '@/db/client'
 import { users, groups, transactions as transactionsTable } from '@/db/schema'
 import { requireAuth } from '@/lib/session'
@@ -130,6 +130,157 @@ export async function uploadCSV(
     revalidateTag(CACHE_TAGS.settlementAll(groupId))
 
     return { success: true, count: result.length }
+  } catch (error) {
+    return { error: '取引の保存に失敗しました' }
+  }
+}
+
+export async function detectCSVHeaders(csvContent: string) {
+  const user = await requireAuth()
+
+  if (!csvContent || csvContent.trim().length === 0) {
+    return { success: false as const, error: 'CSVファイルが空です' }
+  }
+
+  const byteSize = new TextEncoder().encode(csvContent).length
+  if (byteSize > 5 * 1024 * 1024) {
+    return { success: false as const, error: 'ファイルサイズが5MBを超えています' }
+  }
+
+  const lines = csvContent.split('\n').filter(line => line.trim().length > 0)
+  if (lines.length > 10000) {
+    return { success: false as const, error: '行数が10,000行を超えています' }
+  }
+
+  const result = detectHeaders(csvContent)
+  if ('error' in result) {
+    return { success: false as const, error: result.error }
+  }
+
+  return {
+    success: true as const,
+    headers: result.headers,
+    suggestedMapping: result.suggestedMapping,
+    excludedHeaders: result.excludedHeaders,
+  }
+}
+
+export async function uploadParsedTransactions(
+  transactions: ClientParsedTransaction[],
+  fileName: string,
+  payerType: PayerType
+): Promise<UploadResult | { error: string }> {
+  const user = await requireAuth()
+
+  const rateLimitResult = checkRateLimit(user.id, {
+    maxAttempts: 10,
+    windowMs: 60 * 1000
+  }, 'csv-upload')
+
+  if (!rateLimitResult.allowed) {
+    return {
+      error: `CSV取り込みの試行回数が上限を超えました。${rateLimitResult.retryAfter}秒後に再試行してください。`
+    }
+  }
+
+  if (!Array.isArray(transactions) || transactions.length === 0) {
+    return { error: 'トランザクションデータが空です' }
+  }
+
+  if (transactions.length > 10000) {
+    return { error: 'トランザクション数は10,000件以下にしてください' }
+  }
+
+  const errors: string[] = []
+  transactions.forEach((t, index) => {
+    if (!t.date || !/^\d{4}-\d{2}-\d{2}$/.test(t.date)) {
+      errors.push(`行${index + 1}: 日付形式が不正です`)
+    }
+    if (typeof t.amount !== 'number' || t.amount <= 0 || t.amount > 10_000_000) {
+      errors.push(`行${index + 1}: 金額が範囲外です（1～10,000,000円）`)
+    }
+    if (typeof t.description !== 'string' || t.description.length > 500) {
+      errors.push(`行${index + 1}: 摘要が長すぎます（最大500文字）`)
+    }
+    if (/^[=+\-@]/.test(t.description)) {
+      errors.push(`行${index + 1}: 摘要に使用できない文字が含まれています`)
+    }
+  })
+
+  if (errors.length > 0) {
+    return { error: errors.join(', ') }
+  }
+
+  const groupId = await getUserGroupId(user.id)
+
+  if (!groupId) {
+    return { error: 'グループに所属していません' }
+  }
+
+  const groupResult = await db
+    .select({
+      user_a_id: groups.userAId,
+      user_b_id: groups.userBId,
+    })
+    .from(groups)
+    .where(eq(groups.id, groupId))
+    .limit(1)
+
+  if (groupResult.length === 0) {
+    return { error: 'グループが見つかりません' }
+  }
+
+  const usersResult = await db
+    .select({
+      id: users.id,
+      name: users.name,
+    })
+    .from(users)
+    .where(eq(users.groupId, groupId))
+
+  const usersByName = new Map<string, string>()
+  usersResult.forEach(u => {
+    usersByName.set(u.name.toLowerCase(), u.id)
+  })
+
+  const transactionsToInsert = transactions.map(t => {
+    let payerUserId: string | null = null
+    if (t.payer) {
+      const foundUserId = usersByName.get(t.payer.toLowerCase())
+      if (foundUserId) {
+        payerUserId = foundUserId
+      }
+    }
+
+    return {
+      groupId,
+      userId: user.id,
+      date: t.date,
+      amount: String(t.amount),
+      description: t.description,
+      payerType,
+      expenseType: 'Household' as ExpenseType,
+      sourceFileName: fileName,
+      payerUserId,
+      actualPayerType: payerType,
+      actualPayerUserId: payerUserId
+    }
+  })
+
+  try {
+    const result = await db
+      .insert(transactionsTable)
+      .values(transactionsToInsert)
+      .returning({ id: transactionsTable.id })
+
+    revalidateTag(CACHE_TAGS.transactions(groupId))
+    revalidateTag(CACHE_TAGS.settlementAll(groupId))
+
+    return {
+      success: true,
+      insertedCount: result.length,
+      fileName,
+    }
   } catch (error) {
     return { error: '取引の保存に失敗しました' }
   }

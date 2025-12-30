@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { uploadCSV } from '@/app/actions/transactions'
-import { detectCSVHeaders } from '@/app/actions/csv-mappings'
+import { detectCSVHeaders, uploadParsedTransactions } from '@/app/actions/transactions'
 import { getCurrentGroup } from '@/app/actions/group'
-import { PayerType, ColumnMapping } from '@/lib/types'
+import { PayerType, ColumnMapping, ParsedTransaction as ClientParsedTransaction } from '@/lib/types'
 import { useRouter } from 'next/navigation'
-import { parseCSV, ParsedTransaction } from '@/lib/csv-parser'
+import { parseCSVInBrowser } from '@/lib/csv-parser'
 import { readFileWithEncoding, EncodingType } from '@/lib/encoding'
 import ColumnMappingForm from './ColumnMappingForm'
 import TransactionPreview from './TransactionPreview'
@@ -26,7 +25,7 @@ export default function CSVUploadForm() {
   const [suggestedMapping, setSuggestedMapping] = useState<ColumnMapping | null>(null)
   const [excludedHeaders, setExcludedHeaders] = useState<string[]>([])
   const [columnMapping, setColumnMapping] = useState<ColumnMapping | null>(null)
-  const [previewTransactions, setPreviewTransactions] = useState<ParsedTransaction[]>([])
+  const [previewTransactions, setPreviewTransactions] = useState<ClientParsedTransaction[]>([])
   const [payerTypes, setPayerTypes] = useState<PayerType[]>([])
   const [defaultPayerType, setDefaultPayerType] = useState<PayerType>('UserA')
   const [groupInfo, setGroupInfo] = useState<GroupInfo | null>(null)
@@ -116,20 +115,28 @@ export default function CSVUploadForm() {
     }
   }
 
-  const handlePreview = async (mapping: ColumnMapping, content: string, fileName: string) => {
+  const handlePreview = (mapping: ColumnMapping, content: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const result = await parseCSV(content, fileName, { columnMapping: mapping })
-
-      if (result.success) {
-        setPreviewTransactions(result.data)
-        setPayerTypes(new Array(result.data.length).fill(defaultPayerType))
-        setStep('preview')
-      } else {
-        setError(result.errors.join(', '))
+      const headerMapping: Record<string, string> = {
+        date: mapping.dateColumn || '',
+        amount: mapping.amountColumn || '',
+        description: mapping.descriptionColumn || '',
+        payer: mapping.payerColumn || ''
       }
+
+      const parsedTransactions = parseCSVInBrowser(content, headerMapping)
+
+      if (parsedTransactions.length === 0) {
+        setError('有効な取引データが見つかりませんでした')
+        return
+      }
+
+      setPreviewTransactions(parsedTransactions)
+      setPayerTypes(new Array(parsedTransactions.length).fill(defaultPayerType))
+      setStep('preview')
     } catch (err) {
       setError('プレビューの生成に失敗しました')
     } finally {
@@ -150,7 +157,7 @@ export default function CSVUploadForm() {
     setPayerTypes(new Array(previewTransactions.length).fill(payerType))
   }
 
-  const handleMappingConfirm = async () => {
+  const handleMappingConfirm = () => {
     if (!columnMapping || !file) return
 
     const isValid =
@@ -161,23 +168,27 @@ export default function CSVUploadForm() {
       return
     }
 
-    await handlePreview(columnMapping, csvContent, file.name)
+    handlePreview(columnMapping, csvContent)
   }
 
   const handleImport = async () => {
-    if (!file) return
+    if (!file || previewTransactions.length === 0) return
 
     setIsLoading(true)
     setError(null)
     setSuccess(null)
 
     try {
-      const result = await uploadCSV(csvContent, file.name, defaultPayerType, payerTypes)
+      const result = await uploadParsedTransactions(
+        previewTransactions,
+        file.name,
+        defaultPayerType
+      )
 
-      if (result.error) {
-        setError(typeof result.error === 'string' ? result.error : 'アップロードに失敗しました')
-      } else if (result.count !== undefined) {
-        setSuccess(`${result.count}件の取引をインポートしました`)
+      if ('error' in result) {
+        setError(result.error)
+      } else if (result.success) {
+        setSuccess(`${result.insertedCount}件の取引をインポートしました`)
         setTimeout(() => router.push('/dashboard/transactions'), 1500)
       }
     } catch (err) {

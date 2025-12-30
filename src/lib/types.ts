@@ -46,3 +46,17 @@ export interface ColumnMapping {
   descriptionColumn: string | null;
   payerColumn: string | null;
 }
+
+export interface ParsedTransaction {
+  date: string;
+  amount: number;
+  description: string;
+  payer: string;
+}
+
+export interface UploadResult {
+  success: boolean;
+  insertedCount: number;
+  fileName: string;
+  duplicates?: number;
+}
