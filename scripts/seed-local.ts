@@ -10,6 +10,15 @@ if (!databaseUrl) {
 
 const pool = new Pool({ connectionString: databaseUrl })
 
+pool.on('connect', async (client) => {
+  try {
+    await client.query("SET search_path TO custom_auth, public")
+  } catch (error) {
+    console.error('[Seed Script] Failed to set search_path:', error)
+    throw error
+  }
+})
+
 const TEST_USERS = {
   userA: {
     email: process.env.SEED_USER_A_EMAIL || 'demo-a@example.com',
@@ -146,14 +155,14 @@ async function seed() {
       console.log(`  Group created: ${DEMO_GROUP.name} (${DEMO_GROUP.ratioA}:${DEMO_GROUP.ratioB})`)
 
       console.log('Creating demo transactions...')
-      for (const tx of DEMO_TRANSACTIONS) {
-        const userId = tx.payer_type === 'UserA' ? userAId : userBId
-        await client.query(
-          `INSERT INTO transactions (id, user_id, group_id, date, amount, description, payer_type, expense_type)
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
-          [userId, groupId, tx.date, tx.amount, tx.description, tx.payer_type, tx.expense_type]
-        )
-      }
+      //for (const tx of DEMO_TRANSACTIONS) {
+      //  const userId = tx.payer_type === 'UserA' ? userAId : userBId
+      //  await client.query(
+      //    `INSERT INTO transactions (id, user_id, group_id, date, amount, description, payer_type, expense_type)
+      //     VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+      //    [userId, groupId, tx.date, tx.amount, tx.description, tx.payer_type, tx.expense_type]
+      //  )
+      //}
       console.log(`  ${DEMO_TRANSACTIONS.length} transactions created`)
     } else {
       console.log(`  Group already exists: ${groupId}`)

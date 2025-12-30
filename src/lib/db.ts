@@ -1,4 +1,5 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg'
+import { AppError, ErrorCodes } from './errors'
 
 let pool: Pool | null = null
 
@@ -9,6 +10,27 @@ const getPool = (): Pool => {
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000,
+    })
+
+    pool.on('connect', async (client) => {
+      try {
+        await client.query("SET search_path TO custom_auth, public")
+      } catch (error) {
+        console.error('[DB Schema Config Error]', error)
+        throw new AppError(
+          ErrorCodes.DB.SCHEMA_CONFIG_ERROR,
+          'データベーススキーマの設定に失敗しました',
+          500,
+          { cause: error }
+        )
+      }
+    })
+
+    pool.on('error', (error) => {
+      console.error('[DB Pool Error]', {
+        message: error.message,
+        ...(error && typeof error === 'object' && 'code' in error && { code: error.code }),
+      })
     })
   }
   return pool

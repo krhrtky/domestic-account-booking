@@ -1,11 +1,15 @@
 export class AppError extends Error {
+  public readonly cause?: unknown
+
   constructor(
     public readonly code: string,
     message: string,
-    public readonly statusCode: number = 500
+    public readonly statusCode: number = 500,
+    options?: { cause?: unknown }
   ) {
     super(message)
     this.name = 'AppError'
+    this.cause = options?.cause
   }
 }
 
@@ -15,6 +19,8 @@ export const ErrorCodes = {
   },
   DB: {
     CONNECTION_ERROR: 'E_DB_001',
+    SCHEMA_CONFIG_ERROR: 'E_DB_006',
+    QUERY_ERROR: 'E_DB_007',
   },
   VALIDATION: {
     INVALID_INPUT: 'E_VALIDATION_001',
