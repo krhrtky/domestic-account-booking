@@ -3,6 +3,8 @@ import { GroupSettings } from '@/components/group/GroupSettings'
 import { CreateGroupForm } from '@/components/group/CreateGroupForm'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 function BackLink() {
   return (
     <Link

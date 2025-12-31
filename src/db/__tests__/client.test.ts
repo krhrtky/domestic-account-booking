@@ -83,18 +83,22 @@ describe.skipIf(!isDatabaseAvailable)('L-TA-001: Drizzle Client Connection Tests
 })
 
 describe('Drizzle Client without DATABASE_URL', () => {
-  it('DATABASE_URLがない場合はエラーをスロー', async () => {
+  it('DATABASE_URLがない場合、DB使用時にエラーをスロー', async () => {
+    // 遅延初期化により、インポート時ではなくDB使用時にエラーが発生する
+    // このテストはCI環境（DATABASE_URLなし）で実行される
     if (!isDatabaseAvailable) {
-      const originalUrl = process.env.DATABASE_URL
-      delete process.env.DATABASE_URL
-      
-      await expect(async () => {
-        await import('../client')
-      }).rejects.toThrow()
-      
-      process.env.DATABASE_URL = originalUrl
+      // 新しいモジュールをインポート（キャッシュをクリア）
+      const clientModule = await import('../client')
+
+      // dbを使用しようとするとエラーがスローされる
+      expect(() => {
+        // プロパティアクセスでgetDb()が呼ばれ、エラーがスローされる
+        clientModule.db.query
+      }).toThrow('DATABASE_URL environment variable is not set')
     } else {
-      expect(true).toBe(true)
+      // DATABASE_URLがある場合は正常動作することを確認
+      const { db } = await import('../client')
+      expect(db).toBeDefined()
     }
   })
 })
