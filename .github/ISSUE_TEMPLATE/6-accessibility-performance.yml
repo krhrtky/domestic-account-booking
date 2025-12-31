@@ -1,0 +1,70 @@
+name: "[Design] アクセシビリティ・パフォーマンス最適化"
+description: reduced-motion対応、フォント最適化、パフォーマンス改善
+title: "[Design] アクセシビリティ・パフォーマンス最適化"
+labels: ["enhancement", "accessibility", "performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        アクセシビリティ対応の強化とフロントエンドパフォーマンスの最適化を行う。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        現在もaria属性等の基本対応はあるが、モーション設定への配慮やパフォーマンス最適化の余地がある。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: accessibility
+    attributes:
+      label: アクセシビリティ
+      options:
+        - label: "`prefers-reduced-motion` 対応（アニメーション無効化）"
+        - label: カラーコントラスト比の検証・調整
+        - label: キーボードナビゲーションの強化
+        - label: スクリーンリーダー対応の検証
+
+  - type: checkboxes
+    id: performance
+    attributes:
+      label: パフォーマンス
+      options:
+        - label: Google Fonts自己ホスティング化（next/font活用）
+        - label: 背景効果の条件付きレンダリング（低スペック端末対応）
+        - label: SVGノイズオーバーレイの最適化
+        - label: 画像の遅延読み込み設定
+
+  - type: checkboxes
+    id: measurement
+    attributes:
+      label: 計測・監視
+      options:
+        - label: Lighthouse Performanceスコア計測
+        - label: Core Web Vitals最適化
+        - label: バンドルサイズ分析
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      value: |
+        - `app/layout.tsx` - フォント設定変更
+        - `app/globals.css` - reduced-motionメディアクエリ追加
+        - `next.config.js` - 画像最適化設定
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      options:
+        - label: Lighthouse Accessibilityスコア90以上
+        - label: Lighthouse Performanceスコア80以上
+        - label: prefers-reduced-motion有効時にアニメーションが無効化
+        - label: フォントの自己ホスティング完了

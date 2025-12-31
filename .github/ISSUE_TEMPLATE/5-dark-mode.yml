@@ -1,0 +1,71 @@
+name: "[Design] ダークモード対応"
+description: テーマ切替システム、WCAG対応のダークテーマ実装
+title: "[Design] ダークモード対応"
+labels: ["enhancement", "design", "frontend", "accessibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        ライトテーマに加えてダークテーマを実装し、ユーザーの好みやシステム設定に対応する。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        現在はライトテーマのみ。
+        夜間利用時の目への負担軽減、バッテリー消費削減（OLED）、ユーザー選好への対応が必要。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: theme-system
+    attributes:
+      label: テーマシステム
+      options:
+        - label: CSS変数ベースのテーマ切替システム構築
+        - label: "`prefers-color-scheme` メディアクエリ対応"
+        - label: テーマ切替トグルUI実装
+        - label: LocalStorageでのテーマ設定保持
+
+  - type: checkboxes
+    id: color-palette
+    attributes:
+      label: ダークテーマカラーパレット
+      options:
+        - label: Ocean Trustカラーのダーク版定義
+        - label: セマンティックカラーのダーク版調整
+        - label: 背景・テキストのコントラスト確保（WCAG AA）
+
+  - type: checkboxes
+    id: components
+    attributes:
+      label: コンポーネント対応
+      options:
+        - label: カード、入力フィールドのダークスタイル
+        - label: Glassmorphism効果のダーク版調整
+        - label: グラデーション背景のダーク版
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      value: |
+        - `tailwind.config.js` - darkMode設定追加
+        - `app/globals.css` - ダークテーマ変数定義
+        - `app/layout.tsx` - テーマプロバイダー追加
+        - 全コンポーネント - `dark:*` クラス追加
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      options:
+        - label: システム設定に連動したテーマ切替が動作
+        - label: 手動でのテーマ切替が可能
+        - label: 全ページでダークテーマが適切に表示
+        - label: コントラスト比がWCAG AA基準を満たす

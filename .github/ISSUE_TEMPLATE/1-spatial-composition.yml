@@ -1,0 +1,57 @@
+name: "[Design] 空間構成の刷新"
+description: 非対称レイアウト、オーバーラップ等による独自性のある空間構成
+title: "[Design] 空間構成の刷新"
+labels: ["enhancement", "design", "frontend"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        現在の標準的なグリッドレイアウトから、より独自性のある空間構成に刷新する。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        AIが生成するUIは予測可能なレイアウトパターンに収束しがち。
+        独自性のある空間構成により、ブランドアイデンティティを強化する。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tasks
+    attributes:
+      label: 改善タスク
+      description: 実装する項目を選択
+      options:
+        - label: Hero セクションの非対称レイアウト導入
+        - label: オフセットグリッド（意図的なズレ）の実装
+        - label: カード間のオーバーラップ効果
+        - label: 斜めの区切り線（diagonal dividers）の追加
+        - label: ネガティブスペースの戦略的活用
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      description: 変更が必要なファイル
+      value: |
+        - `src/components/landing/HeroSection.tsx`
+        - `src/components/landing/FeaturesSection.tsx`
+        - `src/components/settlement/SettlementDashboard.tsx`
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      description: 完了の定義
+      options:
+        - label: 少なくとも2つのセクションで非対称/オフセットレイアウトを適用
+        - label: レスポンシブ対応を維持
+        - label: Storybook でデザイン確認可能

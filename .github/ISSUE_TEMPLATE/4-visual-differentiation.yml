@@ -1,0 +1,68 @@
+name: "[Design] 視覚的差別化要素の追加"
+description: カスタムイラスト、ローディング、ブランドパターンの追加
+title: "[Design] 視覚的差別化要素の追加"
+labels: ["enhancement", "design", "frontend", "branding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        ブランドを記憶に残すための独自の視覚要素を追加する。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        AIが生成するUIは汎用的になりがち。
+        特徴的なイラストスタイル、ローディング、空状態デザインにより、アプリケーションの個性を強化する。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: illustrations
+    attributes:
+      label: カスタムイラスト/アイコン
+      options:
+        - label: ブランドカラーを活かしたカスタムアイコンセット
+        - label: 空状態用のイラスト（取引なし、グループなし等）
+        - label: エラー状態用のフレンドリーなイラスト
+
+  - type: checkboxes
+    id: loading
+    attributes:
+      label: ローディング体験
+      options:
+        - label: ブランドカラーのカスタムローディングスピナー
+        - label: スケルトンローディングのスタイル統一
+        - label: プログレス表示のカスタムデザイン
+
+  - type: checkboxes
+    id: brand-patterns
+    attributes:
+      label: ブランドパターン
+      options:
+        - label: 背景に使える繰り返しパターン
+        - label: カードボーダーのアクセント装飾
+        - label: セクション区切りのカスタム要素
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      value: |
+        - `src/components/ui/` - 新規UIコンポーネント
+        - `public/` - SVGアセット
+        - `app/globals.css` - パターン定義
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      options:
+        - label: 少なくとも3つの空状態デザインを実装
+        - label: カスタムローディングアニメーションを1つ以上作成
+        - label: Ocean Trustカラーパレットと一貫性を保つ

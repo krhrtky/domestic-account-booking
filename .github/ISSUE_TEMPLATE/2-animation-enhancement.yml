@@ -1,0 +1,69 @@
+name: "[Design] アニメーション・インタラクションの強化"
+description: マイクロインタラクション、段階的表示によるUX向上
+title: "[Design] アニメーション・インタラクションの強化"
+labels: ["enhancement", "design", "frontend", "ux"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        既存の8種類のカスタムアニメーションをより積極的に活用し、ユーザー体験を向上させる。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        現在定義済みのアニメーション（fade-in-up, scale-in, float等）の使用箇所が限定的。
+        高インパクトな瞬間（ページロード、ユーザーアクション）に集中したアニメーション設計が必要。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: page-transitions
+    attributes:
+      label: ページ遷移・ロード
+      options:
+        - label: ページ遷移時のスムーズなアニメーション追加
+        - label: ダッシュボード要素の段階的表示（staggered animation）強化
+        - label: スクロール連動アニメーション（Intersection Observer活用）
+
+  - type: checkboxes
+    id: micro-interactions
+    attributes:
+      label: マイクロインタラクション
+      options:
+        - label: ボタンクリック時のリップルエフェクト
+        - label: トグル切替時のスムーズな状態変化
+        - label: フォーム送信成功時のフィードバックアニメーション
+
+  - type: checkboxes
+    id: data-display
+    attributes:
+      label: データ表示
+      options:
+        - label: 数値変化時のカウントアップアニメーション（精算金額等）
+        - label: プログレスバーのアニメーション強化
+        - label: チャート/グラフ表示時のアニメーション
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      value: |
+        - `app/globals.css` - 新規キーフレーム追加
+        - `tailwind.config.js` - アニメーション設定拡張
+        - `src/components/settlement/SettlementSummary.tsx`
+        - `src/components/ui/LoadingButton.tsx`
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      options:
+        - label: 少なくとも3つの新しいインタラクションアニメーションを実装
+        - label: 既存アニメーションの使用箇所を2倍以上に拡大
+        - label: パフォーマンスへの影響を最小限に抑える（will-change活用）

@@ -1,0 +1,67 @@
+name: "[Design] タイポグラフィ階層の強化"
+description: 流体サイズ、装飾的アクセントによる視覚的階層の明確化
+title: "[Design] タイポグラフィ階層の強化"
+labels: ["enhancement", "design", "frontend"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 概要
+        見出しと本文のコントラストを強化し、より明確な視覚的階層を構築する。
+
+        **参考**: [Improving frontend design through Skills](https://claude.com/blog/improving-frontend-design-through-skills)
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜこの改善が必要か
+      value: |
+        現在のタイポグラフィはフォントウェイトの変化が主な差別化要素。
+        より大胆なサイズ設定と装飾的なアクセントにより、独自性を高める。
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: size-scale
+    attributes:
+      label: サイズ・スケール
+      options:
+        - label: 見出しサイズを流体的に設定（clamp()関数活用）
+        - label: モバイル/デスクトップ間のサイズ差を拡大
+        - label: 数字表示の専用スタイル（金額表示等）
+
+  - type: checkboxes
+    id: letter-spacing
+    attributes:
+      label: レタースペーシング
+      options:
+        - label: 見出し用のワイドなレタースペーシング定義
+        - label: 小見出し/ラベル用のトラッキング調整
+
+  - type: checkboxes
+    id: decorative
+    attributes:
+      label: 装飾的要素
+      options:
+        - label: アクセント下線（gradient underline）
+        - label: ハイライト効果（背景色付きテキスト）
+        - label: グラデーションテキスト（Hero見出し等）
+
+  - type: textarea
+    id: target-files
+    attributes:
+      label: 対象ファイル
+      value: |
+        - `tailwind.config.js` - fontSize, letterSpacing拡張
+        - `app/globals.css` - カスタムテキストスタイル追加
+        - `src/components/landing/HeroSection.tsx`
+
+  - type: checkboxes
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ条件
+      options:
+        - label: 3段階以上の明確な見出し階層（h1〜h3）を定義
+        - label: 少なくとも1つの装飾的テキストスタイルを実装
+        - label: 日本語フォントでの表示確認
