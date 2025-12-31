@@ -20,23 +20,23 @@
 
 :root {
   --foreground-rgb: 26, 25, 23;
-  --background-start-rgb: 250, 248, 245;
-  --background-end-rgb: 245, 242, 237;
+  --background-start-rgb: 245, 249, 252;
+  --background-end-rgb: 234, 242, 248;
 
-  --color-brand-primary: #5B4B8A;
-  --color-brand-primary-dark: #483D6B;
-  --color-brand-primary-light: #7B6BA8;
-  --color-brand-accent: #C4A77D;
-  --color-brand-accent-light: #E8DCC8;
+  --color-brand-primary: #2D6A8A;
+  --color-brand-primary-dark: #1D4A6A;
+  --color-brand-primary-light: #4D8AAA;
+  --color-brand-accent: #F4A261;
+  --color-brand-accent-light: #FCE4C8;
 
-  --color-semantic-success: #4A7C59;
-  --color-semantic-success-light: #E8F0EA;
-  --color-semantic-warning: #C4A35A;
-  --color-semantic-warning-light: #FBF6E9;
-  --color-semantic-error: #B5495B;
-  --color-semantic-error-light: #F9EAEC;
-  --color-semantic-info: #4A6B8A;
-  --color-semantic-info-light: #E8EEF3;
+  --color-semantic-success: #2E8B6E;
+  --color-semantic-success-light: #E3F2ED;
+  --color-semantic-warning: #E9A84B;
+  --color-semantic-warning-light: #FDF6E9;
+  --color-semantic-error: #D9534F;
+  --color-semantic-error-light: #FBEAEA;
+  --color-semantic-info: #5DADE2;
+  --color-semantic-info-light: #EAF4FB;
 
   --spacing-xs: 0.125rem;
   --spacing-sm: 0.25rem;
@@ -46,16 +46,16 @@
   --spacing-xl: 1.5rem;
   --spacing-2xl: 2rem;
 
-  --shadow-soft: 0 2px 12px -3px rgba(91, 75, 138, 0.08), 0 4px 20px -5px rgba(91, 75, 138, 0.06);
+  --shadow-soft: 0 2px 12px -3px rgba(45, 106, 138, 0.08), 0 4px 20px -5px rgba(45, 106, 138, 0.06);
   --shadow-card: 0 1px 3px rgba(26, 25, 23, 0.03), 0 6px 16px rgba(26, 25, 23, 0.04);
-  --shadow-elevated: 0 8px 30px -8px rgba(91, 75, 138, 0.12), 0 12px 40px -12px rgba(91, 75, 138, 0.1);
-  --shadow-input-focus: 0 0 0 3px rgba(91, 75, 138, 0.15);
+  --shadow-elevated: 0 8px 30px -8px rgba(45, 106, 138, 0.12), 0 12px 40px -12px rgba(45, 106, 138, 0.1);
+  --shadow-input-focus: 0 0 0 3px rgba(45, 106, 138, 0.15);
 }
 
 body {
   font-family: 'Zen Kaku Gothic New', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(135deg, #FAF8F5 0%, #F5F2ED 50%, #FAF8F5 100%);
+  background: linear-gradient(135deg, #F5F9FC 0%, #EAF2F8 50%, #F5F9FC 100%);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -157,9 +157,9 @@ body {
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(91, 75, 138, 0.03) 0%,
-    rgba(196, 167, 125, 0.08) 50%,
-    rgba(91, 75, 138, 0.03) 100%
+    rgba(45, 106, 138, 0.03) 0%,
+    rgba(244, 162, 97, 0.08) 50%,
+    rgba(45, 106, 138, 0.03) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
@@ -213,7 +213,7 @@ body {
 @layer components {
   .page-container {
     @apply min-h-screen p-6 md:p-8;
-    background: linear-gradient(135deg, #FAF8F5 0%, #F5F2ED 50%, #FAF8F5 100%);
+    background: linear-gradient(135deg, #F5F9FC 0%, #EAF2F8 50%, #F5F9FC 100%);
   }
 
   .card {
@@ -234,8 +234,8 @@ body {
   .card-glass {
     @apply bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50;
     box-shadow:
-      0 4px 24px -4px rgba(91, 75, 138, 0.08),
-      0 8px 48px -8px rgba(91, 75, 138, 0.06),
+      0 4px 24px -4px rgba(45, 106, 138, 0.08),
+      0 8px 48px -8px rgba(45, 106, 138, 0.06),
       inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
@@ -245,18 +245,18 @@ body {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-2;
     @apply transition-all duration-200 ease-out;
     @apply active:scale-[0.98];
-    background-image: linear-gradient(135deg, #5B4B8A 0%, #6B5B9A 100%);
+    background-image: linear-gradient(135deg, #2D6A8A 0%, #3D7A9A 100%);
   }
 
   .btn-primary:hover {
-    box-shadow: 0 8px 24px -4px rgba(91, 75, 138, 0.35);
+    box-shadow: 0 8px 24px -4px rgba(45, 106, 138, 0.35);
     transform: translateY(-2px);
-    background-image: linear-gradient(135deg, #483D6B 0%, #5B4B8A 100%);
+    background-image: linear-gradient(135deg, #1D4A6A 0%, #2D6A8A 100%);
   }
 
   .btn-primary:active {
     transform: translateY(0) scale(0.98);
-    box-shadow: 0 4px 12px -2px rgba(91, 75, 138, 0.25);
+    box-shadow: 0 4px 12px -2px rgba(45, 106, 138, 0.25);
   }
 
   .btn-secondary {
@@ -302,7 +302,7 @@ body {
 
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #5B4B8A 0%, #7B6BA8 50%, #C4A77D 100%);
+    background-image: linear-gradient(135deg, #2D6A8A 0%, #4D8AAA 50%, #F4A261 100%);
   }
 
   .divider-gradient {
@@ -324,7 +324,7 @@ body {
     transform: translate(-50%, -50%);
     width: 6px;
     height: 6px;
-    background: linear-gradient(135deg, #5B4B8A 0%, #C4A77D 100%);
+    background: linear-gradient(135deg, #2D6A8A 0%, #F4A261 100%);
     border-radius: 50%;
     opacity: 0.6;
   }
@@ -345,22 +345,22 @@ body {
     @apply transition-colors duration-200;
     text-decoration: underline;
     text-underline-offset: 2px;
-    text-decoration-color: rgba(91, 75, 138, 0.3);
+    text-decoration-color: rgba(45, 106, 138, 0.3);
   }
 
   .link-primary:hover {
-    text-decoration-color: rgba(72, 61, 107, 0.6);
+    text-decoration-color: rgba(29, 74, 106, 0.6);
   }
 
   .bg-pattern {
-    background-color: #FAF8F5;
+    background-color: #F5F9FC;
     background-image:
-      radial-gradient(at 40% 20%, rgba(91, 75, 138, 0.03) 0px, transparent 50%),
-      radial-gradient(at 80% 0%, rgba(196, 167, 125, 0.04) 0px, transparent 50%),
-      radial-gradient(at 0% 50%, rgba(91, 75, 138, 0.02) 0px, transparent 50%),
-      radial-gradient(at 80% 50%, rgba(196, 167, 125, 0.03) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, rgba(91, 75, 138, 0.03) 0px, transparent 50%),
-      radial-gradient(at 80% 100%, rgba(196, 167, 125, 0.02) 0px, transparent 50%);
+      radial-gradient(at 40% 20%, rgba(45, 106, 138, 0.03) 0px, transparent 50%),
+      radial-gradient(at 80% 0%, rgba(244, 162, 97, 0.04) 0px, transparent 50%),
+      radial-gradient(at 0% 50%, rgba(45, 106, 138, 0.02) 0px, transparent 50%),
+      radial-gradient(at 80% 50%, rgba(244, 162, 97, 0.03) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, rgba(45, 106, 138, 0.03) 0px, transparent 50%),
+      radial-gradient(at 80% 100%, rgba(244, 162, 97, 0.02) 0px, transparent 50%);
   }
 
   .noise-overlay {
