@@ -222,9 +222,9 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 
 ---
 
-## 3. Implementation Model（実装モデル）
+## 3. Implementation Model（実装モデル）- DDD
 
-**目的**: 具体的なコード設計。言語・フレームワーク固有の実装。
+**目的**: Eric Evans の Domain-Driven Design パターンに基づく実装設計。
 
 ### 技術スタック
 
@@ -235,267 +235,742 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 - **Validation**: Zod
 - **Auth**: NextAuth
 
-### データベーススキーマ
+---
 
-```typescript
-// src/db/schema.ts
+### 3.1 Bounded Context（境界づけられたコンテキスト）
 
-// 認証ユーザー
-export const authUsers = pgTable('auth_users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => ({
-  emailIdx: index('idx_auth_users_email').on(table.email),
-}));
-
-// ユーザープロファイル
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey()
-    .references(() => authUsers.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  email: text('email').notNull().unique(),
-  groupId: uuid('group_id'),  // 外部キー制約なし（循環参照回避）
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => ({
-  groupIdx: index('idx_users_group').on(table.groupId),
-}));
-
-// 世帯グループ
-export const groups = pgTable('groups', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull().default('Household'),
-  ratioA: integer('ratio_a').notNull().default(50),
-  ratioB: integer('ratio_b').notNull().default(50),
-  userAId: uuid('user_a_id').notNull(),
-  userBId: uuid('user_b_id'),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-}, (table) => ({
-  userAIdx: index('idx_groups_user_a').on(table.userAId),
-  userBIdx: index('idx_groups_user_b').on(table.userBId),
-  ratioSumCheck: check('ratio_sum', sql`${table.ratioA} + ${table.ratioB} = 100`),
-  uniqueUserPairCheck: check('unique_user_pair', sql`${table.userAId} != ${table.userBId}`),
-  fkUserA: foreignKey({
-    columns: [table.userAId],
-    foreignColumns: [users.id],
-    name: 'fk_groups_user_a'
-  }).onDelete('cascade'),
-  fkUserB: foreignKey({
-    columns: [table.userBId],
-    foreignColumns: [users.id],
-    name: 'fk_groups_user_b'
-  }).onDelete('set null'),
-}));
-
-// 取引（支出）
-export const transactions = pgTable('transactions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  groupId: uuid('group_id').notNull()
-    .references(() => groups.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id').notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  date: date('date', { mode: 'string' }).notNull(),
-  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
-  description: text('description').notNull(),
-  payerType: text('payer_type').notNull(),              // 'UserA' | 'UserB'
-  payerUserId: uuid('payer_user_id')
-    .references(() => users.id, { onDelete: 'set null' }),
-  actualPayerType: text('actual_payer_type').notNull(), // 'UserA' | 'UserB'
-  actualPayerUserId: uuid('actual_payer_user_id')
-    .references(() => users.id, { onDelete: 'set null' }),
-  expenseType: text('expense_type').notNull().default('Household'), // 'Household' | 'Personal'
-  sourceFileName: text('source_file_name'),
-  uploadedBy: uuid('uploaded_by')
-    .references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
-});
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Household Settlement Context                    │
+│                      （世帯精算コンテキスト）                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                  Household Aggregate                     │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │   │
+│  │  │  Household  │  │   Member    │  │  Expense    │     │   │
+│  │  │ (Root)      │──│  (Entity)   │  │  (Entity)   │     │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘     │   │
+│  │         │                                               │   │
+│  │         │ owns                                          │   │
+│  │         ▼                                               │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │   │
+│  │  │ ExpenseRatio│  │   Payer     │  │  Category   │     │   │
+│  │  │ (Value Obj) │  │ (Value Obj) │  │ (Value Obj) │     │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                   Domain Services                        │   │
+│  │  ┌─────────────────────┐  ┌─────────────────────┐       │   │
+│  │  │ SettlementCalculator│  │   ExpenseImporter   │       │   │
+│  │  └─────────────────────┘  └─────────────────────┘       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ Anti-Corruption Layer
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Identity Context                             │
+│                      （認証コンテキスト）                         │
+│  ┌─────────────┐  ┌─────────────┐                               │
+│  │  AuthUser   │  │   Session   │                               │
+│  └─────────────┘  └─────────────┘                               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### ドメイン型
+---
+
+### 3.2 Aggregate（集約）
+
+#### Household Aggregate（世帯集約）
+
+**Aggregate Root**: `Household`
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Household Aggregate                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────────────────────────────┐                       │
+│   │ <<aggregate root>>                  │                       │
+│   │ Household                           │                       │
+│   ├─────────────────────────────────────┤                       │
+│   │ - id: HouseholdId                   │                       │
+│   │ - name: string                      │                       │
+│   │ - ratio: ExpenseRatio               │◄─── Value Object      │
+│   │ - memberA: Member                   │                       │
+│   │ - memberB: Member?                  │                       │
+│   │ - expenses: Expense[]               │                       │
+│   ├─────────────────────────────────────┤                       │
+│   │ + updateRatio(ratio): void          │                       │
+│   │ + addExpense(expense): void         │                       │
+│   │ + inviteMember(email): Invitation   │                       │
+│   │ + calculateSettlement(month): Settlement                    │
+│   └─────────────────────────────────────┘                       │
+│                    │                                             │
+│         ┌─────────┴─────────┐                                   │
+│         ▼                   ▼                                   │
+│   ┌───────────┐      ┌───────────────┐                          │
+│   │ <<entity>>│      │  <<entity>>   │                          │
+│   │  Member   │      │   Expense     │                          │
+│   ├───────────┤      ├───────────────┤                          │
+│   │ - id      │      │ - id          │                          │
+│   │ - name    │      │ - date        │                          │
+│   │ - email   │      │ - amount      │                          │
+│   │ - role    │      │ - description │                          │
+│   └───────────┘      │ - category    │                          │
+│                      │ - payer       │                          │
+│                      └───────────────┘                          │
+│                                                                  │
+│   【不変条件 (Invariants)】                                      │
+│   • ratio.userA + ratio.userB = 100                             │
+│   • memberA.id ≠ memberB.id                                     │
+│   • expenses は必ず Household 経由でアクセス                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**集約境界のルール**:
+- Expense は Household を経由してのみアクセス可能
+- 外部からは HouseholdId でのみ参照
+- Expense の変更は Household のメソッド経由で行う
+
+---
+
+### 3.3 Entity（エンティティ）
+
+#### Household（世帯）- Aggregate Root
 
 ```typescript
-// src/lib/types.ts
+// src/domain/entities/Household.ts
 
-export type PayerType = 'UserA' | 'UserB';
-export type ExpenseType = 'Household' | 'Personal';
+class Household {
+  private constructor(
+    private readonly _id: HouseholdId,
+    private _name: string,
+    private _ratio: ExpenseRatio,
+    private readonly _memberA: Member,
+    private _memberB: Member | null,
+    private _expenses: Expense[]
+  ) {}
 
-export interface Transaction {
-  id: string;
-  group_id: string;
-  user_id: string;
-  date: string;                          // YYYY-MM-DD
-  amount: number;
-  description: string;
-  payer_type: PayerType;
-  payer_user_id?: string | null;
-  actual_payer_type: PayerType;
-  actual_payer_user_id?: string | null;
-  expense_type: ExpenseType;
-  source_file_name?: string;
-  uploaded_by?: string;
-  created_at: string;
-  updated_at: string;
-}
+  static create(memberA: Member, name?: string): Household {
+    return new Household(
+      HouseholdId.generate(),
+      name ?? 'Household',
+      ExpenseRatio.equal(),  // 50:50
+      memberA,
+      null,
+      []
+    )
+  }
 
-export interface Group {
-  id: string;
-  name: string;
-  ratio_a: number;                       // 0-100
-  ratio_b: number;                       // 0-100
-  user_a_id: string;
-  user_b_id?: string;
-  created_at: string;
-  updated_at: string;
-}
+  updateRatio(ratio: ExpenseRatio): void {
+    this._ratio = ratio
+  }
 
-export interface Settlement {
-  month: string;                         // YYYY-MM
-  total_household: number;
-  paid_by_a_household: number;
-  paid_by_b_household: number;
-  balance_a: number;                     // 正=受取、負=支払い（整数に丸め）
-  ratio_a: number;
-  ratio_b: number;
-}
+  addExpense(expense: Expense): void {
+    this._expenses.push(expense)
+  }
 
-export interface ColumnMapping {
-  dateColumn: string | null;
-  amountColumn: string | null;
-  descriptionColumn: string | null;
-  payerColumn: string | null;
-}
-
-export interface ParsedTransaction {
-  date: string;
-  amount: number;
-  description: string;
-  payer: string;
-}
-
-export interface UploadResult {
-  success: boolean;
-  insertedCount: number;
-  fileName: string;
-  duplicates?: number;
+  get id(): HouseholdId { return this._id }
+  get ratio(): ExpenseRatio { return this._ratio }
+  get memberA(): Member { return this._memberA }
+  get memberB(): Member | null { return this._memberB }
 }
 ```
 
-### ビジネスロジック
+#### Member（メンバー）- Entity
 
 ```typescript
-// src/lib/settlement.ts
+// src/domain/entities/Member.ts
 
-import type { Transaction, Group, Settlement } from './types'
+class Member {
+  constructor(
+    private readonly _id: MemberId,
+    private _name: string,
+    private readonly _email: Email,
+    private _role: MemberRole  // 'UserA' | 'UserB'
+  ) {}
 
-const MONTH_FORMAT_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/
-
-const validateRatio = (ratioA: number, ratioB: number): void => {
-  if (ratioA < 0 || ratioA > 100) {
-    throw new Error('負担割合Aは0〜100の範囲で入力してください')
-  }
-  if (ratioB < 0 || ratioB > 100) {
-    throw new Error('負担割合Bは0〜100の範囲で入力してください')
-  }
-  if (ratioA + ratioB !== 100) {
-    throw new Error('負担割合の合計は100%である必要があります')
-  }
+  get id(): MemberId { return this._id }
+  get name(): string { return this._name }
+  get role(): MemberRole { return this._role }
 }
+```
 
-const validateMonthFormat = (month: string): void => {
-  if (!MONTH_FORMAT_REGEX.test(month)) {
-    throw new Error('月の形式が正しくありません。YYYY-MM形式で入力してください')
+#### Expense（支出）- Entity
+
+```typescript
+// src/domain/entities/Expense.ts
+
+class Expense {
+  constructor(
+    private readonly _id: ExpenseId,
+    private readonly _householdId: HouseholdId,
+    private readonly _date: Date,
+    private readonly _amount: Money,
+    private readonly _description: string,
+    private _category: ExpenseCategory,
+    private _payer: Payer,
+    private readonly _recordedBy: MemberId,
+    private readonly _source: DataSource | null
+  ) {}
+
+  changeCategory(category: ExpenseCategory): void {
+    this._category = category
   }
+
+  changePayer(payer: Payer): void {
+    this._payer = payer
+  }
+
+  get id(): ExpenseId { return this._id }
+  get amount(): Money { return this._amount }
+  get category(): ExpenseCategory { return this._category }
+  get payer(): Payer { return this._payer }
+  get isHousehold(): boolean { return this._category.isHousehold() }
 }
+```
 
-export const calculateSettlement = (
-  transactions: Transaction[],
-  group: Group,
-  targetMonth: string
-): Settlement => {
-  // 事前条件の検証
-  validateRatio(group.ratio_a, group.ratio_b)
-  validateMonthFormat(targetMonth)
+---
 
-  // 1. 対象月のHousehold費用をフィルタ
-  const householdTransactions = transactions.filter((t) => {
-    const dateStr =
-      typeof t.date === 'string'
-        ? t.date
-        : (t.date as unknown as Date).toISOString().slice(0, 10)
-    return t.expense_type === 'Household' && dateStr.startsWith(targetMonth)
-  })
+### 3.4 Value Object（値オブジェクト）
 
-  // 金額を数値に変換するヘルパー
-  const toNumber = (val: number | string): number =>
-    typeof val === 'string' ? parseFloat(val) : val
+#### ExpenseRatio（負担割合）
 
-  // 2. ユーザーAの支払額を集計
-  //    actual_payer_user_id があればそれで判定、なければ actual_payer_type で判定
-  const paidByA = householdTransactions
-    .filter((t) => {
-      if (t.actual_payer_user_id) {
-        return t.actual_payer_user_id === group.user_a_id
-      }
-      return t.actual_payer_type === 'UserA'
-    })
-    .reduce((sum, t) => sum + toNumber(t.amount), 0)
+```typescript
+// src/domain/value-objects/ExpenseRatio.ts
 
-  // 3. ユーザーBの支払額を集計（独立して計算）
-  const paidByB = householdTransactions
-    .filter((t) => {
-      if (t.actual_payer_user_id) {
-        return t.actual_payer_user_id === group.user_b_id
-      }
-      return t.actual_payer_type === 'UserB'
-    })
-    .reduce((sum, t) => sum + toNumber(t.amount), 0)
+class ExpenseRatio {
+  private constructor(
+    private readonly _userA: number,
+    private readonly _userB: number
+  ) {
+    if (_userA < 0 || _userA > 100) {
+      throw new DomainError('負担割合Aは0〜100の範囲で入力してください')
+    }
+    if (_userB < 0 || _userB > 100) {
+      throw new DomainError('負担割合Bは0〜100の範囲で入力してください')
+    }
+    if (_userA + _userB !== 100) {
+      throw new DomainError('負担割合の合計は100%である必要があります')
+    }
+  }
 
-  // 4. 合計を算出
-  const totalHousehold = paidByA + paidByB
+  static of(userA: number, userB: number): ExpenseRatio {
+    return new ExpenseRatio(userA, userB)
+  }
 
-  // 5. 精算額を計算（整数に丸め）
-  const ratioA = group.ratio_a / 100
-  const balanceA = Math.round(paidByA - totalHousehold * ratioA)
+  static equal(): ExpenseRatio {
+    return new ExpenseRatio(50, 50)
+  }
 
-  return {
-    month: targetMonth,
-    total_household: totalHousehold,
-    paid_by_a_household: paidByA,
-    paid_by_b_household: paidByB,
-    balance_a: balanceA,
-    ratio_a: group.ratio_a,
-    ratio_b: group.ratio_b,
+  get userA(): number { return this._userA }
+  get userB(): number { return this._userB }
+
+  calculateExpectedAmount(total: Money, role: MemberRole): Money {
+    const ratio = role === 'UserA' ? this._userA : this._userB
+    return total.multiply(ratio / 100)
+  }
+
+  equals(other: ExpenseRatio): boolean {
+    return this._userA === other._userA && this._userB === other._userB
   }
 }
 ```
 
-### Server Actions
+#### Money（金額）
+
+```typescript
+// src/domain/value-objects/Money.ts
+
+class Money {
+  private constructor(private readonly _amount: number) {
+    if (_amount < 0) {
+      throw new DomainError('金額は0以上である必要があります')
+    }
+  }
+
+  static of(amount: number | string): Money {
+    const value = typeof amount === 'string' ? parseFloat(amount) : amount
+    return new Money(value)
+  }
+
+  static zero(): Money {
+    return new Money(0)
+  }
+
+  add(other: Money): Money {
+    return new Money(this._amount + other._amount)
+  }
+
+  subtract(other: Money): Money {
+    return new Money(this._amount - other._amount)
+  }
+
+  multiply(factor: number): Money {
+    return new Money(this._amount * factor)
+  }
+
+  round(): Money {
+    return new Money(Math.round(this._amount))
+  }
+
+  get value(): number { return this._amount }
+
+  equals(other: Money): boolean {
+    return this._amount === other._amount
+  }
+}
+```
+
+#### Payer（支払者）
+
+```typescript
+// src/domain/value-objects/Payer.ts
+
+class Payer {
+  private constructor(
+    private readonly _userId: MemberId | null,
+    private readonly _type: PayerType
+  ) {}
+
+  static fromUser(userId: MemberId, type: PayerType): Payer {
+    return new Payer(userId, type)
+  }
+
+  static fromType(type: PayerType): Payer {
+    return new Payer(null, type)
+  }
+
+  /**
+   * 支払者を特定する
+   * userId があればそれを使用、なければ type で判定
+   */
+  matchesMember(memberId: MemberId, memberRole: MemberRole): boolean {
+    if (this._userId) {
+      return this._userId.equals(memberId)
+    }
+    return this._type === memberRole
+  }
+
+  get type(): PayerType { return this._type }
+  get userId(): MemberId | null { return this._userId }
+}
+
+type PayerType = 'UserA' | 'UserB'
+```
+
+#### ExpenseCategory（費用種別）
+
+```typescript
+// src/domain/value-objects/ExpenseCategory.ts
+
+class ExpenseCategory {
+  private constructor(private readonly _value: 'Household' | 'Personal') {}
+
+  static household(): ExpenseCategory {
+    return new ExpenseCategory('Household')
+  }
+
+  static personal(): ExpenseCategory {
+    return new ExpenseCategory('Personal')
+  }
+
+  static fromString(value: string): ExpenseCategory {
+    if (value === 'Household' || value === 'Personal') {
+      return new ExpenseCategory(value)
+    }
+    throw new DomainError(`無効な費用種別: ${value}`)
+  }
+
+  isHousehold(): boolean { return this._value === 'Household' }
+  isPersonal(): boolean { return this._value === 'Personal' }
+
+  get value(): string { return this._value }
+
+  equals(other: ExpenseCategory): boolean {
+    return this._value === other._value
+  }
+}
+```
+
+#### YearMonth（年月）
+
+```typescript
+// src/domain/value-objects/YearMonth.ts
+
+class YearMonth {
+  private static readonly FORMAT = /^\d{4}-(0[1-9]|1[0-2])$/
+
+  private constructor(
+    private readonly _year: number,
+    private readonly _month: number
+  ) {}
+
+  static of(year: number, month: number): YearMonth {
+    if (month < 1 || month > 12) {
+      throw new DomainError('月は1〜12の範囲で入力してください')
+    }
+    return new YearMonth(year, month)
+  }
+
+  static parse(value: string): YearMonth {
+    if (!YearMonth.FORMAT.test(value)) {
+      throw new DomainError('月の形式が正しくありません。YYYY-MM形式で入力してください')
+    }
+    const [year, month] = value.split('-').map(Number)
+    return new YearMonth(year, month)
+  }
+
+  toString(): string {
+    return `${this._year}-${String(this._month).padStart(2, '0')}`
+  }
+
+  contains(date: Date): boolean {
+    const dateStr = typeof date === 'string' ? date : date.toISOString().slice(0, 10)
+    return dateStr.startsWith(this.toString())
+  }
+
+  equals(other: YearMonth): boolean {
+    return this._year === other._year && this._month === other._month
+  }
+}
+```
+
+---
+
+### 3.5 Domain Service（ドメインサービス）
+
+#### SettlementCalculator（精算計算サービス）
+
+```typescript
+// src/domain/services/SettlementCalculator.ts
+
+class SettlementCalculator {
+  calculate(
+    expenses: Expense[],
+    household: Household,
+    targetMonth: YearMonth
+  ): Settlement {
+    // 1. 対象月の共有費用をフィルタ
+    const householdExpenses = expenses.filter(
+      e => e.isHousehold && targetMonth.contains(e.date)
+    )
+
+    // 2. ユーザーAの支払額を集計
+    const paidByA = householdExpenses
+      .filter(e => e.payer.matchesMember(household.memberA.id, 'UserA'))
+      .reduce((sum, e) => sum.add(e.amount), Money.zero())
+
+    // 3. ユーザーBの支払額を集計
+    const paidByB = householdExpenses
+      .filter(e => household.memberB &&
+                   e.payer.matchesMember(household.memberB.id, 'UserB'))
+      .reduce((sum, e) => sum.add(e.amount), Money.zero())
+
+    // 4. 合計を算出
+    const total = paidByA.add(paidByB)
+
+    // 5. 精算額を計算
+    const expectedA = household.ratio.calculateExpectedAmount(total, 'UserA')
+    const balanceA = paidByA.subtract(expectedA).round()
+
+    return Settlement.create(
+      targetMonth,
+      total,
+      paidByA,
+      paidByB,
+      balanceA,
+      household.ratio
+    )
+  }
+}
+```
+
+#### Settlement（精算結果）- Value Object
+
+```typescript
+// src/domain/value-objects/Settlement.ts
+
+class Settlement {
+  private constructor(
+    private readonly _month: YearMonth,
+    private readonly _totalHousehold: Money,
+    private readonly _paidByA: Money,
+    private readonly _paidByB: Money,
+    private readonly _balanceA: Money,
+    private readonly _ratio: ExpenseRatio
+  ) {}
+
+  static create(
+    month: YearMonth,
+    total: Money,
+    paidByA: Money,
+    paidByB: Money,
+    balanceA: Money,
+    ratio: ExpenseRatio
+  ): Settlement {
+    return new Settlement(month, total, paidByA, paidByB, balanceA, ratio)
+  }
+
+  /**
+   * 精算の方向と金額を取得
+   * @returns { from: 'A' | 'B', to: 'A' | 'B', amount: Money } | null
+   */
+  getPaymentInstruction(): PaymentInstruction | null {
+    if (this._balanceA.value > 0) {
+      return { from: 'B', to: 'A', amount: Money.of(this._balanceA.value) }
+    } else if (this._balanceA.value < 0) {
+      return { from: 'A', to: 'B', amount: Money.of(-this._balanceA.value) }
+    }
+    return null  // 精算不要
+  }
+
+  get month(): YearMonth { return this._month }
+  get totalHousehold(): Money { return this._totalHousehold }
+  get balanceA(): Money { return this._balanceA }
+}
+
+interface PaymentInstruction {
+  from: 'A' | 'B'
+  to: 'A' | 'B'
+  amount: Money
+}
+```
+
+---
+
+### 3.6 Repository（リポジトリ）
+
+#### インターフェース定義
+
+```typescript
+// src/domain/repositories/IHouseholdRepository.ts
+
+interface IHouseholdRepository {
+  findById(id: HouseholdId): Promise<Household | null>
+  findByMemberId(memberId: MemberId): Promise<Household | null>
+  save(household: Household): Promise<void>
+}
+
+// src/domain/repositories/IExpenseRepository.ts
+
+interface IExpenseRepository {
+  findByHouseholdAndMonth(
+    householdId: HouseholdId,
+    month: YearMonth
+  ): Promise<Expense[]>
+  save(expense: Expense): Promise<void>
+  saveBatch(expenses: Expense[]): Promise<void>
+}
+```
+
+#### Infrastructure 実装
+
+```typescript
+// src/infrastructure/repositories/DrizzleHouseholdRepository.ts
+
+class DrizzleHouseholdRepository implements IHouseholdRepository {
+  constructor(private readonly db: DrizzleClient) {}
+
+  async findByMemberId(memberId: MemberId): Promise<Household | null> {
+    const result = await this.db
+      .select()
+      .from(groups)
+      .innerJoin(users, eq(users.groupId, groups.id))
+      .where(eq(users.id, memberId.value))
+      .limit(1)
+
+    if (result.length === 0) return null
+
+    return this.toDomain(result[0])
+  }
+
+  async save(household: Household): Promise<void> {
+    await this.db
+      .update(groups)
+      .set({
+        name: household.name,
+        ratioA: household.ratio.userA,
+        ratioB: household.ratio.userB,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(groups.id, household.id.value))
+  }
+
+  private toDomain(row: GroupRow): Household {
+    // DB行 → ドメインオブジェクト変換
+  }
+}
+```
+
+---
+
+### 3.7 Application Service（アプリケーションサービス）
+
+```typescript
+// src/application/services/SettlementService.ts
+
+class SettlementService {
+  constructor(
+    private readonly householdRepo: IHouseholdRepository,
+    private readonly expenseRepo: IExpenseRepository,
+    private readonly calculator: SettlementCalculator
+  ) {}
+
+  async getSettlement(
+    memberId: MemberId,
+    targetMonth: YearMonth
+  ): Promise<SettlementDTO> {
+    // 1. 世帯を取得
+    const household = await this.householdRepo.findByMemberId(memberId)
+    if (!household) {
+      throw new ApplicationError('世帯が見つかりません')
+    }
+
+    // 2. 支出を取得
+    const expenses = await this.expenseRepo.findByHouseholdAndMonth(
+      household.id,
+      targetMonth
+    )
+
+    // 3. 精算を計算
+    const settlement = this.calculator.calculate(expenses, household, targetMonth)
+
+    // 4. DTOに変換
+    return SettlementDTO.fromDomain(settlement, household)
+  }
+}
+```
+
+#### Server Actions（Next.js統合）
 
 ```typescript
 // app/actions/transactions.ts
 
 export async function getSettlementData(targetMonth: string) {
-  const validated = GetSettlementDataSchema.safeParse({ targetMonth });
-  if (!validated.success) return { error: 'Invalid month format' };
+  // バリデーション
+  const validated = GetSettlementDataSchema.safeParse({ targetMonth })
+  if (!validated.success) {
+    return { error: 'Invalid month format' }
+  }
 
-  const user = await requireAuth();
-  const group = await getGroupByUserId(user.id);
+  // 認証
+  const user = await requireAuth()
 
-  const transactions = await db.query.transactions.findMany({
-    where: and(
-      eq(schema.transactions.groupId, group.id),
-      like(schema.transactions.date, `${targetMonth}%`)
-    ),
-  });
+  // アプリケーションサービス呼び出し
+  const service = container.resolve(SettlementService)
+  const settlement = await service.getSettlement(
+    MemberId.of(user.id),
+    YearMonth.parse(targetMonth)
+  )
 
-  const settlement = calculateSettlement(transactions, group, targetMonth);
+  return { success: true, settlement }
+}
+```
 
-  return { success: true, settlement };
+---
+
+### 3.8 レイヤーアーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      Presentation Layer                          │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   Next.js App Router (React Server Components)          │   │
+│  │   Server Actions (app/actions/*.ts)                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│                      Application Layer                           │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   Application Services (src/application/services/)       │   │
+│  │   ├─ SettlementService                                   │   │
+│  │   ├─ ExpenseUploadService                                │   │
+│  │   └─ HouseholdManagementService                          │   │
+│  │   DTOs (src/application/dtos/)                           │   │
+│  │   Zod Schemas (validation)                               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│                        Domain Layer                              │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   Entities (src/domain/entities/)                        │   │
+│  │   ├─ Household (Aggregate Root)                          │   │
+│  │   ├─ Member                                              │   │
+│  │   └─ Expense                                             │   │
+│  │   Value Objects (src/domain/value-objects/)              │   │
+│  │   ├─ ExpenseRatio, Money, Payer, ExpenseCategory         │   │
+│  │   └─ YearMonth, Settlement                               │   │
+│  │   Domain Services (src/domain/services/)                 │   │
+│  │   └─ SettlementCalculator                                │   │
+│  │   Repository Interfaces (src/domain/repositories/)       │   │
+│  │   └─ IHouseholdRepository, IExpenseRepository            │   │
+│  └─────────────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────────────┤
+│                     Infrastructure Layer                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │   Repository Implementations (src/infrastructure/)       │   │
+│  │   ├─ DrizzleHouseholdRepository                          │   │
+│  │   └─ DrizzleExpenseRepository                            │   │
+│  │   Database (src/db/)                                     │   │
+│  │   ├─ schema.ts (Drizzle ORM)                             │   │
+│  │   └─ client.ts                                           │   │
+│  │   External Services                                      │   │
+│  │   ├─ CSV Parser (src/lib/csv-parser.ts)                  │   │
+│  │   └─ Auth (NextAuth)                                     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 3.9 現在の実装とDDDモデルのマッピング
+
+| DDD概念 | 理想の配置 | 現在の実装 |
+|--------|-----------|-----------|
+| **Aggregate Root** | `src/domain/entities/Household.ts` | `groups` テーブル (schema.ts) |
+| **Entity** | `src/domain/entities/` | DTOとして `types.ts` |
+| **Value Object** | `src/domain/value-objects/` | プリミティブ型 (`number`, `string`) |
+| **Domain Service** | `src/domain/services/` | `src/lib/settlement.ts` ✓ |
+| **Repository Interface** | `src/domain/repositories/` | 未実装（直接DB操作） |
+| **Repository Impl** | `src/infrastructure/` | `app/actions/` 内にインライン |
+| **Application Service** | `src/application/services/` | `app/actions/*.ts` |
+
+---
+
+### 3.10 実装上の注意点
+
+#### 支払者判定のフォールバック
+
+```typescript
+// Payer Value Object のロジック
+matchesMember(memberId: MemberId, memberRole: MemberRole): boolean {
+  if (this._userId) {
+    return this._userId.equals(memberId)  // userId 優先
+  }
+  return this._type === memberRole        // type でフォールバック
+}
+```
+
+#### 金額の型変換
+
+```typescript
+// Money Value Object が parseFloat を内包
+static of(amount: number | string): Money {
+  const value = typeof amount === 'string' ? parseFloat(amount) : amount
+  return new Money(value)
+}
+```
+
+#### 精算額の丸め
+
+```typescript
+// Money Value Object のメソッド
+round(): Money {
+  return new Money(Math.round(this._amount))
 }
 ```
 
@@ -503,37 +978,18 @@ export async function getSettlementData(targetMonth: string) {
 
 ## 視点間のマッピング
 
-| Conceptual | Specification | Implementation |
-|------------|---------------|----------------|
-| 世帯 | Household | `groups` テーブル |
-| 人 | Person | `users` + `auth_users` |
-| 支出 | Expense | `transactions` テーブル |
-| 共有費用 | ExpenseCategory.Household | `expense_type = 'Household'` (デフォルト) |
-| 個人支出 | ExpenseCategory.Personal | `expense_type = 'Personal'` |
-| 負担割合 | ratioA, ratioB | `ratio_a`, `ratio_b` カラム (notNull, default 50) |
-| 精算 | Settlement | `calculateSettlement()` 関数の戻り値 |
-| 支払者 | paidBy + payerType | `actual_payer_user_id` (優先) + `actual_payer_type` (フォールバック) |
-
----
-
-## 実装上の注意点
-
-### 支払者判定のフォールバック
-
-支払者の判定は2段階で行われる：
-
-1. `actual_payer_user_id` が設定されていればそれを使用
-2. 設定されていなければ `actual_payer_type` ('UserA' | 'UserB') で判定
-
-これにより、ユーザーIDが不明な場合でも支払者を特定できる。
-
-### 金額の型変換
-
-DBから取得した `amount` は文字列の場合があるため、計算時に `parseFloat()` で数値に変換する。
-
-### 精算額の丸め
-
-端数処理として `Math.round()` を使用し、整数に丸める。
+| Conceptual | Specification | DDD Implementation |
+|------------|---------------|-------------------|
+| 世帯 | Household | `Household` (Aggregate Root) |
+| 人 | Person | `Member` (Entity) |
+| 支出 | Expense | `Expense` (Entity in Aggregate) |
+| 共有費用 | ExpenseCategory.Household | `ExpenseCategory.household()` |
+| 個人支出 | ExpenseCategory.Personal | `ExpenseCategory.personal()` |
+| 負担割合 | ratioA, ratioB | `ExpenseRatio` (Value Object) |
+| 精算 | Settlement | `Settlement` (Value Object) |
+| 支払者 | paidBy + payerType | `Payer` (Value Object) |
+| 金額 | Money | `Money` (Value Object) |
+| 年月 | YearMonth | `YearMonth` (Value Object) |
 
 ---
 
@@ -541,3 +997,5 @@ DBから取得した `amount` は文字列の場合があるため、計算時�
 
 - Martin Fowler, "Purpose-Driven Modeling", IEEE Software, Jan/Feb 2002
 - Steve Cook & John Daniels, "Designing Object Systems", Prentice Hall, 1994
+- Eric Evans, "Domain-Driven Design: Tackling Complexity in the Heart of Software", Addison-Wesley, 2003
+- Vaughn Vernon, "Implementing Domain-Driven Design", Addison-Wesley, 2013
