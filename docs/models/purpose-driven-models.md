@@ -112,17 +112,27 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 │ + description: String               │
 │ + category: ExpenseCategory         │
 │ + paidBy: Person                    │
+│ + payerType: PayerType              │
 │ + recordedBy: Person                │
 │ + source: DataSource?               │
 ├─────────────────────────────────────┤
 │ + changeCategory(c): void           │
 │ + changePayer(p): void              │
+│ <<note>> paidBy が null の場合      │
+│          payerType で判定           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│ <<value>> PayerType                 │
+├─────────────────────────────────────┤
+│ - UserA: ユーザーA                  │
+│ - UserB: ユーザーB                  │
 └─────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
 │ <<value>> ExpenseCategory           │
 ├─────────────────────────────────────┤
-│ - Household: 共有費用               │
+│ - Household: 共有費用（デフォルト） │
 │ - Personal: 個人支出                │
 └─────────────────────────────────────┘
 
@@ -133,12 +143,9 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 │ + totalHousehold: Money             │
 │ + paidByA: Money                    │
 │ + paidByB: Money                    │
-│ + balanceA: Money                   │
+│ + balanceA: Money (rounded)         │
 │ + ratioA: Percentage                │
 │ + ratioB: Percentage                │
-├─────────────────────────────────────┤
-│ + getPaymentDirection(): Direction  │
-│ + getPaymentAmount(): Money         │
 └─────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
@@ -149,6 +156,9 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 │     household: Household,           │
 │     month: YearMonth                │
 │   ): Settlement                     │
+│ <<precondition>>                    │
+│   ratioA + ratioB = 100             │
+│   month matches YYYY-MM             │
 └─────────────────────────────────────┘
 
 ┌─────────────────────────────────────┐
@@ -175,17 +185,34 @@ Martin Fowler / John Daniels の3つの視点に基づくデータモデリン�
 ```
 精算額計算:
 
+  事前条件:
+    ratioA: 0〜100 の範囲
+    ratioB: 0〜100 の範囲
+    ratioA + ratioB = 100
+    targetMonth: YYYY-MM 形式
+
   入力:
-    expenses: 対象月の共有費用リスト
-    ratioA: ユーザーAの負担割合 (0-100)
+    expenses: 取引リスト
+    household: 世帯情報（負担割合、メンバーID）
+    targetMonth: 対象月
 
   処理:
-    totalHousehold = Σ expenses.amount
-    paidByA = Σ (expenses where paidBy = A).amount
-    paidByB = Σ (expenses where paidBy = B).amount
+    1. 対象月の Household 費用をフィルタ
 
-    expectedA = totalHousehold × (ratioA / 100)
-    balanceA = paidByA - expectedA
+    2. ユーザーAの支払額を集計
+       paidByA = Σ (expenses where actualPayer = A).amount
+       ※ actual_payer_user_id があればそれで判定
+       ※ なければ actual_payer_type で判定
+
+    3. ユーザーBの支払額を集計（独立して計算）
+       paidByB = Σ (expenses where actualPayer = B).amount
+
+    4. 合計を算出
+       totalHousehold = paidByA + paidByB
+
+    5. 精算額を計算（整数に丸め）
+       expectedA = totalHousehold × (ratioA / 100)
+       balanceA = round(paidByA - expectedA)
 
   出力:
     balanceA > 0 → BがAに |balanceA| を支払う
@@ -218,9 +245,11 @@ export const authUsers = pgTable('auth_users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => ({
+  emailIdx: index('idx_auth_users_email').on(table.email),
+}));
 
 // ユーザープロファイル
 export const users = pgTable('users', {
@@ -228,27 +257,39 @@ export const users = pgTable('users', {
     .references(() => authUsers.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
-  groupId: uuid('group_id').references(() => groups.id),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-});
+  groupId: uuid('group_id'),  // 外部キー制約なし（循環参照回避）
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => ({
+  groupIdx: index('idx_users_group').on(table.groupId),
+}));
 
 // 世帯グループ
 export const groups = pgTable('groups', {
   id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').default('Household'),
-  ratioA: integer('ratio_a').default(50),
-  ratioB: integer('ratio_b').default(50),
-  userAId: uuid('user_a_id').notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  userBId: uuid('user_b_id')
-    .references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-}, (table) => [
-  check('ratio_sum', sql`${table.ratioA} + ${table.ratioB} = 100`),
-  check('different_users', sql`${table.userAId} != ${table.userBId}`),
-]);
+  name: text('name').notNull().default('Household'),
+  ratioA: integer('ratio_a').notNull().default(50),
+  ratioB: integer('ratio_b').notNull().default(50),
+  userAId: uuid('user_a_id').notNull(),
+  userBId: uuid('user_b_id'),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+}, (table) => ({
+  userAIdx: index('idx_groups_user_a').on(table.userAId),
+  userBIdx: index('idx_groups_user_b').on(table.userBId),
+  ratioSumCheck: check('ratio_sum', sql`${table.ratioA} + ${table.ratioB} = 100`),
+  uniqueUserPairCheck: check('unique_user_pair', sql`${table.userAId} != ${table.userBId}`),
+  fkUserA: foreignKey({
+    columns: [table.userAId],
+    foreignColumns: [users.id],
+    name: 'fk_groups_user_a'
+  }).onDelete('cascade'),
+  fkUserB: foreignKey({
+    columns: [table.userBId],
+    foreignColumns: [users.id],
+    name: 'fk_groups_user_b'
+  }).onDelete('set null'),
+}));
 
 // 取引（支出）
 export const transactions = pgTable('transactions', {
@@ -257,21 +298,21 @@ export const transactions = pgTable('transactions', {
     .references(() => groups.id, { onDelete: 'cascade' }),
   userId: uuid('user_id').notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  date: date('date').notNull(),
+  date: date('date', { mode: 'string' }).notNull(),
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
   description: text('description').notNull(),
-  payerType: text('payer_type').notNull(),        // 'UserA' | 'UserB' | 'Common'
+  payerType: text('payer_type').notNull(),              // 'UserA' | 'UserB'
   payerUserId: uuid('payer_user_id')
     .references(() => users.id, { onDelete: 'set null' }),
-  actualPayerType: text('actual_payer_type').notNull(),
+  actualPayerType: text('actual_payer_type').notNull(), // 'UserA' | 'UserB'
   actualPayerUserId: uuid('actual_payer_user_id')
     .references(() => users.id, { onDelete: 'set null' }),
-  expenseType: text('expense_type').notNull(),    // 'Household' | 'Personal'
+  expenseType: text('expense_type').notNull().default('Household'), // 'Household' | 'Personal'
   sourceFileName: text('source_file_name'),
   uploadedBy: uuid('uploaded_by')
     .references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 ```
 
@@ -280,40 +321,67 @@ export const transactions = pgTable('transactions', {
 ```typescript
 // src/lib/types.ts
 
-type PayerType = 'UserA' | 'UserB';
-type ExpenseType = 'Household' | 'Personal';
+export type PayerType = 'UserA' | 'UserB';
+export type ExpenseType = 'Household' | 'Personal';
 
-interface Transaction {
+export interface Transaction {
   id: string;
   group_id: string;
   user_id: string;
-  date: string;              // YYYY-MM-DD
+  date: string;                          // YYYY-MM-DD
   amount: number;
   description: string;
   payer_type: PayerType;
+  payer_user_id?: string | null;
   actual_payer_type: PayerType;
   actual_payer_user_id?: string | null;
   expense_type: ExpenseType;
   source_file_name?: string;
+  uploaded_by?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface Group {
+export interface Group {
   id: string;
   name: string;
-  ratio_a: number;           // 1-99
-  ratio_b: number;           // 1-99
+  ratio_a: number;                       // 0-100
+  ratio_b: number;                       // 0-100
   user_a_id: string;
   user_b_id?: string;
+  created_at: string;
+  updated_at: string;
 }
 
-interface Settlement {
-  month: string;             // YYYY-MM
+export interface Settlement {
+  month: string;                         // YYYY-MM
   total_household: number;
   paid_by_a_household: number;
   paid_by_b_household: number;
-  balance_a: number;         // 正=受取、負=支払い
+  balance_a: number;                     // 正=受取、負=支払い（整数に丸め）
   ratio_a: number;
   ratio_b: number;
+}
+
+export interface ColumnMapping {
+  dateColumn: string | null;
+  amountColumn: string | null;
+  descriptionColumn: string | null;
+  payerColumn: string | null;
+}
+
+export interface ParsedTransaction {
+  date: string;
+  amount: number;
+  description: string;
+  payer: string;
+}
+
+export interface UploadResult {
+  success: boolean;
+  insertedCount: number;
+  fileName: string;
+  duplicates?: number;
 }
 ```
 
@@ -322,29 +390,77 @@ interface Settlement {
 ```typescript
 // src/lib/settlement.ts
 
-export function calculateSettlement(
+import type { Transaction, Group, Settlement } from './types'
+
+const MONTH_FORMAT_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/
+
+const validateRatio = (ratioA: number, ratioB: number): void => {
+  if (ratioA < 0 || ratioA > 100) {
+    throw new Error('負担割合Aは0〜100の範囲で入力してください')
+  }
+  if (ratioB < 0 || ratioB > 100) {
+    throw new Error('負担割合Bは0〜100の範囲で入力してください')
+  }
+  if (ratioA + ratioB !== 100) {
+    throw new Error('負担割合の合計は100%である必要があります')
+  }
+}
+
+const validateMonthFormat = (month: string): void => {
+  if (!MONTH_FORMAT_REGEX.test(month)) {
+    throw new Error('月の形式が正しくありません。YYYY-MM形式で入力してください')
+  }
+}
+
+export const calculateSettlement = (
   transactions: Transaction[],
   group: Group,
   targetMonth: string
-): Settlement {
+): Settlement => {
+  // 事前条件の検証
+  validateRatio(group.ratio_a, group.ratio_b)
+  validateMonthFormat(targetMonth)
+
   // 1. 対象月のHousehold費用をフィルタ
-  const filtered = transactions.filter(t =>
-    t.date.startsWith(targetMonth) &&
-    t.expense_type === 'Household'
-  );
+  const householdTransactions = transactions.filter((t) => {
+    const dateStr =
+      typeof t.date === 'string'
+        ? t.date
+        : (t.date as unknown as Date).toISOString().slice(0, 10)
+    return t.expense_type === 'Household' && dateStr.startsWith(targetMonth)
+  })
 
-  // 2. 集計
-  const totalHousehold = filtered.reduce((sum, t) => sum + t.amount, 0);
+  // 金額を数値に変換するヘルパー
+  const toNumber = (val: number | string): number =>
+    typeof val === 'string' ? parseFloat(val) : val
 
-  const paidByA = filtered
-    .filter(t => t.actual_payer_user_id === group.user_a_id)
-    .reduce((sum, t) => sum + t.amount, 0);
+  // 2. ユーザーAの支払額を集計
+  //    actual_payer_user_id があればそれで判定、なければ actual_payer_type で判定
+  const paidByA = householdTransactions
+    .filter((t) => {
+      if (t.actual_payer_user_id) {
+        return t.actual_payer_user_id === group.user_a_id
+      }
+      return t.actual_payer_type === 'UserA'
+    })
+    .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
-  const paidByB = totalHousehold - paidByA;
+  // 3. ユーザーBの支払額を集計（独立して計算）
+  const paidByB = householdTransactions
+    .filter((t) => {
+      if (t.actual_payer_user_id) {
+        return t.actual_payer_user_id === group.user_b_id
+      }
+      return t.actual_payer_type === 'UserB'
+    })
+    .reduce((sum, t) => sum + toNumber(t.amount), 0)
 
-  // 3. 精算額計算
-  const expectedA = totalHousehold * (group.ratio_a / 100);
-  const balanceA = paidByA - expectedA;
+  // 4. 合計を算出
+  const totalHousehold = paidByA + paidByB
+
+  // 5. 精算額を計算（整数に丸め）
+  const ratioA = group.ratio_a / 100
+  const balanceA = Math.round(paidByA - totalHousehold * ratioA)
 
   return {
     month: targetMonth,
@@ -354,7 +470,7 @@ export function calculateSettlement(
     balance_a: balanceA,
     ratio_a: group.ratio_a,
     ratio_b: group.ratio_b,
-  };
+  }
 }
 ```
 
@@ -392,11 +508,32 @@ export async function getSettlementData(targetMonth: string) {
 | 世帯 | Household | `groups` テーブル |
 | 人 | Person | `users` + `auth_users` |
 | 支出 | Expense | `transactions` テーブル |
-| 共有費用 | ExpenseCategory.Household | `expense_type = 'Household'` |
+| 共有費用 | ExpenseCategory.Household | `expense_type = 'Household'` (デフォルト) |
 | 個人支出 | ExpenseCategory.Personal | `expense_type = 'Personal'` |
-| 負担割合 | ratioA, ratioB | `ratio_a`, `ratio_b` カラム |
+| 負担割合 | ratioA, ratioB | `ratio_a`, `ratio_b` カラム (notNull, default 50) |
 | 精算 | Settlement | `calculateSettlement()` 関数の戻り値 |
-| 支払者 | paidBy | `actual_payer_user_id` |
+| 支払者 | paidBy + payerType | `actual_payer_user_id` (優先) + `actual_payer_type` (フォールバック) |
+
+---
+
+## 実装上の注意点
+
+### 支払者判定のフォールバック
+
+支払者の判定は2段階で行われる：
+
+1. `actual_payer_user_id` が設定されていればそれを使用
+2. 設定されていなければ `actual_payer_type` ('UserA' | 'UserB') で判定
+
+これにより、ユーザーIDが不明な場合でも支払者を特定できる。
+
+### 金額の型変換
+
+DBから取得した `amount` は文字列の場合があるため、計算時に `parseFloat()` で数値に変換する。
+
+### 精算額の丸め
+
+端数処理として `Math.round()` を使用し、整数に丸める。
 
 ---
 
