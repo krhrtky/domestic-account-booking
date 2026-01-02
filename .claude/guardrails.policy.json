@@ -1,0 +1,97 @@
+{
+  "version": 1,
+
+  "paths": {
+    "deny_read_globs": [
+      "./.env",
+      "./.env.*",
+      "./secrets/**",
+      "./**/*.pem",
+      "./**/*.key",
+      "./**/*_rsa",
+      "~/.ssh/**",
+      "~/.aws/**"
+    ],
+    "deny_edit_globs": [
+      "./infra/prod/**",
+      "./k8s/prod/**",
+      "./terraform/prod/**"
+    ]
+  },
+
+  "bash": {
+    "enforce_allowlist": true,
+    "allow_prefixes": [
+      "git status",
+      "git diff",
+      "git log",
+      "git show",
+      "git rev-parse",
+      "git ls-files",
+      "ls",
+      "cat",
+      "sed",
+      "awk",
+      "rg",
+      "grep",
+      "find",
+      "python -m pytest",
+      "pytest",
+      "npm test",
+      "npm run lint",
+      "pnpm test",
+      "pnpm lint",
+      "make test",
+      "make lint",
+      "echo",
+      "pwd",
+      "which",
+      "head",
+      "tail",
+      "wc",
+      "sort",
+      "uniq",
+      "npm run",
+      "npx",
+      "node",
+      "mkdir",
+      "touch"
+    ],
+    "deny_regex": [
+      "(?i)\\b(curl|wget|nc|netcat|ssh|scp|sftp)\\b",
+      "(?i)\\brm\\s+-rf\\b",
+      "(?i)\\b(dd|mkfs|shutdown|reboot)\\b",
+      "(?i)\\b(sudo)\\b"
+    ],
+    "warn_regex": [
+      "(?i)\\b(docker|kubectl|terraform)\\b"
+    ]
+  },
+
+  "webfetch": {
+    "enforce_allowlist": true,
+    "allow_domains": [
+      "code.claude.com",
+      "docs.anthropic.com"
+    ],
+    "deny_domains": [
+      "pastebin.com",
+      "gist.github.com"
+    ]
+  },
+
+  "quality": {
+    "post_edit_commands_by_glob": [
+      { "glob": "**/*.py", "cmd": "python -m ruff format {file}" },
+      { "glob": "**/*.{js,ts,tsx,jsx,json,md,mdx}", "cmd": "npx prettier --write {file}" }
+    ],
+    "stop_gate_commands": [
+      "npm test",
+      "npm run lint"
+    ]
+  },
+
+  "audit": {
+    "log_path": ".claude/audit/tool_calls.jsonl"
+  }
+}
