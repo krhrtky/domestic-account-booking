@@ -43,16 +43,16 @@ jobs:
         run: npm run check:expressions
 
       - name: L-SC-003 - Check hardcoded secrets
-        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-SC-003
+        run: npm run check:laws:secrets
 
       - name: L-LC-004 - Verify prohibited expressions
-        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-LC-004
+        run: npm run check:laws:prohibited
 
       - name: L-RV-001 - Check no payment code
-        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-RV-001
+        run: npm run check:laws:payment
 
       - name: All Laws compliance verification
-        run: npx ts-node scripts/verify-laws-compliance.ts
+        run: npm run check:laws:all
 
       - name: Upload Laws violations log
         if: failure()

@@ -349,4 +349,5 @@ if (require.main === module) {
   });
 }
 
-export { collectMetrics, QualityMetrics };
+export { collectMetrics };
+export type { QualityMetrics };

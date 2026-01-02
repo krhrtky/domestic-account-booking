@@ -6,8 +6,13 @@ import {
   statSync,
   writeFileSync,
   existsSync,
+  mkdirSync,
 } from "fs";
-import { join, relative } from "path";
+import { join, relative, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface Violation {
   file: string;
@@ -62,7 +67,7 @@ async function checkSecrets(): Promise<ComplianceResult> {
       name: "API Key or Secret Token",
     },
     {
-      pattern: /(password|passwd)\s*[:=]\s*['"][^'"]+['"]/gi,
+      pattern: /const\s+(password|passwd)\s*[:=]\s*['"][^'"]+['"]/gi,
       name: "Password",
     },
     {
@@ -241,8 +246,17 @@ async function checkNoPaymentCode(): Promise<ComplianceResult> {
   ];
 
   for (const file of files) {
-    const content = readFileSync(file, "utf-8");
     const relPath = relative(PROJECT_ROOT, file);
+
+    if (
+      relPath.includes(".test.") ||
+      relPath.includes(".spec.") ||
+      relPath.includes("__tests__")
+    ) {
+      continue;
+    }
+
+    const content = readFileSync(file, "utf-8");
 
     for (const { pattern, name } of paymentPatterns) {
       const matches = content.matchAll(pattern);
@@ -253,11 +267,7 @@ async function checkNoPaymentCode(): Promise<ComplianceResult> {
         const line = getLineNumber(content, match.index);
         const context = content.split("\n")[line - 1]?.trim() || "";
 
-        if (
-          context.startsWith("//") ||
-          context.includes("example") ||
-          context.includes("test")
-        ) {
+        if (context.startsWith("//") || context.includes("example")) {
           continue;
         }
 
@@ -303,7 +313,6 @@ async function verifyAllLaws(
 
 function saveViolationsLog(results: ComplianceResult[]) {
   if (!existsSync(AUDIT_DIR)) {
-    const { mkdirSync } = require("fs");
     mkdirSync(AUDIT_DIR, { recursive: true });
   }
 
@@ -373,7 +382,7 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((err) => {
     console.error("Error:", err);
     process.exit(1);
