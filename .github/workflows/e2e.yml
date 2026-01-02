@@ -74,12 +74,91 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations
+      - name: Apply database schema
         run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db <<'EOF'
+          -- Create auth_users table
+          CREATE TABLE IF NOT EXISTS auth_users (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            email text NOT NULL UNIQUE,
+            password_hash text NOT NULL,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone DEFAULT now()
+          );
+          CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email);
+
+          -- Create users table
+          CREATE TABLE IF NOT EXISTS users (
+            id uuid PRIMARY KEY REFERENCES auth_users(id) ON DELETE CASCADE,
+            name text NOT NULL,
+            email text NOT NULL UNIQUE,
+            group_id uuid,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone DEFAULT now()
+          );
+          CREATE INDEX IF NOT EXISTS idx_users_group ON users(group_id);
+
+          -- Create groups table
+          CREATE TABLE IF NOT EXISTS groups (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            name text NOT NULL DEFAULT 'Household',
+            ratio_a integer NOT NULL DEFAULT 50,
+            ratio_b integer NOT NULL DEFAULT 50,
+            user_a_id uuid NOT NULL,
+            user_b_id uuid,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone DEFAULT now(),
+            CONSTRAINT ratio_sum CHECK (ratio_a + ratio_b = 100),
+            CONSTRAINT unique_user_pair CHECK (user_a_id != user_b_id)
+          );
+          CREATE INDEX IF NOT EXISTS idx_groups_user_a ON groups(user_a_id);
+          CREATE INDEX IF NOT EXISTS idx_groups_user_b ON groups(user_b_id);
+
+          -- Create invitations table
+          CREATE TABLE IF NOT EXISTS invitations (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            group_id uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+            inviter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            invitee_email text NOT NULL,
+            expires_at timestamp with time zone NOT NULL,
+            used_at timestamp with time zone,
+            created_at timestamp with time zone DEFAULT now()
+          );
+          CREATE INDEX IF NOT EXISTS idx_invitations_group ON invitations(group_id);
+          CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(invitee_email);
+
+          -- Create transactions table
+          CREATE TABLE IF NOT EXISTS transactions (
+            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+            group_id uuid NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+            user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            date date NOT NULL,
+            amount numeric(12, 2) NOT NULL,
+            description text NOT NULL,
+            payer_type text NOT NULL,
+            payer_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+            actual_payer_type text NOT NULL,
+            actual_payer_user_id uuid REFERENCES users(id) ON DELETE SET NULL,
+            expense_type text NOT NULL DEFAULT 'Household',
+            source_file_name text,
+            uploaded_by uuid REFERENCES users(id) ON DELETE SET NULL,
+            created_at timestamp with time zone DEFAULT now(),
+            updated_at timestamp with time zone DEFAULT now()
+          );
+          CREATE INDEX IF NOT EXISTS idx_transactions_group ON transactions(group_id);
+          CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
+          CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+          CREATE INDEX IF NOT EXISTS idx_transactions_expense_type ON transactions(expense_type);
+          CREATE INDEX IF NOT EXISTS idx_transactions_payer_user ON transactions(payer_user_id);
+          CREATE INDEX IF NOT EXISTS idx_transactions_actual_payer_type ON transactions(actual_payer_type);
+          CREATE INDEX IF NOT EXISTS idx_transactions_actual_payer_user ON transactions(actual_payer_user_id);
+
+          -- Add foreign keys for groups after users table exists
+          ALTER TABLE groups DROP CONSTRAINT IF EXISTS fk_groups_user_a;
+          ALTER TABLE groups DROP CONSTRAINT IF EXISTS fk_groups_user_b;
+          ALTER TABLE groups ADD CONSTRAINT fk_groups_user_a FOREIGN KEY (user_a_id) REFERENCES users(id) ON DELETE CASCADE;
+          ALTER TABLE groups ADD CONSTRAINT fk_groups_user_b FOREIGN KEY (user_b_id) REFERENCES users(id) ON DELETE SET NULL;
+          EOF
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -91,25 +170,6 @@ jobs:
           echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
           echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
           echo "E2E_TEST=true" >> .env.local
-
-      - name: Setup database schema
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
-            CREATE TABLE IF NOT EXISTS auth.users (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE TABLE IF NOT EXISTS users (
-              id UUID PRIMARY KEY,
-              name VARCHAR(255),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-          "
 
       - name: Run E2E tests (${{ matrix.job-name }})
         run: npm run test:e2e -- --project=${{ matrix.browser }} ${{ matrix.test-filter }}

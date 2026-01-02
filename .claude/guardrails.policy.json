@@ -28,6 +28,11 @@
       "git show",
       "git rev-parse",
       "git ls-files",
+      "git add",
+      "git commit",
+      "git push",
+      "npm install",
+      "npm ci",
       "ls",
       "cat",
       "sed",
@@ -63,32 +68,24 @@
       "(?i)\\b(dd|mkfs|shutdown|reboot)\\b",
       "(?i)\\b(sudo)\\b"
     ],
-    "warn_regex": [
-      "(?i)\\b(docker|kubectl|terraform)\\b"
-    ]
+    "warn_regex": ["(?i)\\b(docker|kubectl|terraform)\\b"]
   },
 
   "webfetch": {
     "enforce_allowlist": true,
-    "allow_domains": [
-      "code.claude.com",
-      "docs.anthropic.com"
-    ],
-    "deny_domains": [
-      "pastebin.com",
-      "gist.github.com"
-    ]
+    "allow_domains": ["code.claude.com", "docs.anthropic.com"],
+    "deny_domains": ["pastebin.com", "gist.github.com"]
   },
 
   "quality": {
     "post_edit_commands_by_glob": [
       { "glob": "**/*.py", "cmd": "python -m ruff format {file}" },
-      { "glob": "**/*.{js,ts,tsx,jsx,json,md,mdx}", "cmd": "npx prettier --write {file}" }
+      {
+        "glob": "**/*.{js,ts,tsx,jsx,json,md,mdx}",
+        "cmd": "npx prettier --write {file}"
+      }
     ],
-    "stop_gate_commands": [
-      "npm test",
-      "npm run lint"
-    ]
+    "stop_gate_commands": ["npm test", "npm run lint"]
   },
 
   "audit": {
