@@ -72,7 +72,7 @@ jobs:
       - name: Build production bundle
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/build_db
+          NEXTAUTH_SECRET: build-secret-for-ci
           NEXTAUTH_URL: http://localhost:3000
           NEXT_PUBLIC_APP_URL: http://localhost:3000

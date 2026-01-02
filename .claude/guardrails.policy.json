@@ -74,7 +74,12 @@
 
   "webfetch": {
     "enforce_allowlist": true,
-    "allow_domains": ["code.claude.com", "docs.anthropic.com"],
+    "allow_domains": [
+      "code.claude.com",
+      "docs.anthropic.com",
+      "api.github.com",
+      "github.com"
+    ],
     "deny_domains": ["pastebin.com", "gist.github.com"]
   },
 
