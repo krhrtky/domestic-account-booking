@@ -1,0 +1,265 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  NEXTAUTH_SECRET: test-secret-for-ci-e2e
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+jobs:
+  e2e-tests:
+    name: E2E Tests (${{ matrix.job-name }})
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium-unauth
+            test-filter: e2e/auth e2e/demo
+            job-name: typical-auth-demo
+            category: typical
+          - browser: chromium
+            test-filter: e2e/settlement
+            job-name: typical-settlement
+            category: typical
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+            CREATE TABLE IF NOT EXISTS auth.users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              password_hash VARCHAR(255) NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS users (
+              id UUID PRIMARY KEY,
+              name VARCHAR(255),
+              email VARCHAR(255) UNIQUE NOT NULL,
+              created_at TIMESTAMP DEFAULT NOW()
+            );
+          "
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env.local for E2E tests
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "E2E_TEST=true" >> .env.local
+
+      - name: Run E2E tests - ${{ matrix.category }} (${{ matrix.job-name }})
+        run: npm run test:e2e -- --project=${{ matrix.browser }} ${{ matrix.test-filter }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          E2E_TEST: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.job-name }}
+          path: playwright-report/
+          retention-days: 30
+
+  accessibility-tests:
+    name: Accessibility Tests
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+          "
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env.local
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "E2E_TEST=true" >> .env.local
+
+      - name: Run Accessibility tests (L-CX-002, L-CX-003)
+        run: npm run test:e2e:a11y -- --project=chromium
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          E2E_TEST: true
+
+      - name: Upload a11y report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: a11y-report
+          path: playwright-report/
+          retention-days: 30
+
+  security-tests:
+    name: Security Tests (L-TA-003 Red Team)
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
+          "
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env.local
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "E2E_TEST=true" >> .env.local
+
+      - name: Run Security tests (L-SC-001, L-SC-002, L-SC-005)
+        run: npm run test:e2e:security -- --project=chromium
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          E2E_TEST: true
+
+      - name: Upload security report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: security-test-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ Security Tests (Red Team) Passed"
+          echo ""
+          echo "Validated Laws:"
+          echo "- L-SC-001: Auth/Authz (bypass attempts)"
+          echo "- L-SC-002: Injection prevention (SQL, XSS, CSV)"
+          echo "- L-SC-005: CSRF protection"

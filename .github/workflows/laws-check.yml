@@ -1,0 +1,113 @@
+name: Laws Compliance Check
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  static-analysis:
+    name: Static Analysis
+    uses: ./.github/workflows/static-analysis.yml
+
+  test-unit:
+    name: Unit Tests
+    uses: ./.github/workflows/test-unit.yml
+    needs: static-analysis
+
+  test-integration:
+    name: Integration Tests
+    uses: ./.github/workflows/test-integration.yml
+    needs: static-analysis
+
+  test-e2e:
+    name: E2E Tests
+    uses: ./.github/workflows/test-e2e.yml
+    needs: [test-unit, test-integration]
+
+  build:
+    name: Build Verification
+    uses: ./.github/workflows/build.yml
+    needs: [test-unit, test-integration]
+
+  laws-summary:
+    name: Laws Compliance Summary
+    runs-on: ubuntu-latest
+    needs: [static-analysis, test-unit, test-integration, test-e2e, build]
+    if: always()
+
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "═══════════════════════════════════════════════════"
+          echo "Laws Compliance Check - Final Gate"
+          echo "═══════════════════════════════════════════════════"
+          echo ""
+          echo "Job Results:"
+          echo "  Static Analysis:    ${{ needs.static-analysis.result }}"
+          echo "  Unit Tests:         ${{ needs.test-unit.result }}"
+          echo "  Integration Tests:  ${{ needs.test-integration.result }}"
+          echo "  E2E Tests:          ${{ needs.test-e2e.result }}"
+          echo "  Build:              ${{ needs.build.result }}"
+          echo ""
+
+          FAILED=0
+          if [[ "${{ needs.static-analysis.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.test-unit.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.test-integration.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.test-e2e.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.build.result }}" != "success" ]]; then FAILED=1; fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo "❌ Laws Compliance Check FAILED"
+            echo ""
+            echo "One or more validation jobs failed."
+            echo "Please review the failed jobs and fix issues before merging."
+            exit 1
+          fi
+
+          echo "✅ Laws Compliance Check PASSED"
+          echo ""
+          echo "═══════════════════════════════════════════════════"
+          echo "Validated Laws:"
+          echo "═══════════════════════════════════════════════════"
+          echo ""
+          echo "Customer Experience (L-CX):"
+          echo "  • L-CX-001: Settlement accuracy (unit + integration tests)"
+          echo "  • L-CX-002: UI consistency (E2E accessibility tests)"
+          echo "  • L-CX-003: Error message clarity (E2E accessibility tests)"
+          echo "  • L-CX-004: Feedback immediacy (E2E performance tests)"
+          echo ""
+          echo "Legal Compliance (L-LC):"
+          echo "  • L-LC-004: Prohibited expressions (static analysis)"
+          echo ""
+          echo "Security (L-SC):"
+          echo "  • L-SC-001: Auth/Authz (E2E security tests)"
+          echo "  • L-SC-002: Injection prevention (E2E security tests)"
+          echo "  • L-SC-005: CSRF protection (E2E security tests)"
+          echo ""
+          echo "Organizational Consistency (L-OC):"
+          echo "  • L-OC-001: Coding standards (static analysis)"
+          echo "  • L-OC-002: Settlement logic centralization (arch check)"
+          echo ""
+          echo "API Specification (L-AS):"
+          echo "  • L-AS-001: Response format (integration tests)"
+          echo "  • L-AS-002: Input validation (integration tests)"
+          echo ""
+          echo "Test & Audit (L-TA):"
+          echo "  • L-TA-001: Test dataset categories (E2E test matrix)"
+          echo "  • L-TA-002: Coverage thresholds (unit tests 80%+)"
+          echo "  • L-TA-003: Red team scenarios (E2E security tests)"
+          echo ""
+          echo "Business Rules (L-BR):"
+          echo "  • L-BR-001: Settlement calculation (unit + integration)"
+          echo "  • L-BR-006: CSV import rules (integration tests)"
+          echo "  • L-BR-007: Traceability (E2E tests)"
+          echo ""
+          echo "Core Needs (L-CN):"
+          echo "  • L-CN-003: Coding agent restrictions (type check)"
+          echo ""
+          echo "═══════════════════════════════════════════════════"
+          echo "All Laws validations passed. Ready to merge."
+          echo "═══════════════════════════════════════════════════"

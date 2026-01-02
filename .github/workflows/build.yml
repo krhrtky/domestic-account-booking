@@ -1,0 +1,62 @@
+name: Build Verification
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+env:
+  DATABASE_URL: postgresql://localhost:5432/dummy_db
+  NEXTAUTH_SECRET: test-build-secret-not-real
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+jobs:
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "❌ Build failed: .next directory not found"
+            exit 1
+          fi
+          echo "✅ Build successful: .next directory exists"
+
+          if [ -f ".next/build-manifest.json" ]; then
+            echo "✅ Build manifest found"
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: .next/
+          retention-days: 7
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ Build Verification Passed"
+          echo ""
+          echo "Build artifacts ready for deployment"

@@ -1,0 +1,183 @@
+name: Laws Validation
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  NEXTAUTH_SECRET: test-secret-for-ci-validation
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+jobs:
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (L-OC-001, L-CN-003)
+        run: npm run type-check
+
+      - name: Lint (L-OC-001)
+        run: npm run lint
+
+      - name: Architecture check (L-OC-002)
+        run: npm run check:arch
+
+      - name: Check prohibited expressions (L-LC-004)
+        run: npm run check:expressions
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: static-analysis
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm test -- --run --coverage
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/
+          retention-days: 30
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: static-analysis
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/004_nextauth_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/001_initial_schema.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/002_rls_policies.sql
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -f supabase/migrations/003_transactions_table.sql
+
+      - name: Create .env.local for tests
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+
+      - name: Run integration tests
+        run: npm test -- --run src/**/*.integration.test.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [unit-tests, integration-tests]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+  validation-summary:
+    name: Phase 1 Validation Summary
+    runs-on: ubuntu-latest
+    needs: [static-analysis, unit-tests, integration-tests, build]
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          echo "Phase 1 Laws Validation Results:"
+          echo "================================"
+          echo "Static Analysis: ${{ needs.static-analysis.result }}"
+          echo "Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          echo ""
+
+          FAILED=0
+          if [[ "${{ needs.static-analysis.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.unit-tests.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.integration-tests.result }}" != "success" ]]; then FAILED=1; fi
+          if [[ "${{ needs.build.result }}" != "success" ]]; then FAILED=1; fi
+
+          if [ $FAILED -eq 1 ]; then
+            echo "One or more validation jobs failed"
+            exit 1
+          fi
+
+          echo "All Phase 1 validation jobs passed"
+          echo ""
+          echo "Validated Laws:"
+          echo "- L-OC-001: Coding standards (type-check, lint)"
+          echo "- L-OC-002: Settlement logic centralization (arch check)"
+          echo "- L-CN-003: Coding agent restrictions (type-check)"
+          echo "- L-LC-004: Prohibited expressions (check:expressions)"
+          echo "- L-TA-002: Coverage thresholds (unit tests with coverage)"
+          echo "- L-CX-001, L-BR-001: Settlement calculation (unit & integration tests)"
+          echo "- L-AS-001, L-AS-002: API specifications (integration tests)"

@@ -1,0 +1,50 @@
+name: Static Analysis
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_call:
+
+jobs:
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check (L-OC-001, L-CN-003)
+        run: npm run type-check
+
+      - name: Lint (L-OC-001)
+        run: npm run lint
+
+      - name: Architecture check (L-OC-002)
+        run: npm run check:arch
+
+      - name: Check prohibited expressions (L-LC-004)
+        run: npm run check:expressions
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ Static Analysis Passed"
+          echo ""
+          echo "Validated Laws:"
+          echo "- L-OC-001: Coding standards (type-check, lint)"
+          echo "- L-OC-002: Settlement logic centralization (arch check)"
+          echo "- L-CN-003: Coding agent restrictions (type-check)"
+          echo "- L-LC-004: Prohibited expressions (check:expressions)"
