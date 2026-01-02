@@ -62,14 +62,7 @@ jobs:
           echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
 
       - name: Run integration tests (L-AS-001, L-AS-002, L-BR-006)
-        run: |
-          if npm test -- --run src/**/*.integration.test.ts 2>&1 | grep -q "No test files found"; then
-            echo "⚠️  Integration tests not yet implemented"
-            echo "Creating placeholder to allow CI to pass"
-            exit 0
-          else
-            npm test -- --run src/**/*.integration.test.ts
-          fi
+        run: npm run test:integration
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
 
@@ -93,6 +86,5 @@ jobs:
           echo "- L-AS-002: Input validation"
           echo "- L-BR-001: Settlement calculation in API layer"
           echo "- L-BR-006: CSV import rules"
-          echo ""
-          echo "Note: Integration tests not yet fully implemented"
-          echo "This workflow will fail once integration tests are added"
+          echo "- L-TA-001: Evaluation dataset categories"
+          echo "- L-TA-005: Dataset requirements verification"
