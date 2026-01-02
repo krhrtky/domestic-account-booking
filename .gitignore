@@ -51,3 +51,6 @@ storybook-static
 
 *storybook.log
 .env.prd
+
+# Claude Code audit logs (runtime generated)
+.claude/audit/tool_calls.jsonl
