@@ -55,7 +55,8 @@
       "npx",
       "node",
       "mkdir",
-      "touch"
+      "touch",
+      "docker"
     ],
     "deny_regex": [
       "(?i)\\b(curl|wget|nc|netcat|ssh|scp|sftp)\\b",
@@ -63,35 +64,52 @@
       "(?i)\\b(dd|mkfs|shutdown|reboot)\\b",
       "(?i)\\b(sudo)\\b"
     ],
-    "warn_regex": [
-      "(?i)\\b(docker|kubectl|terraform)\\b"
-    ]
+    "warn_regex": ["(?i)\\b(docker|kubectl|terraform)\\b"]
   },
 
   "webfetch": {
     "enforce_allowlist": true,
-    "allow_domains": [
-      "code.claude.com",
-      "docs.anthropic.com"
-    ],
-    "deny_domains": [
-      "pastebin.com",
-      "gist.github.com"
-    ]
+    "allow_domains": ["code.claude.com", "docs.anthropic.com"],
+    "deny_domains": ["pastebin.com", "gist.github.com"]
   },
 
   "quality": {
     "post_edit_commands_by_glob": [
       { "glob": "**/*.py", "cmd": "python -m ruff format {file}" },
-      { "glob": "**/*.{js,ts,tsx,jsx,json,md,mdx}", "cmd": "npx prettier --write {file}" }
+      {
+        "glob": "**/*.{js,ts,tsx,jsx,json,md,mdx}",
+        "cmd": "npx prettier --write {file}"
+      }
     ],
-    "stop_gate_commands": [
-      "npm test",
-      "npm run lint"
-    ]
+    "stop_gate_commands": ["npm test", "npm run lint"]
   },
 
   "audit": {
-    "log_path": ".claude/audit/tool_calls.jsonl"
+    "log_path": ".claude/audit/tool_calls.jsonl",
+    "quality_gate_log": ".claude/audit/quality-gate-decisions.jsonl",
+    "laws_violation_log": ".claude/audit/laws-violations.jsonl",
+
+    "required_fields": {
+      "quality_gate": [
+        "decision",
+        "blocker_count",
+        "major_count",
+        "laws_violations",
+        "test_results",
+        "return_to",
+        "reviewer_agent",
+        "timestamp"
+      ],
+      "laws_violation": [
+        "rule_id",
+        "severity",
+        "file",
+        "line",
+        "violation_type",
+        "detected_by",
+        "resolution_status",
+        "timestamp"
+      ]
+    }
   }
 }

@@ -42,6 +42,26 @@ jobs:
       - name: Check prohibited expressions (L-LC-004)
         run: npm run check:expressions
 
+      - name: L-SC-003 - Check hardcoded secrets
+        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-SC-003
+
+      - name: L-LC-004 - Verify prohibited expressions
+        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-LC-004
+
+      - name: L-RV-001 - Check no payment code
+        run: npx ts-node scripts/verify-laws-compliance.ts --rule=L-RV-001
+
+      - name: All Laws compliance verification
+        run: npx ts-node scripts/verify-laws-compliance.ts
+
+      - name: Upload Laws violations log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: laws-violations
+          path: .claude/audit/laws-violations.jsonl
+          retention-days: 30
+
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
