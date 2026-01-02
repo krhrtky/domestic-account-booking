@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  DATABASE_URL: postgresql://localhost:5432/dummy_db
+  NEXTAUTH_SECRET: test-ci-secret-not-real
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
 jobs:
   lint:
     name: Lint & Type Check
@@ -71,8 +77,3 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          NEXTAUTH_URL: http://localhost:3000
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
