@@ -163,13 +163,13 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Create .env.local for E2E tests
+      - name: Create .env.local.e2e for E2E tests
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
-          echo "E2E_TEST=true" >> .env.local
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local.e2e
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local.e2e
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local.e2e
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local.e2e
+          echo "E2E_TEST=true" >> .env.local.e2e
 
       - name: Run E2E tests (${{ matrix.job-name }})
         run: npm run test:e2e -- --project=${{ matrix.browser }} ${{ matrix.test-filter }}
