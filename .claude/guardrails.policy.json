@@ -22,6 +22,8 @@
   "bash": {
     "enforce_allowlist": true,
     "allow_prefixes": [
+      "git commit",
+      "git add",
       "git status",
       "git diff",
       "git log",
