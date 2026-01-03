@@ -38,6 +38,26 @@ jobs:
       - name: Check prohibited expressions (L-LC-004)
         run: npm run check:expressions
 
+      - name: L-SC-003 - Check hardcoded secrets
+        run: npm run check:laws:secrets
+        continue-on-error: false
+
+      - name: L-RV-001 - Check no payment code
+        run: npm run check:laws:payment
+        continue-on-error: false
+
+      - name: All Laws compliance verification
+        run: npm run check:laws:all
+        continue-on-error: false
+
+      - name: Upload Laws violations log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: laws-violations
+          path: .claude/audit/laws-violations.jsonl
+          retention-days: 30
+
       - name: Summary
         if: success()
         run: |
@@ -48,3 +68,6 @@ jobs:
           echo "- L-OC-002: Settlement logic centralization (arch check)"
           echo "- L-CN-003: Coding agent restrictions (type-check)"
           echo "- L-LC-004: Prohibited expressions (check:expressions)"
+          echo "- L-SC-003: Hardcoded secrets protection (check:laws:secrets)"
+          echo "- L-RV-001: No payment code (check:laws:payment)"
+          echo "- All Laws: Comprehensive compliance (check:laws:all)"
