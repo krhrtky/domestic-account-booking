@@ -20,15 +20,44 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
         include:
           - browser: chromium-unauth
-            test-filter: e2e/auth e2e/demo
-            job-name: typical-auth-demo
+            test-filter: e2e/auth
+            job-name: auth
+            category: typical
+          - browser: chromium-unauth
+            test-filter: e2e/demo/03-manual-transactions.spec.ts e2e/demo/04-csv-upload.spec.ts e2e/demo/05-transaction-classification.spec.ts
+            job-name: demo-transactions
+            category: typical
+          - browser: chromium-unauth
+            test-filter: e2e/demo/06-filtering.spec.ts e2e/demo/07-pagination.spec.ts e2e/demo/08-deletion.spec.ts
+            job-name: demo-filtering
+            category: typical
+          - browser: chromium-unauth
+            test-filter: e2e/demo/09-settlement-equal.spec.ts e2e/demo/10-settlement-unequal.spec.ts e2e/demo/12-ratio-update.spec.ts e2e/demo/13-logout-session.spec.ts e2e/demo/14-error-handling.spec.ts e2e/demo/15-edge-cases.spec.ts
+            job-name: demo-settlement
             category: typical
           - browser: chromium
-            test-filter: e2e/settlement
-            job-name: typical-settlement
+            test-filter: e2e/settlement/dashboard.spec.ts e2e/settlement/calculation-boundaries.spec.ts
+            job-name: settlement-calc
+            category: typical
+          - browser: chromium
+            test-filter: e2e/settlement/traceability.spec.ts e2e/settlement/auth-state-verification.spec.ts
+            job-name: settlement-trace
+            category: typical
+          - browser: chromium
+            test-filter: e2e/transactions e2e/csv
+            job-name: transactions-csv
+            category: typical
+          - browser: chromium
+            test-filter: e2e/happy-path
+            job-name: happy-path
+            category: typical
+          - browser: chromium-unauth
+            test-filter: e2e/navigation.spec.ts e2e/landing.spec.ts
+            job-name: nav-landing
             category: typical
 
     services:
