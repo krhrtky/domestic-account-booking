@@ -47,10 +47,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations (L-SC-001)
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
+      - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
 
       - name: Create .env.local for tests
         run: |

@@ -47,17 +47,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
       - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
 
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
+
       - name: Create .env.local for VRT tests
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local.e2e
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local.e2e
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local.e2e
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local.e2e
+          echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env.local.e2e
+          echo "NEXTAUTH_SECRET=${{ env.NEXTAUTH_SECRET }}" >> .env.local.e2e
+          echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.local.e2e
+          echo "NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}" >> .env.local.e2e
           echo "E2E_TEST=true" >> .env.local.e2e
 
       - name: Install Playwright browsers
@@ -68,6 +76,10 @@ jobs:
         env:
           CI: true
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
+          E2E_TEST: true
 
       - name: Upload VRT artifacts
         uses: actions/upload-artifact@v4
@@ -109,10 +121,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
       - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -127,6 +147,10 @@ jobs:
             "npx wait-on tcp:127.0.0.1:6006 && npm run test:storybook:vrt"
         env:
           CI: true
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
 
       - name: Upload Storybook VRT artifacts
         uses: actions/upload-artifact@v4

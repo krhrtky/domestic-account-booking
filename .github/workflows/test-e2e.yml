@@ -88,20 +88,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
       - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Create .env.local for E2E tests
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env.local
+          echo "NEXTAUTH_SECRET=${{ env.NEXTAUTH_SECRET }}" >> .env.local
+          echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}" >> .env.local
           echo "E2E_TEST=true" >> .env.local
 
       - name: Run E2E tests - ${{ matrix.category }} (${{ matrix.job-name }})
@@ -151,20 +159,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
       - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Create .env.local
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env.local
+          echo "NEXTAUTH_SECRET=${{ env.NEXTAUTH_SECRET }}" >> .env.local
+          echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}" >> .env.local
           echo "E2E_TEST=true" >> .env.local
 
       - name: Run Accessibility tests (L-CX-002, L-CX-003)
@@ -214,20 +230,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Create pgcrypto extension (for gen_random_uuid)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";"
+
       - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "\dt"
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
       - name: Create .env.local
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env.local
+          echo "NEXTAUTH_SECRET=${{ env.NEXTAUTH_SECRET }}" >> .env.local
+          echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}" >> .env.local
           echo "E2E_TEST=true" >> .env.local
 
       - name: Run Security tests (L-SC-001, L-SC-002, L-SC-005)
