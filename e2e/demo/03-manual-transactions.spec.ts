@@ -37,12 +37,19 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     await page.waitForTimeout(1000);
 
     const userData = await getUserByEmail(userA.email);
-    groupId = userData!.group_id!;
+    if (!userData?.group_id) {
+      throw new Error("Group ID is null - group creation may have failed");
+    }
+    groupId = userData.group_id;
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const transactionDate = `${currentMonth}-01`;
 
     await insertTransactionDb({
       userId: userA.id!,
       groupId: groupId,
-      date: "2025-12-01",
+      date: transactionDate,
       amount: 5000,
       description: "Grocery Shopping",
       payerType: "UserA",
@@ -50,9 +57,10 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     });
 
     await page.goto("/dashboard/transactions");
+    await page.waitForLoadState("networkidle");
 
     const transactionRow = page.locator("tr", { hasText: "Grocery Shopping" });
-    await transactionRow.waitFor({ state: "visible", timeout: 5000 });
+    await transactionRow.waitFor({ state: "visible", timeout: 10000 });
     await expect(
       transactionRow.locator('[data-testid="transaction-description"]'),
     ).toContainText("Grocery Shopping");
@@ -64,6 +72,6 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     ).toContainText("Test User A");
     await expect(
       transactionRow.locator('[data-testid="expense-type-toggle"]'),
-    ).toContainText("Household");
+    ).toContainText("Household", { timeout: 10000 });
   });
 });

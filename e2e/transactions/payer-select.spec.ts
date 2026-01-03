@@ -47,14 +47,21 @@ test.describe("AC-9: Payer Select - Change individual payer", () => {
     await page.waitForTimeout(1000);
 
     const userData = await getUserByEmail(userA.email);
-    groupId = userData!.group_id!;
+    if (!userData?.group_id) {
+      throw new Error("Group ID is null - group creation may have failed");
+    }
+    groupId = userData.group_id;
 
     await acceptInvitationDirectly(userB.id!, groupId);
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const transactionDate = `${currentMonth}-10`;
 
     const inserted = await insertTransactionDb({
       userId: userA.id!,
       groupId: groupId,
-      date: "2025-12-10",
+      date: transactionDate,
       description: "Test Payer Change",
       amount: 10000,
       expenseType: "Household",
@@ -64,12 +71,13 @@ test.describe("AC-9: Payer Select - Change individual payer", () => {
     transactionId = inserted.id;
 
     await page.goto("/dashboard/transactions");
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState("networkidle");
 
     const testRow = page.locator("tr", { hasText: "Test Payer Change" });
+    await testRow.waitFor({ state: "visible", timeout: 10000 });
     const payerSelect = testRow.locator('[data-testid="payer-select"]');
 
-    await expect(payerSelect).toHaveValue(userA.id!);
+    await expect(payerSelect).toHaveValue(userA.id!, { timeout: 10000 });
 
     await payerSelect.selectOption({ label: "Payer User B" });
     await page.waitForTimeout(500);
@@ -113,12 +121,19 @@ test.describe("AC-4: CSV without payer column defaults to payer_type", () => {
     await page.waitForTimeout(1000);
 
     const userData = await getUserByEmail(userA.email);
-    groupId = userData!.group_id!;
+    if (!userData?.group_id) {
+      throw new Error("Group ID is null - group creation may have failed");
+    }
+    groupId = userData.group_id;
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const transactionDate = `${currentMonth}-11`;
 
     const inserted = await insertTransactionDb({
       userId: userA.id!,
       groupId: groupId,
-      date: "2025-12-11",
+      date: transactionDate,
       description: "CSV Import No Payer",
       amount: 5000,
       expenseType: "Household",
@@ -127,12 +142,13 @@ test.describe("AC-4: CSV without payer column defaults to payer_type", () => {
     });
 
     await page.goto("/dashboard/transactions");
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState("networkidle");
 
     const testRow = page.locator("tr", { hasText: "CSV Import No Payer" });
+    await testRow.waitFor({ state: "visible", timeout: 10000 });
     const payerSelect = testRow.locator('[data-testid="payer-select"]');
 
-    await expect(payerSelect).toHaveValue(userA.id!);
+    await expect(payerSelect).toHaveValue(userA.id!, { timeout: 10000 });
 
     const transaction = await getTransactionById(inserted.id);
     expect(transaction?.payer_user_id).toBeNull();
@@ -180,14 +196,22 @@ test.describe("L-BR-002: actual_payer_user_id priority in settlement", () => {
     await page.waitForTimeout(1000);
 
     const userData = await getUserByEmail(userA.email);
-    groupId = userData!.group_id!;
+    if (!userData?.group_id) {
+      throw new Error("Group ID is null - group creation may have failed");
+    }
+    groupId = userData.group_id;
 
     await acceptInvitationDirectly(userB.id!, groupId);
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const day15 = `${currentMonth}-15`;
+    const day16 = `${currentMonth}-16`;
 
     await insertTransactionDb({
       userId: userA.id!,
       groupId: groupId,
-      date: "2025-12-15",
+      date: day15,
       description: "UserA paid via actual_payer_user_id",
       amount: 10000,
       expenseType: "Household",
@@ -200,7 +224,7 @@ test.describe("L-BR-002: actual_payer_user_id priority in settlement", () => {
     await insertTransactionDb({
       userId: userA.id!,
       groupId: groupId,
-      date: "2025-12-16",
+      date: day16,
       description: "UserB paid via fallback",
       amount: 10000,
       expenseType: "Household",
@@ -210,7 +234,8 @@ test.describe("L-BR-002: actual_payer_user_id priority in settlement", () => {
       actualPayerUserId: null,
     });
 
-    await page.goto("/dashboard?month=2025-12");
+    await page.goto(`/dashboard?month=${currentMonth}`);
+    await page.waitForLoadState("networkidle");
 
     const settlementSection = page.locator(
       '[data-testid="settlement-summary"]',
