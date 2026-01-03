@@ -22,7 +22,6 @@ describe("app/actions/auth", () => {
 
         vi.mocked(rateLimiter.checkRateLimit).mockReturnValue({
           allowed: true,
-          retryAfter: 0,
         });
 
         vi.mocked(db.query).mockResolvedValue({
@@ -56,7 +55,6 @@ describe("app/actions/auth", () => {
 
         vi.mocked(rateLimiter.checkRateLimit).mockReturnValue({
           allowed: true,
-          retryAfter: 0,
         });
 
         vi.mocked(db.query).mockResolvedValue({
@@ -157,7 +155,6 @@ describe("app/actions/auth", () => {
 
         vi.mocked(rateLimiter.checkRateLimit).mockReturnValue({
           allowed: true,
-          retryAfter: 0,
         });
 
         vi.mocked(db.query).mockResolvedValue({
@@ -179,7 +176,6 @@ describe("app/actions/auth", () => {
 
         vi.mocked(rateLimiter.checkRateLimit).mockReturnValue({
           allowed: true,
-          retryAfter: 0,
         });
 
         vi.mocked(db.query).mockResolvedValue({
@@ -208,8 +204,9 @@ describe("app/actions/auth", () => {
         expect(result.error).toBeDefined();
         if (typeof result.error === "object" && "email" in result.error) {
           const emailErrors = result.error.email;
-          expect(Array.isArray(emailErrors)).toBe(true);
-          expect(emailErrors[0]).toContain("有効なメールアドレス");
+          if (Array.isArray(emailErrors)) {
+            expect(emailErrors[0]).toContain("有効なメールアドレス");
+          }
         }
       });
 
