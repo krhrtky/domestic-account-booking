@@ -88,29 +88,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations (L-SC-001)
+      - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Setup database schema
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
-            CREATE TABLE IF NOT EXISTS auth.users (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              password_hash VARCHAR(255) NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-            CREATE TABLE IF NOT EXISTS users (
-              id UUID PRIMARY KEY,
-              name VARCHAR(255),
-              email VARCHAR(255) UNIQUE NOT NULL,
-              created_at TIMESTAMP DEFAULT NOW()
-            );
-          "
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -170,17 +151,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations (L-SC-001)
+      - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Setup database schema
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
-          "
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -240,17 +214,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply database migrations (L-SC-001)
+      - name: Apply database migrations (L-OC-002)
         run: npx drizzle-kit push --verbose
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
-
-      - name: Setup database schema
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test_db -c "
-            CREATE SCHEMA IF NOT EXISTS auth;
-            CREATE EXTENSION IF NOT EXISTS \"pgcrypto\";
-          "
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium

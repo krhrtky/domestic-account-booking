@@ -8,10 +8,32 @@ on:
     branches:
       - master
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  NEXTAUTH_SECRET: test-secret-for-ci-vrt
+  NEXTAUTH_URL: http://localhost:3000
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+
 jobs:
   vrt-e2e:
     name: E2E VRT
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,6 +47,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Apply database migrations (L-OC-002)
+        run: npx drizzle-kit push --verbose
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Create .env.local for VRT tests
+        run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local.e2e
+          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local.e2e
+          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local.e2e
+          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local.e2e
+          echo "E2E_TEST=true" >> .env.local.e2e
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
@@ -32,6 +67,7 @@ jobs:
         run: npm run test:vrt
         env:
           CI: true
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Upload VRT artifacts
         uses: actions/upload-artifact@v4
@@ -44,6 +80,22 @@ jobs:
   vrt-storybook:
     name: Storybook VRT
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -56,6 +108,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Apply database migrations (L-OC-002)
+        run: npx drizzle-kit push --verbose
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
