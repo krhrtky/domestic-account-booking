@@ -139,10 +139,10 @@ jobs:
 
       - name: Create .env.local for tests
         run: |
-          echo "DATABASE_URL=$DATABASE_URL" > .env.local
-          echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.local
-          echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.local
-          echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env.local
+          echo "DATABASE_URL=${{ env.DATABASE_URL }}" > .env.local
+          echo "NEXTAUTH_SECRET=${{ env.NEXTAUTH_SECRET }}" >> .env.local
+          echo "NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}" >> .env.local
+          echo "NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}" >> .env.local
 
       - name: Run integration tests
         run: npm test -- --run src/**/*.integration.test.ts
