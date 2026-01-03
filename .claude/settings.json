@@ -9,7 +9,9 @@
       "Read(./**/*.pem)",
       "Read(./**/*.key)",
       "Read(./**/*_rsa)",
-      "Read(~/.ssh/**)",
+      "Read(~/.ssh/id_*)",
+      "Read(~/.ssh/*_rsa)",
+      "Read(~/.ssh/*.pem)",
       "Read(~/.aws/**)",
       "Edit(./.env)",
       "Edit(./.env.*)",
@@ -52,7 +54,7 @@
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false,
+    "allowUnsandboxedCommands": true,
     "excludedCommands": ["git", "docker", "npm", "npx", "node"],
     "network": {
       "allowLocalBinding": true,
