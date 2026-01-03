@@ -32,26 +32,31 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git show:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
       "Bash(ls:*)",
       "Bash(echo:*)",
       "Bash(pwd:*)",
       "Bash(npm test:*)",
       "Bash(npm run:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:*.github.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:*.npmjs.org)"
     ],
-    "ask": [
-      "Bash(docker:*)",
-      "Bash(kubectl:*)",
-      "Bash(terraform:*)"
-    ]
+    "ask": ["Bash(docker:*)", "Bash(kubectl:*)", "Bash(terraform:*)"]
   },
 
   "sandbox": {
     "enabled": true,
     "autoAllowBashIfSandboxed": true,
     "allowUnsandboxedCommands": false,
+    "excludedCommands": ["git", "docker", "npm", "npx", "node"],
     "network": {
-      "allowLocalBinding": true
+      "allowLocalBinding": true,
+      "allowUnixSockets": ["/var/run/docker.sock"]
     }
   },
 
