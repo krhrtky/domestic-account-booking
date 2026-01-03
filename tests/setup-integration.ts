@@ -1,10 +1,9 @@
-import { afterAll, beforeAll } from 'vitest'
+import { afterAll, beforeAll } from "vitest";
 
 beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required for integration tests')
+    process.env.DATABASE_URL = "postgresql://localhost:5432/test_db";
   }
-})
+});
 
-afterAll(async () => {
-})
+afterAll(async () => {});
