@@ -155,7 +155,7 @@ test.describe("L-SC-001, L-TA-001: 認証攻撃シナリオ (Attack Cases)", () 
   test.describe("ATK-005: レート制限（ログイン5回/15分）", () => {
     test.use({ storageState: { cookies: [], origins: [] } });
 
-    test("同一IPから15分間に6回以上ログイン試行すると429が返る", async ({
+    test("同一メールアドレスで6回以上ログイン試行すると制限メッセージが表示される", async ({
       page,
     }) => {
       const timestamp = Date.now();
@@ -174,28 +174,25 @@ test.describe("L-SC-001, L-TA-001: 認証攻撃シナリオ (Attack Cases)", () 
         await page.fill('input[name="password"]', testPassword);
         await page.click('button[type="submit"]');
 
-        await page.waitForTimeout(1000);
+        await page
+          .locator('[role="status"], .toast, [data-sonner-toast]')
+          .filter({ hasText: /正しくありません|ログインに失敗/i })
+          .waitFor({ state: "visible", timeout: 5000 })
+          .catch(() => {});
 
-        const errorVisible = await page
-          .getByText(/正しくありません|ログインに失敗/i)
-          .isVisible()
-          .catch(() => false);
-        expect(errorVisible).toBeTruthy();
+        await page.waitForTimeout(500);
       }
 
       await page.goto("/login");
       await page.fill('input[name="email"]', testEmail);
       await page.fill('input[name="password"]', testPassword);
       await page.click('button[type="submit"]');
-      await page.waitForTimeout(500);
 
-      const rateLimitMessage = await page
-        .getByText(/Too many|rate limit|試行回数|制限/i)
-        .isVisible()
-        .catch(() => false);
-      const stillOnLogin = page.url().includes("/login");
+      const rateLimitToast = page
+        .locator('[role="status"], .toast, [data-sonner-toast]')
+        .filter({ hasText: /ログイン試行回数が上限を超えました|秒後に再試行/ });
 
-      expect(rateLimitMessage || stillOnLogin).toBeTruthy();
+      await expect(rateLimitToast).toBeVisible({ timeout: 5000 });
     });
   });
 });

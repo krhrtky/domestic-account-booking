@@ -44,7 +44,7 @@ test.describe("L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
   });
 
   test.describe("INC-001: 文字化けCSV（非UTF-8）", () => {
-    test("Shift-JISエンコードのCSVをアップロードするとエラーメッセージが表示される", async ({
+    test("Shift-JISエンコードのCSVをアップロードすると自動変換され処理される", async ({
       page,
     }) => {
       const shiftJisContent = iconv.encode(
@@ -62,18 +62,21 @@ test.describe("L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       const fileInput = page.locator('input[type="file"]');
       await fileInput.setInputFiles(csvPath);
 
+      await expect(
+        page.getByRole("heading", { name: "列マッピングの確認" }),
+      ).toBeVisible({ timeout: 10000 });
+
+      const encodingInfo = page.getByText(/Shift-JIS/i);
+      await expect(encodingInfo).toBeVisible({ timeout: 5000 });
+
+      await page.getByRole("button", { name: "プレビューを表示" }).click();
+
+      await expect(
+        page.getByRole("heading", { name: /データプレビュー/ }),
+      ).toBeVisible({ timeout: 5000 });
+
       const payerSelect = page.locator('select[name="defaultPayerType"]');
       await payerSelect.selectOption("UserA");
-
-      const uploadButton = page.locator('button:has-text("インポート実行")');
-      await uploadButton.click();
-      await page.waitForTimeout(2000);
-
-      const errorMessage = await page
-        .getByText(/UTF-8|文字コード|エンコード|無効/i)
-        .isVisible()
-        .catch(() => false);
-      expect(errorMessage).toBeTruthy();
 
       fs.unlinkSync(csvPath);
     });
@@ -98,7 +101,7 @@ test.describe("L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       await page.getByRole("button", { name: "プレビューを表示" }).click();
 
       await expect(
-        page.getByRole("heading", { name: "データプレビュー" }),
+        page.getByRole("heading", { name: /データプレビュー/ }),
       ).toBeVisible({ timeout: 5000 });
 
       const payerSelect = page.locator('select[name="defaultPayerType"]');
@@ -146,7 +149,7 @@ test.describe("L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       await page.getByRole("button", { name: "プレビューを表示" }).click();
 
       await expect(
-        page.getByRole("heading", { name: "データプレビュー" }),
+        page.getByRole("heading", { name: /データプレビュー/ }),
       ).toBeVisible({ timeout: 5000 });
 
       const payerSelect = page.locator('select[name="defaultPayerType"]');
@@ -237,7 +240,7 @@ test.describe("L-BR-006, L-TA-001: CSV取り込みエラーケース (Incident &
       await page.getByRole("button", { name: "プレビューを表示" }).click();
 
       await expect(
-        page.getByRole("heading", { name: "データプレビュー" }),
+        page.getByRole("heading", { name: /データプレビュー/ }),
       ).toBeVisible({ timeout: 5000 });
 
       const payerSelect = page.locator('select[name="defaultPayerType"]');

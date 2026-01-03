@@ -139,7 +139,11 @@ async function globalSetup(config: FullConfig) {
       throw new Error("Test user ID is undefined");
     }
 
-    const groupId = await createTestGroup(testUser.id);
+    const groupId = await createTestGroup(testUser.id, {
+      name: "E2E Test Group",
+      ratioA: 60,
+      ratioB: 40,
+    });
     console.log(`✓ Test group created for user (Group ID: ${groupId})`);
 
     const browsers = (
