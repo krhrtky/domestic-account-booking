@@ -6,7 +6,7 @@ import { ExpenseType } from "@/lib/types";
 
 interface ExpenseTypeToggleProps {
   transactionId: string;
-  currentType: ExpenseType;
+  currentType: ExpenseType | null | undefined;
   onUpdate?: () => void;
 }
 

@@ -1,163 +1,171 @@
-import { Pool } from 'pg'
-import bcrypt from 'bcryptjs'
+import { Pool } from "pg";
+import bcrypt from "bcryptjs";
 
-const databaseUrl = process.env.DATABASE_URL
+const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   throw new Error(
-    'Missing required environment variable: DATABASE_URL is required for E2E tests'
-  )
+    "Missing required environment variable: DATABASE_URL is required for E2E tests",
+  );
 }
 
 const pool = new Pool({
   connectionString: databaseUrl,
-})
+});
 
 export interface TestUser {
-  email: string
-  password: string
-  name: string
-  id?: string
+  email: string;
+  password: string;
+  name: string;
+  id?: string;
 }
 
 export const createTestUser = async (user: TestUser) => {
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
-    await client.query('BEGIN')
+    await client.query("BEGIN");
 
-    const passwordHash = await bcrypt.hash(user.password, 12)
+    const passwordHash = await bcrypt.hash(user.password, 12);
 
     const authResult = await client.query<{ id: string }>(
-      'INSERT INTO auth_users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id',
-      [user.email.toLowerCase(), passwordHash]
-    )
+      "INSERT INTO auth_users (id, email, password_hash) VALUES (gen_random_uuid(), $1, $2) RETURNING id",
+      [user.email.toLowerCase(), passwordHash],
+    );
 
-    const userId = authResult.rows[0].id
+    const userId = authResult.rows[0].id;
 
     await client.query(
-      'INSERT INTO users (id, name, email) VALUES ($1, $2, $3)',
-      [userId, user.name, user.email.toLowerCase()]
-    )
+      "INSERT INTO users (id, name, email) VALUES ($1, $2, $3)",
+      [userId, user.name, user.email.toLowerCase()],
+    );
 
-    await client.query('COMMIT')
+    await client.query("COMMIT");
 
-    return { ...user, id: userId }
+    return { ...user, id: userId };
   } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
-    client.release()
+    client.release();
   }
-}
+};
 
 export const deleteTestUser = async (userId: string) => {
-  await pool.query('DELETE FROM auth_users WHERE id = $1', [userId])
-}
+  await pool.query("DELETE FROM auth_users WHERE id = $1", [userId]);
+};
 
 export const cleanupTestData = async (userId: string) => {
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
-    await client.query('BEGIN')
+    await client.query("BEGIN");
 
-    await client.query('DELETE FROM transactions WHERE user_id = $1', [userId])
-    await client.query('DELETE FROM invitations WHERE inviter_id = $1', [userId])
-    await client.query('DELETE FROM groups WHERE user_a_id = $1', [userId])
-    await client.query('DELETE FROM groups WHERE user_b_id = $1', [userId])
-    await client.query('DELETE FROM users WHERE id = $1', [userId])
-    await client.query('DELETE FROM auth_users WHERE id = $1', [userId])
+    await client.query("DELETE FROM transactions WHERE user_id = $1", [userId]);
+    await client.query("DELETE FROM invitations WHERE inviter_id = $1", [
+      userId,
+    ]);
+    await client.query("DELETE FROM groups WHERE user_a_id = $1", [userId]);
+    await client.query("DELETE FROM groups WHERE user_b_id = $1", [userId]);
+    await client.query("DELETE FROM users WHERE id = $1", [userId]);
+    await client.query("DELETE FROM auth_users WHERE id = $1", [userId]);
 
-    await client.query('COMMIT')
+    await client.query("COMMIT");
   } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
-    client.release()
+    client.release();
   }
-}
+};
 
 export const generateTestEmail = () => {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substring(7)
-  return `test-${timestamp}-${random}@example.com`
-}
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(7);
+  return `test-${timestamp}-${random}@example.com`;
+};
 
 export const getUserByEmail = async (email: string) => {
   const result = await pool.query<{ id: string; group_id: string | null }>(
-    'SELECT id, group_id FROM users WHERE email = $1',
-    [email.toLowerCase()]
-  )
-  return result.rows[0] || null
-}
+    "SELECT id, group_id FROM users WHERE email = $1",
+    [email.toLowerCase()],
+  );
+  return result.rows[0] || null;
+};
 
 export const getAuthUserByEmail = async (email: string) => {
   const result = await pool.query<{ id: string; email: string }>(
-    'SELECT id, email FROM auth_users WHERE email = $1',
-    [email.toLowerCase()]
-  )
-  return result.rows[0] || null
-}
+    "SELECT id, email FROM auth_users WHERE email = $1",
+    [email.toLowerCase()],
+  );
+  return result.rows[0] || null;
+};
 
 export const getGroupById = async (groupId: string) => {
   const result = await pool.query<{
-    id: string
-    name: string
-    user_a_id: string
-    user_b_id: string | null
-    ratio_a: number
-    ratio_b: number
-    created_at: Date
-    updated_at: Date
-  }>('SELECT * FROM groups WHERE id = $1', [groupId])
-  const row = result.rows[0]
-  if (!row) return null
+    id: string;
+    name: string;
+    user_a_id: string;
+    user_b_id: string | null;
+    ratio_a: number;
+    ratio_b: number;
+    created_at: Date;
+    updated_at: Date;
+  }>("SELECT * FROM groups WHERE id = $1", [groupId]);
+  const row = result.rows[0];
+  if (!row) return null;
   return {
     ...row,
     user_b_id: row.user_b_id ?? undefined,
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
-  }
-}
+  };
+};
 
 export const getTransactionsByGroupId = async (groupId: string) => {
   const result = await pool.query<{
-    id: string
-    user_id: string
-    group_id: string
-    date: Date
-    description: string
-    amount: number
-    payer_type: 'UserA' | 'UserB'
-    expense_type: 'Household' | 'Personal'
-    source_file_name?: string
-    uploaded_by?: string
-    created_at: Date
-    updated_at: Date
-  }>('SELECT * FROM transactions WHERE group_id = $1 ORDER BY date DESC', [groupId])
+    id: string;
+    user_id: string;
+    group_id: string;
+    date: Date;
+    description: string;
+    amount: number;
+    payer_type: "UserA" | "UserB";
+    expense_type: "Household" | "Personal";
+    source_file_name?: string;
+    uploaded_by?: string;
+    created_at: Date;
+    updated_at: Date;
+  }>("SELECT * FROM transactions WHERE group_id = $1 ORDER BY date DESC", [
+    groupId,
+  ]);
   return result.rows.map((row) => ({
     ...row,
     date: row.date.toISOString().slice(0, 10),
     created_at: row.created_at.toISOString(),
     updated_at: row.updated_at.toISOString(),
-  }))
-}
+  }));
+};
 
 export const insertTransaction = async (transaction: {
-  userId: string
-  groupId: string
-  date: string
-  description: string
-  amount: number
-  expenseType: string
-  payerType?: 'UserA' | 'UserB'
-  payerUserId?: string | null
-  actualPayerType?: 'UserA' | 'UserB'
-  actualPayerUserId?: string | null
+  userId: string;
+  groupId: string | null;
+  date: string;
+  description: string;
+  amount: number;
+  expenseType: string;
+  payerType?: "UserA" | "UserB";
+  payerUserId?: string | null;
+  actualPayerType?: "UserA" | "UserB";
+  actualPayerUserId?: string | null;
 }) => {
-  const payerType = transaction.payerType || 'UserA'
-  const actualPayerType = transaction.actualPayerType ?? payerType
-  const actualPayerUserId = transaction.actualPayerUserId ?? transaction.payerUserId ?? null
+  if (!transaction.groupId) {
+    throw new Error("insertTransaction: groupId is required but was null");
+  }
+  const payerType = transaction.payerType || "UserA";
+  const actualPayerType = transaction.actualPayerType ?? payerType;
+  const actualPayerUserId =
+    transaction.actualPayerUserId ?? transaction.payerUserId ?? null;
   const result = await pool.query<{ id: string }>(
     `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, payer_user_id, actual_payer_type, actual_payer_user_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
@@ -172,155 +180,171 @@ export const insertTransaction = async (transaction: {
       transaction.payerUserId ?? null,
       actualPayerType,
       actualPayerUserId,
-    ]
-  )
-  return result.rows[0]
-}
+    ],
+  );
+  return result.rows[0];
+};
 
 export const insertTransactions = async (
   transactions: Array<{
-    userId: string
-    groupId: string
-    date: string
-    description: string
-    amount: number
-    expenseType: string
-    payerType?: 'UserA' | 'UserB'
-    actualPayerType?: 'UserA' | 'UserB'
-  }>
+    userId: string;
+    groupId: string | null;
+    date: string;
+    description: string;
+    amount: number;
+    expenseType: string;
+    payerType?: "UserA" | "UserB";
+    actualPayerType?: "UserA" | "UserB";
+  }>,
 ) => {
-  if (transactions.length === 0) return []
+  if (transactions.length === 0) return [];
 
-  const values: unknown[] = []
-  const placeholders: string[] = []
+  const invalidTransaction = transactions.find((t) => !t.groupId);
+  if (invalidTransaction) {
+    throw new Error(
+      "insertTransactions: groupId is required but was null for one or more transactions",
+    );
+  }
+
+  const values: unknown[] = [];
+  const placeholders: string[] = [];
 
   transactions.forEach((t, i) => {
-    const offset = i * 9
-    const payerType = t.payerType || 'UserA'
-    const actualPayerType = t.actualPayerType ?? payerType
+    const offset = i * 9;
+    const payerType = t.payerType || "UserA";
+    const actualPayerType = t.actualPayerType ?? payerType;
     placeholders.push(
-      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`
-    )
-    values.push(t.userId, t.groupId, t.date, t.description, t.amount, payerType, t.expenseType, actualPayerType, null)
-  })
+      `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`,
+    );
+    values.push(
+      t.userId,
+      t.groupId,
+      t.date,
+      t.description,
+      t.amount,
+      payerType,
+      t.expenseType,
+      actualPayerType,
+      null,
+    );
+  });
 
   const result = await pool.query<{ id: string }>(
     `INSERT INTO transactions (user_id, group_id, date, description, amount, payer_type, expense_type, actual_payer_type, actual_payer_user_id)
-     VALUES ${placeholders.join(', ')} RETURNING id`,
-    values
-  )
-  return result.rows
-}
+     VALUES ${placeholders.join(", ")} RETURNING id`,
+    values,
+  );
+  return result.rows;
+};
 
 export const getTransactionById = async (transactionId: string) => {
   const result = await pool.query<{
-    id: string
-    user_id: string
-    group_id: string
-    date: Date
-    description: string
-    amount: number
-    payer_type: string
-    expense_type: string
-    payer_user_id: string | null
-    actual_payer_type: string
-    actual_payer_user_id: string | null
-  }>('SELECT * FROM transactions WHERE id = $1', [transactionId])
-  return result.rows[0] || null
-}
+    id: string;
+    user_id: string;
+    group_id: string;
+    date: Date;
+    description: string;
+    amount: number;
+    payer_type: string;
+    expense_type: string;
+    payer_user_id: string | null;
+    actual_payer_type: string;
+    actual_payer_user_id: string | null;
+  }>("SELECT * FROM transactions WHERE id = $1", [transactionId]);
+  return result.rows[0] || null;
+};
 
 export const deleteTransactionsByGroupId = async (groupId: string) => {
-  await pool.query('DELETE FROM transactions WHERE group_id = $1', [groupId])
-}
+  await pool.query("DELETE FROM transactions WHERE group_id = $1", [groupId]);
+};
 
 export const updateGroupRatio = async (
   groupId: string,
   ratioA: number,
-  ratioB: number
+  ratioB: number,
 ) => {
-  await pool.query('UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3', [
-    ratioA,
-    ratioB,
-    groupId,
-  ])
-}
+  await pool.query(
+    "UPDATE groups SET ratio_a = $1, ratio_b = $2 WHERE id = $3",
+    [ratioA, ratioB, groupId],
+  );
+};
 
 export const acceptInvitationDirectly = async (
   userId: string,
   groupId: string,
-  inviteToken?: string
+  inviteToken?: string,
 ) => {
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
-    await client.query('BEGIN')
+    await client.query("BEGIN");
 
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [groupId, userId]
-    )
+    await client.query("UPDATE users SET group_id = $1 WHERE id = $2", [
+      groupId,
+      userId,
+    ]);
 
-    await client.query(
-      'UPDATE groups SET user_b_id = $1 WHERE id = $2',
-      [userId, groupId]
-    )
+    await client.query("UPDATE groups SET user_b_id = $1 WHERE id = $2", [
+      userId,
+      groupId,
+    ]);
 
     if (inviteToken) {
-      await client.query(
-        'UPDATE invitations SET used_at = $1 WHERE id = $2',
-        [new Date().toISOString(), inviteToken]
-      )
+      await client.query("UPDATE invitations SET used_at = $1 WHERE id = $2", [
+        new Date().toISOString(),
+        inviteToken,
+      ]);
     }
 
-    await client.query('COMMIT')
+    await client.query("COMMIT");
   } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
-    client.release()
+    client.release();
   }
-}
+};
 
 export interface CreateGroupOptions {
-  name?: string
-  ratioA?: number
-  ratioB?: number
+  name?: string;
+  ratioA?: number;
+  ratioB?: number;
 }
 
 export const createTestGroup = async (
   userId: string,
-  options: CreateGroupOptions = {}
+  options: CreateGroupOptions = {},
 ): Promise<string> => {
-  const { name = 'Test Group', ratioA = 50, ratioB = 50 } = options
+  const { name = "Test Group", ratioA = 50, ratioB = 50 } = options;
 
   if (ratioA + ratioB !== 100) {
-    throw new Error(`Ratio sum must be 100, got ${ratioA + ratioB}`)
+    throw new Error(`Ratio sum must be 100, got ${ratioA + ratioB}`);
   }
 
-  const client = await pool.connect()
+  const client = await pool.connect();
 
   try {
-    await client.query('BEGIN')
+    await client.query("BEGIN");
 
     const groupResult = await client.query<{ id: string }>(
       `INSERT INTO groups (name, ratio_a, ratio_b, user_a_id)
        VALUES ($1, $2, $3, $4) RETURNING id`,
-      [name, ratioA, ratioB, userId]
-    )
-    const groupId = groupResult.rows[0].id
+      [name, ratioA, ratioB, userId],
+    );
+    const groupId = groupResult.rows[0].id;
 
-    await client.query(
-      'UPDATE users SET group_id = $1 WHERE id = $2',
-      [groupId, userId]
-    )
+    await client.query("UPDATE users SET group_id = $1 WHERE id = $2", [
+      groupId,
+      userId,
+    ]);
 
-    await client.query('COMMIT')
+    await client.query("COMMIT");
 
-    return groupId
+    return groupId;
   } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
+    await client.query("ROLLBACK");
+    throw error;
   } finally {
-    client.release()
+    client.release();
   }
-}
+};

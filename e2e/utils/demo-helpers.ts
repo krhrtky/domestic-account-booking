@@ -86,10 +86,13 @@ export const getGroupId = async (userId: string): Promise<string | null> => {
 };
 
 export const insertTransaction = async (
-  groupId: string,
+  groupId: string | null,
   userId: string,
   transaction: DemoTransaction,
 ): Promise<void> => {
+  if (!groupId) {
+    throw new Error("insertTransaction: groupId is required but was null");
+  }
   await pool.query(
     `INSERT INTO transactions (group_id, user_id, date, amount, description, payer_type, expense_type, actual_payer_type)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -107,10 +110,13 @@ export const insertTransaction = async (
 };
 
 export const insertTransactions = async (
-  groupId: string,
+  groupId: string | null,
   userId: string,
   transactions: DemoTransaction[],
 ): Promise<void> => {
+  if (!groupId) {
+    throw new Error("insertTransactions: groupId is required but was null");
+  }
   const client = await pool.connect();
 
   try {
