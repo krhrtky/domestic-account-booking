@@ -35,6 +35,15 @@ export default defineConfig({
     video: 'on',
   },
 
+  snapshotPathTemplate: '{testDir}/{testFileDir}/{testFileName}-snapshots/{arg}-{projectName}{ext}',
+
+  expect: {
+    toHaveScreenshot: {
+      maxDiffPixelRatio: 0.05,
+      animations: 'disabled',
+    },
+  },
+
   projects: [
     {
       name: 'chromium',

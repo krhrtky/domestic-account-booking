@@ -33,6 +33,7 @@ module.exports = {
           error: '#D9534F',
           'error-light': '#FBEAEA',
           info: '#5DADE2',
+          'info-dark': '#1A7BA8',
           'info-light': '#EAF4FB',
         },
         neutral: {
