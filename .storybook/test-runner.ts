@@ -1,24 +1,24 @@
-import type { TestRunnerConfig } from '@storybook/test-runner'
-import { toMatchImageSnapshot } from 'jest-image-snapshot'
+import type { TestRunnerConfig } from "@storybook/test-runner";
+import { toMatchImageSnapshot } from "jest-image-snapshot";
 
 const config: TestRunnerConfig = {
   setup() {
-    expect.extend({ toMatchImageSnapshot })
+    expect.extend({ toMatchImageSnapshot });
   },
   async postVisit(page, context) {
-    if (process.env.STORYBOOK_VRT === 'true') {
-      await page.waitForLoadState('networkidle')
-      await page.waitForTimeout(300)
+    if (process.env.STORYBOOK_VRT === "true") {
+      await page.waitForLoadState("domcontentloaded");
+      await page.waitForTimeout(500);
 
-      const image = await page.screenshot()
+      const image = await page.screenshot();
       expect(image).toMatchImageSnapshot({
         customSnapshotsDir: `.storybook/__snapshots__`,
-        customSnapshotIdentifier: context.id.replace(/--/g, '-'),
+        customSnapshotIdentifier: context.id.replace(/--/g, "-"),
         failureThreshold: 0.01,
-        failureThresholdType: 'percent',
-      })
+        failureThresholdType: "percent",
+      });
     }
   },
-}
+};
 
-export default config
+export default config;
