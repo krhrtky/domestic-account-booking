@@ -49,7 +49,13 @@
     "check:laws:payment": "node node_modules/.bin/tsx scripts/verify-laws-compliance.ts --rule=L-RV-001",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "pretest:ci": "node scripts/check-node-version.js",
+    "test:ci": "npm run test:ci:setup && npm run test:ci:all && npm run test:ci:teardown",
+    "test:ci:setup": "docker compose -f docker-compose.test.yml up -d --wait && npm run test:ci:migrate",
+    "test:ci:migrate": "cp env.test.template .env.test && node --env-file=.env.test node_modules/.bin/tsx scripts/run-migrations.ts",
+    "test:ci:all": "npm run lint && npm run type-check && npm test -- --run && npm run test:integration",
+    "test:ci:teardown": "docker compose -f docker-compose.test.yml down -v && rm -f .env.test"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.17",
