@@ -58,11 +58,10 @@ test.describe("L-TA-001: Happy Path - Complete User Journey", () => {
 
     await test.step("AC-035: Verify transactions list", async () => {
       await page.goto("/dashboard/transactions");
-      await page.waitForLoadState("networkidle");
-
-      await expect(page.getByRole("heading", { name: "取引一覧" })).toBeVisible(
-        { timeout: 15000 },
-      );
+      await page.waitForLoadState("domcontentloaded");
+      const heading = page.getByRole("heading", { name: "取引一覧" });
+      await heading.waitFor({ state: "visible", timeout: 15000 });
+      await expect(heading).toBeVisible();
     });
 
     await test.step("AC-045: Settlement calculation display (L-BR-001)", async () => {

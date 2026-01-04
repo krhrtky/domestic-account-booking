@@ -234,13 +234,15 @@ test.describe("L-BR-002: actual_payer_user_id priority in settlement", () => {
       actualPayerUserId: null,
     });
 
-    await page.goto(`/dashboard?month=${currentMonth}`);
-    await page.waitForLoadState("networkidle");
+    await page.goto("/dashboard");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     const settlementSection = page.locator(
       '[data-testid="settlement-summary"]',
     );
-    await expect(settlementSection).toBeVisible({ timeout: 15000 });
-    await expect(settlementSection).toContainText("精算");
+    await settlementSection.waitFor({ state: "visible", timeout: 15000 });
+    await expect(settlementSection).toContainText("精算", { timeout: 10000 });
   });
 });

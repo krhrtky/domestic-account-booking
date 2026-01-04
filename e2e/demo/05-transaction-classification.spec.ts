@@ -59,7 +59,9 @@ test.describe("Scenario 5: Transaction Classification", () => {
     transactionId = inserted.id;
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     const clothingRow = page.locator("tr", { hasText: "Clothing Store" });
     await clothingRow.waitFor({ state: "visible", timeout: 10000 });

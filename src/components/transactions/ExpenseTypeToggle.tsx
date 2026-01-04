@@ -17,12 +17,13 @@ export default function ExpenseTypeToggle({
 }: ExpenseTypeToggleProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const displayType = currentType ?? "Household";
 
   const handleToggle = async () => {
     setIsUpdating(true);
     setError(null);
     const newType: ExpenseType =
-      currentType === "Household" ? "Personal" : "Household";
+      displayType === "Household" ? "Personal" : "Household";
 
     const result = await updateTransactionExpenseType(transactionId, newType);
     setIsUpdating(false);
@@ -39,7 +40,7 @@ export default function ExpenseTypeToggle({
   };
 
   const bgClass =
-    currentType === "Household"
+    displayType === "Household"
       ? "bg-semantic-info-light text-semantic-info-dark"
       : "bg-neutral-100 text-neutral-800";
 
@@ -54,10 +55,10 @@ export default function ExpenseTypeToggle({
           " hover:opacity-80 disabled:opacity-60 transition-all duration-fast"
         }
         data-testid="expense-type-toggle"
-        aria-label={`Toggle expense type, currently ${currentType}`}
-        aria-pressed={currentType === "Household" ? "true" : "false"}
+        aria-label={`Toggle expense type, currently ${displayType}`}
+        aria-pressed={displayType === "Household" ? "true" : "false"}
       >
-        {isUpdating ? "..." : currentType}
+        {isUpdating ? "..." : displayType}
       </button>
       {error && <span className="text-xs text-semantic-error">{error}</span>}
     </div>

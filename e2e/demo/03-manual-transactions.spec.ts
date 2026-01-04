@@ -57,7 +57,9 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     });
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     const transactionRow = page.locator("tr", { hasText: "Grocery Shopping" });
     await transactionRow.waitFor({ state: "visible", timeout: 10000 });
