@@ -1,6 +1,5 @@
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 
 const TIMEOUT_MS = 30000;
 
@@ -76,19 +75,23 @@ async function createTestSession() {
     console.error("[DEBUG] Committing transaction...");
     await client.query("COMMIT");
 
-    console.error("[DEBUG] Generating JWT token...");
-    const token = jwt.sign(
-      {
+    console.error("[DEBUG] Loading NextAuth encode function...");
+    const { encode } = require("next-auth/jwt");
+
+    console.error("[DEBUG] Encoding session token with NextAuth...");
+    const token = await encode({
+      token: {
         id: userId,
-        email: testEmail,
+        email: testEmail.toLowerCase(),
         name: testName,
+        sub: userId,
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
       },
-      nextAuthSecret,
-    );
+      secret: nextAuthSecret,
+    });
 
-    console.error("[DEBUG] Session created successfully");
+    console.error("[DEBUG] Session token encoded successfully");
     console.log(`next-auth.session-token=${token}`);
   } catch (error) {
     console.error("[DEBUG] Error occurred, rolling back transaction...");
