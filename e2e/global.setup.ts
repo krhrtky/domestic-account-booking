@@ -50,23 +50,9 @@ const setupAuth = async (
     await page.fill('input[name="email"]', TEST_USER.email);
     await page.fill('input[name="password"]', TEST_USER.password);
 
-    const responsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/auth/callback/credentials") ||
-        response.url().includes("/api/auth/signin"),
-      { timeout: 15000 },
-    );
-
     await page.click('button[type="submit"]');
 
-    try {
-      const response = await responsePromise;
-      console.log(`  Auth response: ${response.status()} ${response.url()}`);
-    } catch {
-      console.log("  No auth callback response detected, continuing...");
-    }
-
-    await page.waitForURL("**/dashboard", { timeout: 20000 });
+    await page.waitForURL("**/dashboard", { timeout: 30000 });
 
     await page.waitForLoadState("domcontentloaded");
 
