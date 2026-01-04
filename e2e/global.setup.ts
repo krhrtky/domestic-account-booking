@@ -44,17 +44,36 @@ const setupAuth = async (
   const page = await context.newPage();
 
   try {
-    await page.goto("/login", { waitUntil: "domcontentloaded" });
+    await page.goto("/login", { waitUntil: "load" });
+    await page.waitForTimeout(2000);
 
-    await page.waitForSelector('input[name="email"]', { timeout: 10000 });
+    await page.waitForSelector('input[name="email"]', { timeout: 30000 });
     await page.fill('input[name="email"]', TEST_USER.email);
     await page.fill('input[name="password"]', TEST_USER.password);
+    await page.waitForTimeout(500);
 
     await page.click('button[type="submit"]');
 
-    await page.waitForURL("**/dashboard", { timeout: 30000 });
+    let attempts = 0;
+    const maxAttempts = 30;
+    while (attempts < maxAttempts) {
+      await page.waitForTimeout(3000);
+      const currentUrl = page.url();
+      console.log(`  Attempt ${attempts + 1}: Current URL = ${currentUrl}`);
+      if (currentUrl.includes("/dashboard")) {
+        break;
+      }
+      attempts++;
+    }
 
-    await page.waitForLoadState("domcontentloaded");
+    if (!page.url().includes("/dashboard")) {
+      throw new Error(
+        `Failed to navigate to dashboard. Current URL: ${page.url()}`,
+      );
+    }
+
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(1000);
 
     await context.storageState({ path: storageStatePath });
 
