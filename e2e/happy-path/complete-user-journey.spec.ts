@@ -125,7 +125,7 @@ test.describe("L-TA-001: Happy Path - Complete User Journey", () => {
 
       if (options.length > 1) {
         await monthSelector.selectOption({ index: 1 });
-        await page.waitForLoadState("networkidle");
+        await page.waitForLoadState("domcontentloaded");
 
         const newMonth = await monthSelector.inputValue();
         expect(newMonth).not.toBe(currentMonth);

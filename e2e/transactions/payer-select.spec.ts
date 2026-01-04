@@ -71,7 +71,9 @@ test.describe("AC-9: Payer Select - Change individual payer", () => {
     transactionId = inserted.id;
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     const testRow = page.locator("tr", { hasText: "Test Payer Change" });
     await testRow.waitFor({ state: "visible", timeout: 10000 });
@@ -142,7 +144,9 @@ test.describe("AC-4: CSV without payer column defaults to payer_type", () => {
     });
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     const testRow = page.locator("tr", { hasText: "CSV Import No Payer" });
     await testRow.waitFor({ state: "visible", timeout: 10000 });

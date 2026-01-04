@@ -70,7 +70,9 @@ test.describe("Scenario 4: CSV Upload & Transaction Import", () => {
     await uploadButton.click();
 
     await expect(page).toHaveURL("/dashboard/transactions", { timeout: 15000 });
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
+    await page.reload();
+    await page.waitForLoadState("domcontentloaded");
 
     await expect(page.getByText("Restaurant Dinner")).toBeVisible({
       timeout: 10000,
