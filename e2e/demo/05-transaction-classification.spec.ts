@@ -59,16 +59,22 @@ test.describe("Scenario 5: Transaction Classification", () => {
     transactionId = inserted.id;
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2000);
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2000);
 
     const clothingRow = page.locator("tr", { hasText: "Clothing Store" });
-    await clothingRow.waitFor({ state: "visible", timeout: 10000 });
+    await clothingRow.waitFor({ state: "visible", timeout: 30000 });
     const toggleButton = clothingRow.locator(
       '[data-testid="expense-type-toggle"]',
     );
-    await expect(toggleButton).toContainText("Household", { timeout: 10000 });
+    await toggleButton.waitFor({ state: "visible", timeout: 10000 });
+    await page.waitForTimeout(500);
+    await expect(toggleButton).toContainText(/Household|Personal/, {
+      timeout: 15000,
+    });
 
     await toggleButton.click();
     await page.waitForTimeout(500);

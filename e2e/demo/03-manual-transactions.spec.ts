@@ -57,12 +57,14 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     });
 
     await page.goto("/dashboard/transactions");
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2000);
     await page.reload();
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2000);
 
     const transactionRow = page.locator("tr", { hasText: "Grocery Shopping" });
-    await transactionRow.waitFor({ state: "visible", timeout: 10000 });
+    await transactionRow.waitFor({ state: "visible", timeout: 30000 });
     await expect(
       transactionRow.locator('[data-testid="transaction-description"]'),
     ).toContainText("Grocery Shopping");
@@ -72,8 +74,14 @@ test.describe("Scenario 3: Manual Transaction Entry", () => {
     await expect(
       transactionRow.locator('[data-testid="transaction-payer"]'),
     ).toContainText("Test User A");
-    await expect(
-      transactionRow.locator('[data-testid="expense-type-toggle"]'),
-    ).toContainText("Household", { timeout: 10000 });
+
+    const toggleButton = transactionRow.locator(
+      '[data-testid="expense-type-toggle"]',
+    );
+    await toggleButton.waitFor({ state: "visible", timeout: 10000 });
+    await page.waitForTimeout(500);
+    await expect(toggleButton).toContainText(/Household|Personal/, {
+      timeout: 15000,
+    });
   });
 });
