@@ -7,7 +7,6 @@ on:
     branches: [main, master]
 
 env:
-  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
   NEXTAUTH_SECRET: test-secret-for-ci-validation
   NEXTAUTH_URL: http://localhost:3000
   NEXT_PUBLIC_APP_URL: http://localhost:3000
@@ -95,6 +94,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: static-analysis
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
 
     services:
       postgres:
