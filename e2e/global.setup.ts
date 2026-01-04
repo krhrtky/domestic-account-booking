@@ -44,7 +44,7 @@ const setupAuth = async (
   const page = await context.newPage();
 
   try {
-    await page.goto("/login", { waitUntil: "networkidle" });
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
 
     await page.waitForSelector('input[name="email"]', { timeout: 10000 });
     await page.fill('input[name="email"]', TEST_USER.email);

@@ -1,18 +1,20 @@
-import { test, expect } from '@playwright/test'
-import { runAxeTest, expectNoViolations } from './utils/a11y-helpers'
+import { test, expect } from "@playwright/test";
+import { runAxeTest, expectNoViolations } from "./utils/a11y-helpers";
 
 test.use({
-  storageState: './e2e/.auth/user-chromium.json'
-})
+  storageState: "./e2e/.auth/user-chromium.json",
+});
 
-test.describe('Transactions Page Accessibility', () => {
-  test('transaction list should have no accessibility violations', async ({ page }) => {
-    await page.goto('/dashboard/transactions')
-    await expect(page).toHaveURL('/dashboard/transactions')
+test.describe("Transactions Page Accessibility", () => {
+  test("transaction list should have no accessibility violations", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/transactions");
+    await expect(page).toHaveURL("/dashboard/transactions");
 
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState("domcontentloaded");
 
-    const results = await runAxeTest(page)
-    expectNoViolations(results)
-  })
-})
+    const results = await runAxeTest(page);
+    expectNoViolations(results);
+  });
+});

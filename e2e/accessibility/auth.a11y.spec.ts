@@ -1,17 +1,18 @@
-import { test, expect } from '@playwright/test'
-import { runAxeTest, expectNoViolations } from './utils/a11y-helpers'
+import { test, expect } from "@playwright/test";
+import { runAxeTest, expectNoViolations } from "./utils/a11y-helpers";
 
-test.describe('Auth Pages Accessibility', () => {
-  test.use({ storageState: { cookies: [], origins: [] } })
+test.describe("Auth Pages Accessibility", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
 
-  test('login page should have no accessibility violations', async ({ page }) => {
-    await page.goto('/login')
+  test("login page should have no accessibility violations", async ({
+    page,
+  }) => {
+    await page.goto("/login");
 
-    await page.waitForLoadState('networkidle')
-    await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible()
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByRole("heading", { name: "ログイン" })).toBeVisible();
 
-    const results = await runAxeTest(page)
-    expectNoViolations(results)
-  })
-
-})
+    const results = await runAxeTest(page);
+    expectNoViolations(results);
+  });
+});
