@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowState",
+  "description": "Multi-agent workflow state for SDA → DA → QGA pipeline",
+  "type": "object",
+  "required": [
+    "id",
+    "request",
+    "current_phase",
+    "iteration",
+    "phase_history",
+    "blocker_history",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique workflow identifier (UUID format recommended)",
+      "pattern": "^[a-zA-Z0-9-_]+$"
+    },
+    "request": {
+      "type": "string",
+      "description": "Original user request that initiated this workflow"
+    },
+    "current_phase": {
+      "type": "string",
+      "enum": ["INIT", "SDA", "DA", "QGA", "COMPLETE", "ESCALATED"],
+      "description": "Current phase of the workflow"
+    },
+    "iteration": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Current retry iteration count (max 3 before escalation)"
+    },
+    "phase_history": {
+      "type": "array",
+      "description": "History of all phase executions",
+      "items": {
+        "$ref": "#/definitions/PhaseResult"
+      }
+    },
+    "blocker_history": {
+      "type": "array",
+      "description": "History of all blockers detected",
+      "items": {
+        "$ref": "#/definitions/BlockerIssue"
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Workflow creation timestamp (ISO 8601)"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp (ISO 8601)"
+    },
+    "language": {
+      "type": "string",
+      "enum": ["en", "ja"],
+      "default": "en",
+      "description": "Language for agent communication"
+    },
+    "laws_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether Laws compliance checking is enabled"
+    }
+  },
+  "definitions": {
+    "PhaseResult": {
+      "type": "object",
+      "required": ["phase", "iteration", "timestamp", "status"],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": ["SDA", "DA", "QGA"]
+        },
+        "iteration": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["SUCCESS", "RETURNED", "ESCALATED"]
+        },
+        "return_reason": {
+          "type": "string",
+          "description": "Reason for returning to previous phase"
+        },
+        "return_to": {
+          "type": "string",
+          "enum": ["SDA", "DA"],
+          "description": "Target phase for return"
+        },
+        "blocker_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "IDs of blockers detected in this phase"
+        },
+        "output_summary": {
+          "type": "string",
+          "description": "Brief summary of phase output"
+        }
+      }
+    },
+    "BlockerIssue": {
+      "type": "object",
+      "required": [
+        "id",
+        "law",
+        "severity",
+        "description",
+        "first_detected",
+        "occurrences",
+        "resolved"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique blocker identifier (e.g., BLOCKER-001)"
+        },
+        "law": {
+          "type": "string",
+          "description": "Related law ID (e.g., L-SC-003)"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["BLOCKER", "MAJOR", "MINOR"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the issue"
+        },
+        "file": {
+          "type": "string",
+          "description": "File path where issue was detected"
+        },
+        "line": {
+          "type": "integer",
+          "description": "Line number where issue was detected"
+        },
+        "first_detected": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this blocker was first detected"
+        },
+        "occurrences": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of times this blocker has been detected"
+        },
+        "resolved": {
+          "type": "boolean",
+          "description": "Whether this blocker has been resolved"
+        },
+        "resolution_iteration": {
+          "type": "integer",
+          "description": "Iteration in which this blocker was resolved"
+        }
+      }
+    }
+  }
+}
