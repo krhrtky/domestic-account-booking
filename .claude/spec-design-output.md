@@ -1,517 +1,198 @@
-# 仕様策定: CSVカラム自動検出パターンの拡張
+# 仕様書: /dashboard/transactions フィルター機能修正
 
 ## メタ情報
 
-- **ワークフローID**: wf-csv-detection-enhancement-20260112
-- **策定日**: 2026-01-12
-- **Laws準拠モード**: 汎用モード (`laws_enabled: false`)
-- **前回ワークフロー**: wf-csv-column-mapping-20260112
-- **関連Laws**: L-BR-006 (CSV Import Rules)
+- **ワークフローID**: wf-transaction-filter-fix-20260112
+- **Laws適用**: 有効
+- **作成日**: 2026-01-12
+- **対象画面**: /dashboard/transactions
+- **影響範囲**: フィルター機能(支払者フィルター)
 
----
+## 1. GAP分析
 
-## 1. スコープ
+### ユーザーストーリー
 
-### IN スコープ
+ユーザーは一覧の「支払者」によって、一覧をフィルターできる
 
-- クレジットカード会社の一般的なCSV形式への対応
-- 日付・金額・摘要の検出パターン拡張
-- 既存テストの後方互換性保証
-- 新規パターンのテストケース追加
+### 現状の問題
 
-### OUT スコープ
-
-- カラムマッピングUIの変更（既に実装済み）
-- パターンマッチングアルゴリズムの根本的変更
-- ユーザー定義パターンの追加機能
-- 多言語対応（英語・日本語以外）
-
----
-
-## 2. 問題定義
-
-### 現状
-
-実際のクレジットカードCSVをアップロードすると「必須列（日付、金額）が見つかりません」エラーが発生。
-
-**実際のCSVヘッダー例**:
-```csv
-ご利用年月日,ご利用箇所,ご利用額,払戻額,ご請求額（うち手数料・利息）,...
-```
-
-### 原因
-
-`src/lib/csv-parser.ts` の検出パターンが不完全:
-
-| 種別 | 実際のヘッダー | 現在のパターン | マッチ状況 |
-|------|--------------|--------------|----------|
-| 日付 | `ご利用年月日` | `ご利用日` | ❌ 不一致 |
-| 金額 | `ご利用額` | `ご利用金額` | ❌ 不一致 |
-| 摘要 | `ご利用箇所` | `ご利用店名` | ❌ 不一致 |
-
-### 根本原因分析
-
-パターンマッチングは `includes()` を使用しているが、パターンリストに含まれていない:
+**問題箇所:** `app/actions/transactions.ts` Line 422
 
 ```typescript
-// 現在のロジック (L-87)
-return headers.findIndex((h) =>
-  datePatterns.some((p) => h.toLowerCase().includes(p.toLowerCase()))
-)
+if (payerType) {
+  conditions.push(eq(transactionsTable.payerType, payerType));
+  // ↑ 誤り: payerType を使用
+}
 ```
 
-- `'ご利用日'.includes('ご利用年月日')` → `false`
-- `'ご利用金額'.includes('ご利用額')` → `false`
-- `'ご利用店名'.includes('ご利用箇所')` → `false`
-
-逆のマッチングではないため、短いパターンでは長いヘッダーを捕捉できない。
-
----
-
-## 3. ユーザーストーリー
-
-### US-001: クレジットカードCSVのスムーズなインポート
-
-**As a** 家計精算アプリのユーザー  
-**I want to** 様々なクレジットカード会社のCSVをアップロードできる  
-**So that** 「必須列が見つかりません」エラーに遭遇せず、データを取り込める
-
-**受け入れ条件**:
-- AC-001: `ご利用年月日` が日付カラムとして検出される
-- AC-002: `ご利用額` が金額カラムとして検出される
-- AC-003: `ご利用箇所` が摘要カラムとして検出される
-- AC-004: 既存のCSV形式（`ご利用日`, `ご利用金額`, `ご利用店名`）も引き続き動作する
-
----
-
-## 4. API/データモデル仕様
-
-### 4.1 変更対象
-
-**ファイル**: `src/lib/csv-parser.ts`
-
-**関数**: 
-- `detectDateColumn(headers: string[]): number` (L-75)
-- `detectAmountColumn(headers: string[]): number` (L-110)
-- `detectDescriptionColumn(headers: string[]): number` (L-92)
-
-### 4.2 追加パターン
-
-#### 日付パターン
+**正しい実装:**
 
 ```typescript
-const datePatterns = [
-  'date',
-  '日付',
-  '利用日',
-  'ご利用日',
-  'ご利用年月日',      // ← 追加
-  '年月日',           // ← 追加
-  'データ処理日',
-  '取引日',
-  'お取引日',
-  '引落日',
-  '発生日',
-]
+if (payerType) {
+  conditions.push(eq(transactionsTable.actualPayerType, payerType));
+  // ↑ 正しい: actualPayerType を使用
+}
 ```
 
-#### 金額パターン
+### GAP(問題の本質)
+
+| 項目           | 期待値                   | 現状                          | GAP                              |
+| -------------- | ------------------------ | ----------------------------- | -------------------------------- |
+| フィルター対象 | actual_payer_type        | payer_type                    | 誤ったフィールドを参照           |
+| ユーザー意図   | 現在の支払者でフィルター | CSV取り込み時の値でフィルター | ユーザー編集後の値が反映されない |
+| 整合性         | 精算計算と一致           | 精算計算と不一致              | データ整合性欠如                 |
+
+**データモデル確認:**
+
+- `payer_type`: CSV取り込み時のソース支払元(履歴用)
+- `actual_payer_type`: 実際の支払元(精算計算で使用)
+
+**業務ルール参照:** L-BR-002
+
+## 2. 根本原因
+
+1. 命名の類似性による混同 - `payerType` と `actualPayerType` の選択ミス
+2. L-BR-002の理解不足 - actualが優先されることの見落とし
+3. 検証不足 - フィルター動作テストが存在しない
+
+## 3. 機能要件
+
+### スコープ
+
+**実装する:**
+
+- actual_payer_type によるフィルター処理
+- 既存UIの維持(ラベル・選択肢は変更不要)
+
+**実装しない:**
+
+- actual_payer_user_id によるユーザー名フィルター(将来拡張)
+- payer_type フィールドの削除(CSV取り込み履歴として保持)
+- UI変更
+
+## 4. API仕様
+
+### 変更箇所: `app/actions/transactions.ts`
+
+**変更前 (Line 421-423):**
 
 ```typescript
-const amountPatterns = [
-  'amount',
-  '金額',
-  'ご利用金額',
-  'ご利用額',         // ← 追加
-  '利用額',           // ← 追加
-  '支払金額',
-  '利用金額',
-  'お支払金額',
-  '預かり金額',
-  '引出金額',
-  '預入金額',
-]
+if (payerType) {
+  conditions.push(eq(transactionsTable.payerType, payerType));
+}
 ```
 
-#### 摘要パターン
+**変更後:**
 
 ```typescript
-const descPatterns = [
-  'description',
-  '摘要',
-  '内容',
-  '店名',
-  '商品名',
-  '利用先',
-  'ご利用内容',
-  'ご利用箇所',       // ← 追加
-  '利用箇所',         // ← 追加
-  '摘要内容',
-  'お取引内容',
-  'ご利用店名',
-]
+if (payerType) {
+  conditions.push(eq(transactionsTable.actualPayerType, payerType));
+}
 ```
 
-### 4.3 パターン優先順位
+**影響範囲:** 1行のみの変更、後方互換性あり
 
-パターン配列の順序は検出優先度を表す:
+## 5. Laws準拠マトリクス
 
-1. **より具体的なパターンを前に配置**
-   - `'ご利用年月日'` → `'ご利用日'` → `'年月日'` → `'日付'`
-   - `'ご利用金額'` → `'ご利用額'` → `'利用額'` → `'金額'`
+| Law ID   | カテゴリ     | 適用内容                     | 準拠状況 |
+| -------- | ------------ | ---------------------------- | -------- |
+| L-BR-002 | 業務ルール   | actualPayerTypeを使用        | 準拠     |
+| L-CX-001 | 顧客体験     | 精算計算と同じフィールド使用 | 準拠     |
+| L-CX-004 | 顧客体験     | 100ms以内のUI応答            | 準拠     |
+| L-AS-001 | API仕様      | success/data構造維持         | 準拠     |
+| L-SC-001 | セキュリティ | 認証・認可                   | 準拠     |
+| L-OC-001 | 組織一貫性   | Drizzle ORM使用              | 準拠     |
 
-2. **理由**: 複数マッチ時は最初にマッチしたものを採用
-   - 例: `'年月日'` と `'日付'` が両方存在する場合、`'年月日'` が優先
+**Laws違反:** なし
 
-### 4.4 非機能要件
+## 6. 受け入れ条件
 
-| 要件 | 値 | 検証方法 |
-|------|-----|---------|
-| パフォーマンス | パターン追加による処理時間増加 < 5% | ベンチマークテスト |
-| 後方互換性 | 既存テスト100% PASS | 回帰テスト |
-| カバレッジ | 新規パターンのカバレッジ 100% | ユニットテスト |
+### AC-001: actualPayerTypeでフィルターされる (L-BR-002)
 
----
+Given: グループに以下の取引が存在
 
-## 5. Laws準拠確認
+- Transaction A: payer_type="UserA", actual_payer_type="UserB"
+- Transaction B: payer_type="UserB", actual_payer_type="UserA"
+- Transaction C: payer_type="UserA", actual_payer_type="UserA"
 
-### L-BR-006: CSV Import Rules
+When: 支払者フィルターで "User A" を選択
 
-#### 対応フォーマット
+Then:
 
-| 項目 | 要件 | 準拠状況 |
-|------|------|---------|
-| 文字コード | UTF-8（BOMあり/なし両対応） | ✓ 準拠 (既存) |
-| 区切り文字 | カンマ（,） | ✓ 準拠 (既存) |
-| ヘッダー行 | 必須 | ✓ 準拠 (既存) |
-| 必須列 | 日付, 金額 | ✓ 今回拡張で対応 |
-| 推奨列 | 摘要/メモ | ✓ 今回拡張で対応 |
+- Transaction B と Transaction C が表示される
+- Transaction A は表示されない(actual_payer_type="UserB")
 
-#### 列マッピング (拡張)
+### AC-002: 精算計算との整合性 (L-CX-001)
 
-| CSVヘッダー例 | マッピング先 | 変更 |
-|--------------|-------------|------|
-| 日付, 利用日, Date | date | 既存 |
-| **ご利用年月日, 年月日** | date | **新規** |
-| 金額, 利用金額, Amount | amount | 既存 |
-| **ご利用額, 利用額** | amount | **新規** |
-| 摘要, 内容, メモ, Description | description | 既存 |
-| **ご利用箇所, 利用箇所** | description | **新規** |
+Given: 2026-01月の取引が存在
+When: 支払者フィルターで "User A" を選択し合計金額を計算
+Then: 合計金額が精算結果画面の "User Aが支払った家計費" と一致する
 
-### L-LC-001: PII Handling in CSV
+### AC-003: 既存のテストが通過する (L-TA-002)
 
-機密情報列の自動除外パターンは変更なし（既存実装を維持）。
+Given: 既存のテストスイート
+When: npm test を実行
+Then: すべてのユニットテストが通過する
 
-### L-SC-002: CSV Injection Prevention
+## 7. テスト要件 (L-TA-001)
 
-サニタイゼーション処理は変更なし（既存実装を維持）。
+### Typical Cases(典型ケース)
 
----
+| ID      | 説明              | 入力                | 期待出力                            |
+| ------- | ----------------- | ------------------- | ----------------------------------- |
+| TYP-001 | UserAでフィルター | payerType="UserA"   | actual_payer_type="UserA"の取引のみ |
+| TYP-002 | UserBでフィルター | payerType="UserB"   | actual_payer_type="UserB"の取引のみ |
+| TYP-003 | フィルター未指定  | payerType=undefined | すべての取引                        |
 
-## 6. 受け入れ条件（詳細）
+### Boundary Cases(境界ケース)
 
-### AC-001: ご利用年月日の検出
+| ID      | 説明               | 入力              | 期待出力     |
+| ------- | ------------------ | ----------------- | ------------ |
+| BND-001 | 取引0件            | payerType="UserA" | 空配列       |
+| BND-002 | 全取引が同一支払者 | payerType="UserA" | すべての取引 |
 
-**Given**: CSVに `ご利用年月日` 列が存在する  
-**When**: `detectHeaders()` を実行  
-**Then**: `suggestedMapping.dateColumn` が `'ご利用年月日'` になる
+### Incident Cases(事故ケース)
 
-**検証方法**: ユニットテスト  
-**テストケースID**: DETECT-DATE-001
+| ID      | 説明                    | 入力                                                             | 期待出力             |
+| ------- | ----------------------- | ---------------------------------------------------------------- | -------------------- |
+| INC-001 | payer編集後のフィルター | payer_type="UserA", actual_payer_type="UserB"でpayerType="UserB" | その取引が表示される |
 
-```typescript
-it('detects ご利用年月日 column as date', async () => {
-  const { detectHeaders } = await import('./csv-parser')
-  const csvContent = `ご利用年月日,金額,摘要
-2025-01-15,5400,スーパー`
+### Attack Cases(攻撃ケース)
 
-  const result = detectHeaders(csvContent)
-
-  if ('headers' in result) {
-    expect(result.suggestedMapping.dateColumn).toBe('ご利用年月日')
-  }
-})
-```
-
-### AC-002: ご利用額の検出
-
-**Given**: CSVに `ご利用額` 列が存在する  
-**When**: `detectHeaders()` を実行  
-**Then**: `suggestedMapping.amountColumn` が `'ご利用額'` になる
-
-**検証方法**: ユニットテスト  
-**テストケースID**: DETECT-AMOUNT-001
-
-```typescript
-it('detects ご利用額 column as amount', async () => {
-  const { detectHeaders } = await import('./csv-parser')
-  const csvContent = `日付,ご利用額,摘要
-2025-01-15,5400,スーパー`
-
-  const result = detectHeaders(csvContent)
-
-  if ('headers' in result) {
-    expect(result.suggestedMapping.amountColumn).toBe('ご利用額')
-  }
-})
-```
-
-### AC-003: ご利用箇所の検出
-
-**Given**: CSVに `ご利用箇所` 列が存在する  
-**When**: `detectHeaders()` を実行  
-**Then**: `suggestedMapping.descriptionColumn` が `'ご利用箇所'` になる
-
-**検証方法**: ユニットテスト  
-**テストケースID**: DETECT-DESC-001
-
-```typescript
-it('detects ご利用箇所 column as description', async () => {
-  const { detectHeaders } = await import('./csv-parser')
-  const csvContent = `日付,金額,ご利用箇所
-2025-01-15,5400,スーパー`
-
-  const result = detectHeaders(csvContent)
-
-  if ('headers' in result) {
-    expect(result.suggestedMapping.descriptionColumn).toBe('ご利用箇所')
-  }
-})
-```
-
-### AC-004: 後方互換性
-
-**Given**: 既存のCSV形式（`ご利用日`, `ご利用金額`, `ご利用店名`）  
-**When**: `detectHeaders()` を実行  
-**Then**: 引き続き正しく検出される
-
-**検証方法**: 回帰テスト（既存テストスイート）  
-**テストケースID**: REGRESSION-001
-
-```bash
-npm test -- csv-parser.test.ts
-```
-
-**期待結果**: 全テストPASS
-
-### AC-005: 実際のクレジットカードCSV形式
-
-**Given**: ユーザー報告の実際のCSV  
-**When**: `parseCSV()` を実行  
-**Then**: エラーなくパースされる
-
-**検証方法**: 統合テスト  
-**テストケースID**: INTEGRATION-CARD-001
-
-```typescript
-it('parses real credit card CSV format', async () => {
-  const csvContent = `ご利用年月日,ご利用箇所,ご利用額,払戻額
-2025/01/15,スーパーXYZ,10000,0
-2025/01/20,カフェABC,1500,0`
-
-  const result = await parseCSV(csvContent, 'real-card.csv')
-
-  expect(result.success).toBe(true)
-  if (result.success) {
-    expect(result.data).toHaveLength(2)
-    expect(result.data[0].date).toBe('2025-01-15')
-    expect(result.data[0].amount).toBe(10000)
-    expect(result.data[0].description).toBe('スーパーXYZ')
-  }
-})
-```
-
----
-
-## 7. テスト要件
-
-### 7.1 評価データセット分類
-
-#### 典型ケース (Typical Cases)
-
-| ケース | 入力 | 期待出力 |
-|--------|------|---------|
-| TYP-001 | `ご利用年月日` 列 | 日付として検出 |
-| TYP-002 | `ご利用額` 列 | 金額として検出 |
-| TYP-003 | `ご利用箇所` 列 | 摘要として検出 |
-| TYP-004 | 3列すべて存在 | 全列が正しく検出 |
-
-#### 境界ケース (Boundary Cases)
-
-| ケース | 入力 | 期待出力 |
-|--------|------|---------|
-| BND-001 | `年月日` 列のみ（`ご利用年月日` なし） | `年月日` を日付として検出 |
-| BND-002 | `利用額` 列のみ（`ご利用額` なし） | `利用額` を金額として検出 |
-| BND-003 | `利用箇所` 列のみ（`ご利用箇所` なし） | `利用箇所` を摘要として検出 |
-| BND-004 | 複数の日付候補列が存在 | 最初にマッチした列を採用 |
-
-#### 事故ケース (Incident Cases)
-
-| ケース | 過去のバグ | 期待動作 |
-|--------|----------|---------|
-| INC-001 | ユーザー報告: 「必須列が見つかりません」エラー | エラーが発生しない |
-| INC-002 | - | （該当なし） |
-
-#### グレーケース (Gray Cases)
-
-| ケース | 曖昧な入力 | 期待動作 |
-|--------|----------|---------|
-| GRAY-001 | `ご利用年月日` と `ご利用日` 両方存在 | `ご利用年月日` を優先（配列の前方） |
-| GRAY-002 | `ご利用額` と `ご利用金額` 両方存在 | `ご利用金額` を優先（配列の前方） |
-| GRAY-003 | 大文字小文字混在 (`ご利用年月日` vs `ご利用年月日`) | 大小文字を無視してマッチ |
-
-#### 攻撃ケース (Attack Cases)
-
-| ケース | 攻撃シナリオ | 期待動作 |
-|--------|------------|---------|
-| ATK-001 | 機密列名パターンに類似（`ご利用額カード番号`） | `ご利用額` として検出し、`カード番号` は除外 |
-| ATK-002 | 数値が巨大（列名に悪意あるスクリプト） | サニタイズされる（既存機能） |
-| ATK-003 | ヘッダーに改行・特殊文字 | サニタイズされる（既存機能） |
-
-### 7.2 カバレッジ要件
-
-| 対象 | 目標カバレッジ |
-|------|--------------|
-| `detectDateColumn()` | 100% |
-| `detectAmountColumn()` | 100% |
-| `detectDescriptionColumn()` | 100% |
-| 新規パターンのブランチ | 100% |
-
-### 7.3 性能要件
-
-| メトリクス | 目標 |
-|----------|------|
-| パターン追加による処理時間増加 | < 5% |
-| 10,000行のCSVパース時間 | < 3秒 |
-
----
+| ID      | 説明                    | 入力                             | 期待出力                |
+| ------- | ----------------------- | -------------------------------- | ----------------------- |
+| ATK-001 | SQLインジェクション試行 | payerType="UserA'; DROP TABLE--" | Zodバリデーションで拒否 |
+| ATK-002 | 不正なpayerType         | payerType="Common"               | Zodバリデーションで拒否 |
 
 ## 8. 実装タスク提案
 
-### タスク分解
+### Task 1: コード修正(5分)
 
-```yaml
-tasks:
-  - id: IMPL-001
-    title: "日付パターンに 'ご利用年月日', '年月日' を追加"
-    file: src/lib/csv-parser.ts
-    lines: 75-90
-    estimate: 5分
-    
-  - id: IMPL-002
-    title: "金額パターンに 'ご利用額', '利用額' を追加"
-    file: src/lib/csv-parser.ts
-    lines: 110-125
-    estimate: 5分
-    
-  - id: IMPL-003
-    title: "摘要パターンに 'ご利用箇所', '利用箇所' を追加"
-    file: src/lib/csv-parser.ts
-    lines: 92-108
-    estimate: 5分
-    
-  - id: TEST-001
-    title: "典型ケースのユニットテスト追加 (TYP-001 ~ TYP-004)"
-    file: src/lib/csv-parser.test.ts
-    estimate: 15分
-    
-  - id: TEST-002
-    title: "境界ケースのユニットテスト追加 (BND-001 ~ BND-004)"
-    file: src/lib/csv-parser.test.ts
-    estimate: 15分
-    
-  - id: TEST-003
-    title: "グレーケースのユニットテスト追加 (GRAY-001 ~ GRAY-003)"
-    file: src/lib/csv-parser.test.ts
-    estimate: 15分
-    
-  - id: TEST-004
-    title: "実際のクレジットカードCSV統合テスト (INTEGRATION-CARD-001)"
-    file: src/lib/csv-parser.integration.test.ts
-    estimate: 10分
-    
-  - id: TEST-005
-    title: "回帰テスト実行 (REGRESSION-001)"
-    command: npm test -- csv-parser.test.ts
-    estimate: 5分
-    
-  - id: DOC-001
-    title: "CHANGELOG.md に変更内容を記録"
-    file: CHANGELOG.md
-    estimate: 5分
-```
+File: app/actions/transactions.ts
+Line: 422
+Change:
+From: eq(transactionsTable.payerType, payerType)
+To: eq(transactionsTable.actualPayerType, payerType)
 
-**合計見積もり**: 約80分
+### Task 2: テスト追加(30分)
 
----
+File: app/actions/**tests**/transactions.test.ts (新規作成)
+Test Cases: TYP-001, TYP-002, BND-001, INC-001, ATK-001
 
-## 9. 非スコープの留意事項
+### Task 3: 検証(15分)
 
-### 将来的に検討すべき項目
+Steps:
 
-1. **ユーザー定義パターン機能**
-   - 設定画面でカスタムパターンを登録
-   - 優先度: 低（ユーザー要望が増えた場合）
+1. 取引を作成(actual_payer_typeを編集)
+2. フィルターを適用
+3. 精算画面と照合
 
-2. **機械学習ベースのカラム検出**
-   - 列名ではなく、データの内容から推論
-   - 優先度: 中（精度向上が必要な場合）
+## 9. 次のステップ
 
-3. **多言語対応（英語・日本語以外）**
-   - 中国語、韓国語などのパターン
-   - 優先度: 低（国際展開時）
+この仕様を **Delivery Agent (DA)** に引き渡して実装を依頼してください。
 
-4. **パターンマッチングのスコアリング**
-   - 複数マッチ時の信頼度を数値化
-   - 優先度: 中（曖昧な場合の精度向上）
+**実装ファイル:**
 
----
+- `/Users/takuya.kurihara/workspace/domestic-account-booking/app/actions/transactions.ts` (Line 422)
 
-## 10. 完了定義 (Definition of Done)
-
-### チェックリスト
-
-- [ ] 全ての受け入れ条件 (AC-001 ~ AC-005) をテストで検証
-- [ ] 既存テストが100% PASS（回帰テスト）
-- [ ] 新規テストのカバレッジが100%
-- [ ] パフォーマンス要件（処理時間増加 < 5%）を満たす
-- [ ] L-BR-006 に準拠していることを確認
-- [ ] コードレビュー完了
-- [ ] CHANGELOG.md に変更を記録
-
----
-
-## 11. リスクと緩和策
-
-| リスク | 影響度 | 確率 | 緩和策 |
-|--------|-------|------|--------|
-| パターン追加による既存動作の変更 | 高 | 低 | 回帰テストで検証 |
-| パターン優先順位の誤り | 中 | 中 | グレーケーステストで検証 |
-| パフォーマンス劣化 | 低 | 低 | ベンチマークテストで監視 |
-| 新規パターンのカバレッジ不足 | 中 | 低 | カバレッジレポートで確認 |
-
----
-
-## 12. 参照ドキュメント
-
-- **Laws**: `docs/laws/08-business-rules.md` (L-BR-006)
-- **ルール**: `.claude/rules/**__csv**.md`
-- **既存実装**: `src/lib/csv-parser.ts` (L-75 ~ L-135)
-- **既存テスト**: `src/lib/csv-parser.test.ts` (L-404 ~ L-672)
-- **前回ワークフロー**: wf-csv-column-mapping-20260112
-
----
-
-## 13. 承認記録
-
-| ロール | 承認者 | 日付 | ステータス |
-|--------|-------|------|----------|
-| Spec Designer | Claude Sonnet 4.5 | 2026-01-12 | ✓ 策定完了 |
-| Delivery Agent | - | - | 承認待ち |
-| Quality Gate Agent | - | - | 承認待ち |
-
----
-
-**策定完了日時**: 2026-01-12  
-**次のステップ**: Delivery Agent による実装  
-**想定リードタイム**: 80分
+**Laws準拠確認済み:** すべての関連Lawsに100%準拠しています。

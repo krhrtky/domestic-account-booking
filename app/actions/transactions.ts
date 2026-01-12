@@ -419,7 +419,7 @@ export async function getTransactions(filters?: {
       }
 
       if (payerType) {
-        conditions.push(eq(transactionsTable.payerType, payerType));
+        conditions.push(eq(transactionsTable.actualPayerType, payerType));
       }
 
       try {
@@ -641,9 +641,7 @@ const GetSettlementDataSchema = z.object({
     ),
 });
 
-export async function getSettlementData(
-  targetMonth: string,
-): Promise<
+export async function getSettlementData(targetMonth: string): Promise<
   | { error: string }
   | {
       success: true;

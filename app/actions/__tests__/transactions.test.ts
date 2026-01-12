@@ -1,494 +1,680 @@
-import { describe, it, expect } from 'vitest'
-import { z } from 'zod'
+import { describe, it, expect } from "vitest";
+import { z } from "zod";
 
 const UploadCSVSchema = z.object({
   csvContent: z.string().min(1),
   fileName: z.string().min(1).max(255),
-  payerType: z.enum(['UserA', 'UserB'])
-})
+  payerType: z.enum(["UserA", "UserB"]),
+});
 
 const UpdateExpenseTypeSchema = z.object({
   transactionId: z.string().uuid(),
-  expenseType: z.enum(['Household', 'Personal'])
-})
+  expenseType: z.enum(["Household", "Personal"]),
+});
 
 const UpdatePayerSchema = z.object({
   transactionId: z.string().uuid(),
   payerUserId: z.string().uuid().nullable(),
-  payerType: z.enum(['UserA', 'UserB'])
-})
+  payerType: z.enum(["UserA", "UserB"]),
+});
 
 const GetTransactionsSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
-  expenseType: z.enum(['Household', 'Personal']).optional(),
-  payerType: z.enum(['UserA', 'UserB']).optional(),
+  month: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+  expenseType: z.enum(["Household", "Personal"]).optional(),
+  payerType: z.enum(["UserA", "UserB"]).optional(),
   page: z.number().int().min(1).optional(),
-  pageSize: z.number().int().min(10).max(50).optional()
-})
+  pageSize: z.number().int().min(10).max(50).optional(),
+});
 
-describe('L-BR-002: Payer name matching logic', () => {
-  describe('Typical Cases', () => {
-    it('matches exact name case-insensitively', () => {
+describe("L-BR-002: Payer name matching logic", () => {
+  describe("Typical Cases", () => {
+    it("matches exact name case-insensitively", () => {
       const usersByName = new Map([
-        ['alice', 'user-a-id'],
-        ['bob', 'user-b-id']
-      ])
+        ["alice", "user-a-id"],
+        ["bob", "user-b-id"],
+      ]);
 
-      const payerName = 'Alice'
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const payerName = "Alice";
+      const foundUserId = usersByName.get(payerName.toLowerCase());
 
-      expect(foundUserId).toBe('user-a-id')
-    })
+      expect(foundUserId).toBe("user-a-id");
+    });
 
-    it('returns undefined when name does not match', () => {
+    it("returns undefined when name does not match", () => {
       const usersByName = new Map([
-        ['alice', 'user-a-id'],
-        ['bob', 'user-b-id']
-      ])
+        ["alice", "user-a-id"],
+        ["bob", "user-b-id"],
+      ]);
 
-      const payerName = 'Charlie'
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const payerName = "Charlie";
+      const foundUserId = usersByName.get(payerName.toLowerCase());
 
-      expect(foundUserId).toBeUndefined()
-    })
-  })
+      expect(foundUserId).toBeUndefined();
+    });
+  });
 
-  describe('Boundary Cases', () => {
-    it('handles empty payer_name', () => {
-      const usersByName = new Map([
-        ['alice', 'user-a-id']
-      ])
+  describe("Boundary Cases", () => {
+    it("handles empty payer_name", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
 
-      const payerName = ''
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const payerName = "";
+      const foundUserId = usersByName.get(payerName.toLowerCase());
 
-      expect(foundUserId).toBeUndefined()
-    })
+      expect(foundUserId).toBeUndefined();
+    });
 
-    it('handles whitespace-only payer_name', () => {
-      const usersByName = new Map([
-        ['alice', 'user-a-id']
-      ])
+    it("handles whitespace-only payer_name", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
 
-      const payerName = '   '.trim()
-      const foundUserId = payerName ? usersByName.get(payerName.toLowerCase()) : undefined
+      const payerName = "   ".trim();
+      const foundUserId = payerName
+        ? usersByName.get(payerName.toLowerCase())
+        : undefined;
 
-      expect(foundUserId).toBeUndefined()
-    })
-  })
+      expect(foundUserId).toBeUndefined();
+    });
+  });
 
-  describe('Gray Cases', () => {
-    it('handles Japanese names case-insensitively', () => {
-      const usersByName = new Map([
-        ['田中太郎', 'user-a-id']
-      ])
+  describe("Gray Cases", () => {
+    it("handles Japanese names case-insensitively", () => {
+      const usersByName = new Map([["田中太郎", "user-a-id"]]);
 
-      const payerName = '田中太郎'
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const payerName = "田中太郎";
+      const foundUserId = usersByName.get(payerName.toLowerCase());
 
-      expect(foundUserId).toBe('user-a-id')
-    })
+      expect(foundUserId).toBe("user-a-id");
+    });
 
-    it('does not match partial names', () => {
-      const usersByName = new Map([
-        ['alice smith', 'user-a-id']
-      ])
+    it("does not match partial names", () => {
+      const usersByName = new Map([["alice smith", "user-a-id"]]);
 
-      const payerName = 'alice'
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const payerName = "alice";
+      const foundUserId = usersByName.get(payerName.toLowerCase());
 
-      expect(foundUserId).toBeUndefined()
-    })
-  })
-})
+      expect(foundUserId).toBeUndefined();
+    });
+  });
+});
 
-describe('L-BR-006: CSV Upload with payer_user_id logic', () => {
+describe("L-BR-006: CSV Upload with payer_user_id logic", () => {
   function applyPayerLogic(
     payerName: string | undefined,
-    usersByName: Map<string, string>
+    usersByName: Map<string, string>,
   ): string | null {
-    let payerUserId: string | null = null
+    let payerUserId: string | null = null;
     if (payerName) {
-      const foundUserId = usersByName.get(payerName.toLowerCase())
+      const foundUserId = usersByName.get(payerName.toLowerCase());
       if (foundUserId) {
-        payerUserId = foundUserId
+        payerUserId = foundUserId;
       }
     }
-    return payerUserId
+    return payerUserId;
   }
 
-  describe('Typical Cases', () => {
-    it('sets payer_user_id when name matches', () => {
-      const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('Alice', usersByName)
-      expect(result).toBe('user-a-id')
-    })
+  describe("Typical Cases", () => {
+    it("sets payer_user_id when name matches", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
+      const result = applyPayerLogic("Alice", usersByName);
+      expect(result).toBe("user-a-id");
+    });
 
-    it('leaves payer_user_id as NULL when name does not match', () => {
-      const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('Charlie', usersByName)
-      expect(result).toBeNull()
-    })
-  })
+    it("leaves payer_user_id as NULL when name does not match", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
+      const result = applyPayerLogic("Charlie", usersByName);
+      expect(result).toBeNull();
+    });
+  });
 
-  describe('Boundary Cases', () => {
-    it('handles empty payer_name with UserA payer_type', () => {
-      const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic('', usersByName)
-      expect(result).toBeNull()
-    })
+  describe("Boundary Cases", () => {
+    it("handles empty payer_name with UserA payer_type", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
+      const result = applyPayerLogic("", usersByName);
+      expect(result).toBeNull();
+    });
 
-    it('handles undefined payer_name', () => {
-      const usersByName = new Map([['alice', 'user-a-id']])
-      const result = applyPayerLogic(undefined, usersByName)
-      expect(result).toBeNull()
-    })
-  })
-})
+    it("handles undefined payer_name", () => {
+      const usersByName = new Map([["alice", "user-a-id"]]);
+      const result = applyPayerLogic(undefined, usersByName);
+      expect(result).toBeNull();
+    });
+  });
+});
 
-describe('Transaction validation schemas', () => {
-  describe('UploadCSVSchema', () => {
-    it('should validate valid CSV upload data', () => {
+describe("Transaction validation schemas", () => {
+  describe("UploadCSVSchema", () => {
+    it("should validate valid CSV upload data", () => {
       const valid = {
-        csvContent: 'date,description,amount\n2024-01-01,Test,100',
-        fileName: 'test.csv',
-        payerType: 'UserA' as const
-      }
-      expect(UploadCSVSchema.safeParse(valid).success).toBe(true)
-    })
+        csvContent: "date,description,amount\n2024-01-01,Test,100",
+        fileName: "test.csv",
+        payerType: "UserA" as const,
+      };
+      expect(UploadCSVSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should reject empty CSV content', () => {
+    it("should reject empty CSV content", () => {
       const invalid = {
-        csvContent: '',
-        fileName: 'test.csv',
-        payerType: 'UserA' as const
-      }
-      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false)
-    })
+        csvContent: "",
+        fileName: "test.csv",
+        payerType: "UserA" as const,
+      };
+      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject empty file name', () => {
+    it("should reject empty file name", () => {
       const invalid = {
-        csvContent: 'data',
-        fileName: '',
-        payerType: 'UserA' as const
-      }
-      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false)
-    })
+        csvContent: "data",
+        fileName: "",
+        payerType: "UserA" as const,
+      };
+      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject file name over 255 characters', () => {
+    it("should reject file name over 255 characters", () => {
       const invalid = {
-        csvContent: 'data',
-        fileName: 'a'.repeat(256),
-        payerType: 'UserA' as const
-      }
-      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false)
-    })
+        csvContent: "data",
+        fileName: "a".repeat(256),
+        payerType: "UserA" as const,
+      };
+      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject invalid payer type', () => {
+    it("should reject invalid payer type", () => {
       const invalid = {
-        csvContent: 'data',
-        fileName: 'test.csv',
-        payerType: 'Invalid'
-      }
-      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false)
-    })
-  })
+        csvContent: "data",
+        fileName: "test.csv",
+        payerType: "Invalid",
+      };
+      expect(UploadCSVSchema.safeParse(invalid).success).toBe(false);
+    });
+  });
 
-  describe('UpdateExpenseTypeSchema', () => {
-    it('should validate valid expense type update', () => {
+  describe("UpdateExpenseTypeSchema", () => {
+    it("should validate valid expense type update", () => {
       const valid = {
-        transactionId: '123e4567-e89b-12d3-a456-426614174000',
-        expenseType: 'Household' as const
-      }
-      expect(UpdateExpenseTypeSchema.safeParse(valid).success).toBe(true)
-    })
+        transactionId: "123e4567-e89b-12d3-a456-426614174000",
+        expenseType: "Household" as const,
+      };
+      expect(UpdateExpenseTypeSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should reject invalid UUID', () => {
+    it("should reject invalid UUID", () => {
       const invalid = {
-        transactionId: 'not-a-uuid',
-        expenseType: 'Household' as const
-      }
-      expect(UpdateExpenseTypeSchema.safeParse(invalid).success).toBe(false)
-    })
+        transactionId: "not-a-uuid",
+        expenseType: "Household" as const,
+      };
+      expect(UpdateExpenseTypeSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject invalid expense type', () => {
+    it("should reject invalid expense type", () => {
       const invalid = {
-        transactionId: '123e4567-e89b-12d3-a456-426614174000',
-        expenseType: 'Invalid'
-      }
-      expect(UpdateExpenseTypeSchema.safeParse(invalid).success).toBe(false)
-    })
-  })
+        transactionId: "123e4567-e89b-12d3-a456-426614174000",
+        expenseType: "Invalid",
+      };
+      expect(UpdateExpenseTypeSchema.safeParse(invalid).success).toBe(false);
+    });
+  });
 
-  describe('GetTransactionsSchema', () => {
-    it('should validate filters with all options', () => {
+  describe("GetTransactionsSchema", () => {
+    it("should validate filters with all options", () => {
       const valid = {
-        month: '2024-01',
-        expenseType: 'Household' as const,
-        payerType: 'UserA' as const
-      }
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
+        month: "2024-01",
+        expenseType: "Household" as const,
+        payerType: "UserA" as const,
+      };
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should validate empty filters', () => {
-      const valid = {}
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
+    it("should validate empty filters", () => {
+      const valid = {};
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should reject invalid month format', () => {
+    it("should reject invalid month format", () => {
       const invalid = {
-        month: '2024-1'
-      }
-      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
-    })
+        month: "2024-1",
+      };
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject invalid month format with day', () => {
+    it("should reject invalid month format with day", () => {
       const invalid = {
-        month: '2024-01-01'
-      }
-      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
-    })
+        month: "2024-01-01",
+      };
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should accept valid month format', () => {
+    it("should accept valid month format", () => {
       const valid = {
-        month: '2024-12'
-      }
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
+        month: "2024-12",
+      };
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should validate cursor parameter', () => {
+    it("should validate cursor parameter", () => {
       const valid = {
-        cursor: '2024-01-15|uuid-here'
-      }
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
+        cursor: "2024-01-15|uuid-here",
+      };
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should validate limit within range', () => {
+    it("should validate limit within range", () => {
       const valid = {
-        limit: 50
-      }
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
+        limit: 50,
+      };
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
 
-    it('should reject pageSize below minimum', () => {
+    it("should reject pageSize below minimum", () => {
       const invalid = {
-        pageSize: 9
-      }
-      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
-    })
+        pageSize: 9,
+      };
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject pageSize above maximum', () => {
+    it("should reject pageSize above maximum", () => {
       const invalid = {
-        pageSize: 51
-      }
-      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
-    })
+        pageSize: 51,
+      };
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should reject non-integer pageSize', () => {
+    it("should reject non-integer pageSize", () => {
       const invalid = {
-        pageSize: 25.5
-      }
-      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false)
-    })
+        pageSize: 25.5,
+      };
+      expect(GetTransactionsSchema.safeParse(invalid).success).toBe(false);
+    });
 
-    it('should validate all pagination parameters together', () => {
+    it("should validate all pagination parameters together", () => {
       const valid = {
-        month: '2024-01',
-        expenseType: 'Household' as const,
-        payerType: 'UserA' as const,
+        month: "2024-01",
+        expenseType: "Household" as const,
+        payerType: "UserA" as const,
         page: 2,
-        pageSize: 20
-      }
-      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true)
-    })
-  })
+        pageSize: 20,
+      };
+      expect(GetTransactionsSchema.safeParse(valid).success).toBe(true);
+    });
+  });
 
-  describe('L-AS-002: UpdatePayerSchema validation', () => {
-    describe('Typical Cases', () => {
-      it('should validate valid payer update with UserA', () => {
+  describe("L-AS-002: UpdatePayerSchema validation", () => {
+    describe("Typical Cases", () => {
+      it("should validate valid payer update with UserA", () => {
         const valid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerUserId: '987fcdeb-51a2-3c4d-5e6f-789012345678',
-          payerType: 'UserA' as const
-        }
-        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true)
-      })
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
+          payerUserId: "987fcdeb-51a2-3c4d-5e6f-789012345678",
+          payerType: "UserA" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true);
+      });
 
-      it('should validate valid payer update with UserB', () => {
+      it("should validate valid payer update with UserB", () => {
         const valid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerUserId: '987fcdeb-51a2-3c4d-5e6f-789012345678',
-          payerType: 'UserB' as const
-        }
-        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true)
-      })
-    })
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
+          payerUserId: "987fcdeb-51a2-3c4d-5e6f-789012345678",
+          payerType: "UserB" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true);
+      });
+    });
 
-    describe('Boundary Cases', () => {
-      it('should accept null payerUserId for any payerType', () => {
+    describe("Boundary Cases", () => {
+      it("should accept null payerUserId for any payerType", () => {
         const valid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
           payerUserId: null,
-          payerType: 'UserA' as const
-        }
-        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true)
-      })
+          payerType: "UserA" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(valid).success).toBe(true);
+      });
 
-      it('should reject undefined payerUserId', () => {
+      it("should reject undefined payerUserId", () => {
         const invalid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerType: 'UserA' as const
-        }
-        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false)
-      })
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
+          payerType: "UserA" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false);
+      });
 
-      it('should reject missing payerType', () => {
+      it("should reject missing payerType", () => {
         const invalid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerUserId: null
-        }
-        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false)
-      })
-    })
-
-    describe('Attack Cases - L-SC-002', () => {
-      it('should reject invalid UUID for transactionId', () => {
-        const invalid = {
-          transactionId: 'not-a-uuid; DROP TABLE transactions;',
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
           payerUserId: null,
-          payerType: 'UserA' as const
-        }
-        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false)
-      })
+        };
+        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false);
+      });
+    });
 
-      it('should reject invalid UUID for payerUserId', () => {
+    describe("Attack Cases - L-SC-002", () => {
+      it("should reject invalid UUID for transactionId", () => {
         const invalid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
-          payerUserId: 'invalid-uuid',
-          payerType: 'UserA' as const
-        }
-        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false)
-      })
-
-      it('should reject invalid payerType', () => {
-        const invalid = {
-          transactionId: '123e4567-e89b-12d3-a456-426614174000',
+          transactionId: "not-a-uuid; DROP TABLE transactions;",
           payerUserId: null,
-          payerType: 'Admin'
-        }
-        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false)
-      })
-    })
-  })
-})
+          payerType: "UserA" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false);
+      });
 
-describe('L-BR-002: PayerSelect value determination logic', () => {
-  type PayerType = 'UserA' | 'UserB'
+      it("should reject invalid UUID for payerUserId", () => {
+        const invalid = {
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
+          payerUserId: "invalid-uuid",
+          payerType: "UserA" as const,
+        };
+        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false);
+      });
 
-  const groupUserAId = 'user-a-id-123'
-  const groupUserBId = 'user-b-id-456'
+      it("should reject invalid payerType", () => {
+        const invalid = {
+          transactionId: "123e4567-e89b-12d3-a456-426614174000",
+          payerUserId: null,
+          payerType: "Admin",
+        };
+        expect(UpdatePayerSchema.safeParse(invalid).success).toBe(false);
+      });
+    });
+  });
+});
+
+describe("L-BR-002: PayerSelect value determination logic", () => {
+  type PayerType = "UserA" | "UserB";
+
+  const groupUserAId = "user-a-id-123";
+  const groupUserBId = "user-b-id-456";
 
   function getCurrentValue(
     currentPayerType: PayerType,
     currentPayerUserId: string | null | undefined,
     groupUserAId: string,
-    groupUserBId: string | null
+    groupUserBId: string | null,
   ): string {
     if (currentPayerUserId) {
-      return currentPayerUserId
+      return currentPayerUserId;
     }
-    if (currentPayerType === 'UserA') {
-      return groupUserAId
+    if (currentPayerType === "UserA") {
+      return groupUserAId;
     }
-    if (currentPayerType === 'UserB' && groupUserBId) {
-      return groupUserBId
+    if (currentPayerType === "UserB" && groupUserBId) {
+      return groupUserBId;
     }
-    return groupUserAId
+    return groupUserAId;
   }
 
-  describe('Typical Cases', () => {
-    it('returns groupUserAId when payerType is UserA and no payerUserId', () => {
-      const result = getCurrentValue('UserA', null, groupUserAId, groupUserBId)
-      expect(result).toBe(groupUserAId)
-    })
+  describe("Typical Cases", () => {
+    it("returns groupUserAId when payerType is UserA and no payerUserId", () => {
+      const result = getCurrentValue("UserA", null, groupUserAId, groupUserBId);
+      expect(result).toBe(groupUserAId);
+    });
 
-    it('returns groupUserBId when payerType is UserB and no payerUserId', () => {
-      const result = getCurrentValue('UserB', null, groupUserAId, groupUserBId)
-      expect(result).toBe(groupUserBId)
-    })
+    it("returns groupUserBId when payerType is UserB and no payerUserId", () => {
+      const result = getCurrentValue("UserB", null, groupUserAId, groupUserBId);
+      expect(result).toBe(groupUserBId);
+    });
 
-    it('returns payerUserId when it is set', () => {
-      const customUserId = 'custom-user-id'
-      const result = getCurrentValue('UserA', customUserId, groupUserAId, groupUserBId)
-      expect(result).toBe(customUserId)
-    })
-  })
+    it("returns payerUserId when it is set", () => {
+      const customUserId = "custom-user-id";
+      const result = getCurrentValue(
+        "UserA",
+        customUserId,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toBe(customUserId);
+    });
+  });
 
-  describe('Boundary Cases', () => {
-    it('returns groupUserAId when UserB but groupUserBId is null', () => {
-      const result = getCurrentValue('UserB', null, groupUserAId, null)
-      expect(result).toBe(groupUserAId)
-    })
+  describe("Boundary Cases", () => {
+    it("returns groupUserAId when UserB but groupUserBId is null", () => {
+      const result = getCurrentValue("UserB", null, groupUserAId, null);
+      expect(result).toBe(groupUserAId);
+    });
 
-    it('handles undefined payerUserId same as null', () => {
-      const result = getCurrentValue('UserA', undefined, groupUserAId, groupUserBId)
-      expect(result).toBe(groupUserAId)
-    })
-  })
+    it("handles undefined payerUserId same as null", () => {
+      const result = getCurrentValue(
+        "UserA",
+        undefined,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toBe(groupUserAId);
+    });
+  });
 
-  describe('Gray Cases - ISSUE-2: payer_type mismatch handling', () => {
-    it('returns payerUserId when set, regardless of payer_type (showing the override)', () => {
-      const result = getCurrentValue('UserA', groupUserBId, groupUserAId, groupUserBId)
-      expect(result).toBe(groupUserBId)
-    })
-  })
-})
+  describe("Gray Cases - ISSUE-2: payer_type mismatch handling", () => {
+    it("returns payerUserId when set, regardless of payer_type (showing the override)", () => {
+      const result = getCurrentValue(
+        "UserA",
+        groupUserBId,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toBe(groupUserBId);
+    });
+  });
+});
 
-describe('L-BR-002: PayerSelect change handler logic', () => {
-  type PayerType = 'UserA' | 'UserB'
+describe("L-BR-002: PayerSelect change handler logic", () => {
+  type PayerType = "UserA" | "UserB";
 
-  const groupUserAId = 'user-a-id-123'
-  const groupUserBId = 'user-b-id-456'
+  const groupUserAId = "user-a-id-123";
+  const groupUserBId = "user-b-id-456";
 
   function determinePayerFromValue(
     value: string,
     groupUserAId: string,
-    groupUserBId: string | null
+    groupUserBId: string | null,
   ): { payerUserId: string | null; payerType: PayerType } {
     if (value === groupUserAId) {
-      return { payerUserId: groupUserAId, payerType: 'UserA' }
+      return { payerUserId: groupUserAId, payerType: "UserA" };
     }
     if (value === groupUserBId) {
-      return { payerUserId: groupUserBId, payerType: 'UserB' }
+      return { payerUserId: groupUserBId, payerType: "UserB" };
     }
-    return { payerUserId: value, payerType: 'UserA' }
+    return { payerUserId: value, payerType: "UserA" };
   }
 
-  describe('Typical Cases', () => {
-    it('selects UserA correctly', () => {
-      const result = determinePayerFromValue(groupUserAId, groupUserAId, groupUserBId)
-      expect(result).toEqual({ payerUserId: groupUserAId, payerType: 'UserA' })
-    })
+  describe("Typical Cases", () => {
+    it("selects UserA correctly", () => {
+      const result = determinePayerFromValue(
+        groupUserAId,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toEqual({ payerUserId: groupUserAId, payerType: "UserA" });
+    });
 
-    it('selects UserB correctly', () => {
-      const result = determinePayerFromValue(groupUserBId, groupUserAId, groupUserBId)
-      expect(result).toEqual({ payerUserId: groupUserBId, payerType: 'UserB' })
-    })
-  })
+    it("selects UserB correctly", () => {
+      const result = determinePayerFromValue(
+        groupUserBId,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toEqual({ payerUserId: groupUserBId, payerType: "UserB" });
+    });
+  });
 
-  describe('Boundary Cases', () => {
-    it('handles unknown value as UserA fallback', () => {
-      const unknownValue = 'unknown-user-id'
-      const result = determinePayerFromValue(unknownValue, groupUserAId, groupUserBId)
-      expect(result).toEqual({ payerUserId: unknownValue, payerType: 'UserA' })
-    })
-  })
+  describe("Boundary Cases", () => {
+    it("handles unknown value as UserA fallback", () => {
+      const unknownValue = "unknown-user-id";
+      const result = determinePayerFromValue(
+        unknownValue,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result).toEqual({ payerUserId: unknownValue, payerType: "UserA" });
+    });
+  });
 
-  describe('ISSUE-3: payer_type updates with selection', () => {
-    it('sets payer_type to UserB when selecting UserB option', () => {
-      const result = determinePayerFromValue(groupUserBId, groupUserAId, groupUserBId)
-      expect(result.payerType).toBe('UserB')
-      expect(result.payerUserId).toBe(groupUserBId)
-    })
-  })
-})
+  describe("ISSUE-3: payer_type updates with selection", () => {
+    it("sets payer_type to UserB when selecting UserB option", () => {
+      const result = determinePayerFromValue(
+        groupUserBId,
+        groupUserAId,
+        groupUserBId,
+      );
+      expect(result.payerType).toBe("UserB");
+      expect(result.payerUserId).toBe(groupUserBId);
+    });
+  });
+});
+
+describe("L-BR-002: Transaction filter by actualPayerType", () => {
+  type PayerType = "UserA" | "UserB";
+  type ExpenseType = "Household" | "Personal";
+
+  interface Transaction {
+    id: string;
+    payerType: PayerType;
+    actualPayerType: PayerType;
+    expenseType: ExpenseType;
+    amount: number;
+  }
+
+  function filterTransactions(
+    transactions: Transaction[],
+    filters: {
+      payerType?: PayerType;
+      expenseType?: ExpenseType;
+    },
+  ): Transaction[] {
+    return transactions.filter((t) => {
+      if (filters.payerType && t.actualPayerType !== filters.payerType) {
+        return false;
+      }
+      if (filters.expenseType && t.expenseType !== filters.expenseType) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  describe("Typical Cases", () => {
+    const transactions: Transaction[] = [
+      {
+        id: "tx-1",
+        payerType: "UserA",
+        actualPayerType: "UserA",
+        expenseType: "Household",
+        amount: 1000,
+      },
+      {
+        id: "tx-2",
+        payerType: "UserB",
+        actualPayerType: "UserB",
+        expenseType: "Household",
+        amount: 2000,
+      },
+      {
+        id: "tx-3",
+        payerType: "UserA",
+        actualPayerType: "UserB",
+        expenseType: "Personal",
+        amount: 3000,
+      },
+    ];
+
+    it("TYP-001: filters by UserA actualPayerType", () => {
+      const result = filterTransactions(transactions, { payerType: "UserA" });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("tx-1");
+      expect(result[0].actualPayerType).toBe("UserA");
+    });
+
+    it("TYP-002: filters by UserB actualPayerType", () => {
+      const result = filterTransactions(transactions, { payerType: "UserB" });
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe("tx-2");
+      expect(result[1].id).toBe("tx-3");
+      expect(result.every((t) => t.actualPayerType === "UserB")).toBe(true);
+    });
+
+    it("TYP-003: returns all transactions when no filter specified", () => {
+      const result = filterTransactions(transactions, {});
+      expect(result).toHaveLength(3);
+    });
+  });
+
+  describe("Boundary Cases", () => {
+    it("BND-001: returns empty array when no transactions match", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "tx-1",
+          payerType: "UserB",
+          actualPayerType: "UserB",
+          expenseType: "Household",
+          amount: 1000,
+        },
+      ];
+      const result = filterTransactions(transactions, { payerType: "UserA" });
+      expect(result).toHaveLength(0);
+    });
+
+    it("BND-002: returns all transactions when all have same actualPayerType", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "tx-1",
+          payerType: "UserA",
+          actualPayerType: "UserA",
+          expenseType: "Household",
+          amount: 1000,
+        },
+        {
+          id: "tx-2",
+          payerType: "UserB",
+          actualPayerType: "UserA",
+          expenseType: "Household",
+          amount: 2000,
+        },
+        {
+          id: "tx-3",
+          payerType: "UserA",
+          actualPayerType: "UserA",
+          expenseType: "Personal",
+          amount: 3000,
+        },
+      ];
+      const result = filterTransactions(transactions, { payerType: "UserA" });
+      expect(result).toHaveLength(3);
+    });
+  });
+
+  describe("Incident Cases", () => {
+    it("INC-001: filters by actualPayerType after payer edit", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "tx-1",
+          payerType: "UserA",
+          actualPayerType: "UserB",
+          expenseType: "Household",
+          amount: 1000,
+        },
+      ];
+      const result = filterTransactions(transactions, { payerType: "UserB" });
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("tx-1");
+      expect(result[0].actualPayerType).toBe("UserB");
+      expect(result[0].payerType).toBe("UserA");
+    });
+  });
+
+  describe("Attack Cases", () => {
+    it("ATK-001: rejects SQL injection attempt in payerType", () => {
+      const maliciousInput = "UserA'; DROP TABLE transactions;--";
+      const validationResult = GetTransactionsSchema.safeParse({
+        payerType: maliciousInput,
+      });
+      expect(validationResult.success).toBe(false);
+    });
+
+    it("ATK-002: rejects invalid payerType value", () => {
+      const invalidInput = "Common";
+      const validationResult = GetTransactionsSchema.safeParse({
+        payerType: invalidInput,
+      });
+      expect(validationResult.success).toBe(false);
+    });
+  });
+});
