@@ -1,5 +1,5 @@
-export type PayerType = 'UserA' | 'UserB';
-export type ExpenseType = 'Household' | 'Personal';
+export type PayerType = "UserA" | "UserB";
+export type ExpenseType = "Household" | "Personal";
 
 export interface Transaction {
   id: string;
@@ -38,6 +38,8 @@ export interface Settlement {
   balance_a: number;
   ratio_a: number;
   ratio_b: number;
+  paid_by_a_personal: number;
+  paid_by_b_personal: number;
 }
 
 export interface ColumnMapping {

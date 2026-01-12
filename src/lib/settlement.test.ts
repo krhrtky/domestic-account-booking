@@ -14,7 +14,7 @@ describe("calculateSettlement", () => {
     updated_at: "2025-01-01T00:00:00Z",
   };
 
-  it("Test Case 1: A paid 60k, B paid 40k, ratio 50:50 → balance = 0", () => {
+  it("TYP-006: A paid 60k, B paid 40k, ratio 50:50 → balance = 0", () => {
     const transactions: Transaction[] = [
       {
         id: "1",
@@ -54,7 +54,7 @@ describe("calculateSettlement", () => {
     expect(result.ratio_b).toBe(50);
   });
 
-  it("Test Case 2: A paid 80k, B paid 20k, ratio 60:40 → balance = 20k (B owes A)", () => {
+  it("TYP-007: A paid 80k, B paid 20k, ratio 60:40 → balance = 20k (B owes A)", () => {
     const groupWith60_40: Group = { ...mockGroup, ratio_a: 60, ratio_b: 40 };
     const transactions: Transaction[] = [
       {
@@ -93,7 +93,7 @@ describe("calculateSettlement", () => {
     expect(result.balance_a).toBe(20000);
   });
 
-  it("Test Case 3: A paid 30k, B paid 70k, ratio 50:50 → balance = -20k (A owes B)", () => {
+  it("TYP-008: A paid 30k, B paid 70k, ratio 50:50 → balance = -20k (A owes B)", () => {
     const transactions: Transaction[] = [
       {
         id: "1",
@@ -131,7 +131,7 @@ describe("calculateSettlement", () => {
     expect(result.balance_a).toBe(-20000);
   });
 
-  it("Test Case 4: Mixed Personal/Household → Personal excluded", () => {
+  it("TYP-009: Mixed Personal/Household → Personal excluded", () => {
     const transactions: Transaction[] = [
       {
         id: "1",
@@ -180,9 +180,303 @@ describe("calculateSettlement", () => {
     expect(result.paid_by_a_household).toBe(50000);
     expect(result.paid_by_b_household).toBe(50000);
     expect(result.balance_a).toBe(0);
+    expect(result.paid_by_a_personal).toBe(30000);
+    expect(result.paid_by_b_personal).toBe(0);
   });
 
-  it("filters transactions by month correctly", () => {
+  describe("L-BR-003: Personal expense aggregation", () => {
+    it("TYP-001: Household only → Personal = 0", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 60000,
+          description: "Household expense",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Household",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 40000,
+          description: "Household expense",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Household",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_household).toBe(60000);
+      expect(result.paid_by_b_household).toBe(40000);
+      expect(result.paid_by_a_personal).toBe(0);
+      expect(result.paid_by_b_personal).toBe(0);
+    });
+
+    it("TYP-002: Household + Personal both → correct aggregation", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 60000,
+          description: "Household expense",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Household",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 15000,
+          description: "Personal expense A",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Personal",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+        {
+          id: "3",
+          group_id: "group-1",
+          date: "2025-01-20",
+          amount: 40000,
+          description: "Household expense",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Household",
+          created_at: "2025-01-20T00:00:00Z",
+          updated_at: "2025-01-20T00:00:00Z",
+        },
+        {
+          id: "4",
+          group_id: "group-1",
+          date: "2025-01-25",
+          amount: 8000,
+          description: "Personal expense B",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Personal",
+          created_at: "2025-01-25T00:00:00Z",
+          updated_at: "2025-01-25T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_household).toBe(60000);
+      expect(result.paid_by_b_household).toBe(40000);
+      expect(result.paid_by_a_personal).toBe(15000);
+      expect(result.paid_by_b_personal).toBe(8000);
+      expect(result.balance_a).toBe(10000);
+    });
+
+    it("TYP-003: Personal only → Household = 0", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 20000,
+          description: "Personal expense A",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Personal",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 15000,
+          description: "Personal expense B",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Personal",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_household).toBe(0);
+      expect(result.paid_by_b_household).toBe(0);
+      expect(result.paid_by_a_personal).toBe(20000);
+      expect(result.paid_by_b_personal).toBe(15000);
+      expect(result.balance_a).toBe(0);
+    });
+
+    it("BND-001: No transactions → all 0", () => {
+      const result = calculateSettlement([], mockGroup, "2025-01");
+
+      expect(result.paid_by_a_household).toBe(0);
+      expect(result.paid_by_b_household).toBe(0);
+      expect(result.paid_by_a_personal).toBe(0);
+      expect(result.paid_by_b_personal).toBe(0);
+      expect(result.balance_a).toBe(0);
+    });
+
+    it("BND-002: Only UserA has Personal → UserB Personal = 0", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 50000,
+          description: "Household expense",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Household",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 10000,
+          description: "Personal expense A",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Personal",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+        {
+          id: "3",
+          group_id: "group-1",
+          date: "2025-01-20",
+          amount: 50000,
+          description: "Household expense",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Household",
+          created_at: "2025-01-20T00:00:00Z",
+          updated_at: "2025-01-20T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_personal).toBe(10000);
+      expect(result.paid_by_b_personal).toBe(0);
+    });
+
+    it("BND-003: handles large amounts (10,000,000 yen)", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 10000000,
+          description: "Large household expense",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Household",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 5000000,
+          description: "Large personal expense",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Personal",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_household).toBe(10000000);
+      expect(result.paid_by_b_household).toBe(0);
+      expect(result.paid_by_b_personal).toBe(5000000);
+      expect(result.total_household).toBe(10000000);
+      expect(result.balance_a).toBe(5000000);
+    });
+
+    it("INC-001: Personal MUST NOT affect balance_a calculation", () => {
+      const transactions: Transaction[] = [
+        {
+          id: "1",
+          group_id: "group-1",
+          date: "2025-01-10",
+          amount: 60000,
+          description: "Household expense",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Household",
+          created_at: "2025-01-10T00:00:00Z",
+          updated_at: "2025-01-10T00:00:00Z",
+        },
+        {
+          id: "2",
+          group_id: "group-1",
+          date: "2025-01-15",
+          amount: 1000000,
+          description: "Personal expense A (1M)",
+          payer_type: "UserA",
+          actual_payer_type: "UserA",
+          user_id: "user-a",
+          expense_type: "Personal",
+          created_at: "2025-01-15T00:00:00Z",
+          updated_at: "2025-01-15T00:00:00Z",
+        },
+        {
+          id: "3",
+          group_id: "group-1",
+          date: "2025-01-20",
+          amount: 40000,
+          description: "Household expense",
+          payer_type: "UserB",
+          actual_payer_type: "UserB",
+          user_id: "user-b",
+          expense_type: "Household",
+          created_at: "2025-01-20T00:00:00Z",
+          updated_at: "2025-01-20T00:00:00Z",
+        },
+      ];
+
+      const result = calculateSettlement(transactions, mockGroup, "2025-01");
+
+      expect(result.paid_by_a_personal).toBe(1000000);
+      expect(result.total_household).toBe(100000);
+      expect(result.balance_a).toBe(10000);
+    });
+  });
+
+  it("BND-004: filters transactions by month correctly", () => {
     const transactions: Transaction[] = [
       {
         id: "1",
@@ -218,7 +512,7 @@ describe("calculateSettlement", () => {
     expect(result.paid_by_a_household).toBe(50000);
   });
 
-  it("handles Date objects in transaction dates", () => {
+  it("GRY-001: handles Date objects in transaction dates", () => {
     const transactions: Transaction[] = [
       {
         id: "1",
@@ -241,7 +535,7 @@ describe("calculateSettlement", () => {
     expect(result.paid_by_a_household).toBe(50000);
   });
 
-  it("handles empty transaction list", () => {
+  it("BND-005: handles empty transaction list", () => {
     const result = calculateSettlement([], mockGroup, "2025-01");
 
     expect(result.total_household).toBe(0);
@@ -250,43 +544,43 @@ describe("calculateSettlement", () => {
     expect(result.balance_a).toBe(0);
   });
 
-  describe("input validation", () => {
-    it("throws error when ratio_a is negative", () => {
+  describe("ATK: Input Validation", () => {
+    it("ATK-001: throws error when ratio_a is negative", () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: -10, ratio_b: 110 };
       expect(() => calculateSettlement([], invalidGroup, "2025-01")).toThrow(
         "負担割合Aは0〜100の範囲で入力してください",
       );
     });
 
-    it("throws error when ratio_a is greater than 100", () => {
+    it("ATK-002: throws error when ratio_a is greater than 100", () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 110, ratio_b: -10 };
       expect(() => calculateSettlement([], invalidGroup, "2025-01")).toThrow(
         "負担割合Aは0〜100の範囲で入力してください",
       );
     });
 
-    it("throws error when ratio_b is negative", () => {
+    it("ATK-003: throws error when ratio_b is negative", () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 50, ratio_b: -10 };
       expect(() => calculateSettlement([], invalidGroup, "2025-01")).toThrow(
         "負担割合Bは0〜100の範囲で入力してください",
       );
     });
 
-    it("throws error when ratio_b is greater than 100", () => {
+    it("ATK-004: throws error when ratio_b is greater than 100", () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 50, ratio_b: 110 };
       expect(() => calculateSettlement([], invalidGroup, "2025-01")).toThrow(
         "負担割合Bは0〜100の範囲で入力してください",
       );
     });
 
-    it("throws error when ratios do not sum to 100", () => {
+    it("ATK-005: throws error when ratios do not sum to 100", () => {
       const invalidGroup: Group = { ...mockGroup, ratio_a: 40, ratio_b: 40 };
       expect(() => calculateSettlement([], invalidGroup, "2025-01")).toThrow(
         "負担割合の合計は100%である必要があります",
       );
     });
 
-    it("throws error for invalid month format", () => {
+    it("ATK-006: throws error for invalid month format", () => {
       expect(() => calculateSettlement([], mockGroup, "2025-1")).toThrow(
         "月の形式が正しくありません",
       );
@@ -298,12 +592,12 @@ describe("calculateSettlement", () => {
       );
     });
 
-    it("accepts valid month format YYYY-MM", () => {
+    it("TYP-004: accepts valid month format YYYY-MM", () => {
       expect(() => calculateSettlement([], mockGroup, "2025-01")).not.toThrow();
       expect(() => calculateSettlement([], mockGroup, "2025-12")).not.toThrow();
     });
 
-    it("normalizes month format 2025-1 to 2025-01", () => {
+    it("TYP-005: normalizes month format 2025-1 to 2025-01", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
@@ -325,7 +619,7 @@ describe("calculateSettlement", () => {
   });
 
   describe("floating point precision", () => {
-    it("rounds balance to nearest integer", () => {
+    it("BND-006: rounds balance to nearest integer", () => {
       const groupWith33_67: Group = { ...mockGroup, ratio_a: 33, ratio_b: 67 };
       const transactions: Transaction[] = [
         {
@@ -353,7 +647,7 @@ describe("calculateSettlement", () => {
   });
 
   describe("L-BR-002: actual_payer_user_id priority logic", () => {
-    it("actual_payer_user_id takes priority over actual_payer_type when set", () => {
+    it("TYP-010: actual_payer_user_id takes priority over actual_payer_type when set", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
@@ -376,7 +670,7 @@ describe("calculateSettlement", () => {
       expect(result.paid_by_a_household).toBe(0);
     });
 
-    it("falls back to actual_payer_type when actual_payer_user_id is NULL", () => {
+    it("TYP-011: falls back to actual_payer_type when actual_payer_user_id is NULL", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
@@ -397,7 +691,7 @@ describe("calculateSettlement", () => {
       expect(result.paid_by_a_household).toBe(10000);
     });
 
-    it("falls back to actual_payer_type when actual_payer_user_id is undefined", () => {
+    it("TYP-012: falls back to actual_payer_type when actual_payer_user_id is undefined", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
@@ -418,7 +712,7 @@ describe("calculateSettlement", () => {
       expect(result.paid_by_a_household).toBe(0);
     });
 
-    it("mixed transactions with and without actual_payer_user_id are calculated correctly", () => {
+    it("TYP-013: mixed transactions with and without actual_payer_user_id are calculated correctly", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
@@ -457,7 +751,7 @@ describe("calculateSettlement", () => {
   });
 
   describe("actual_payer differs from import source payer", () => {
-    it("calculates settlement based on actual_payer, not import source", () => {
+    it("TYP-014: calculates settlement based on actual_payer, not import source", () => {
       const transactions: Transaction[] = [
         {
           id: "1",
